@@ -5,20 +5,32 @@ import PackageDescription
 
 let package = Package(
     name: "whooshing.toolbox-basic",
+    platforms: [
+       .macOS(.v11)
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "whooshing.toolbox-basic",
-            targets: ["whooshing.toolbox-basic"]),
+            name: "Toolbox",
+            targets: ["ToolboxBsc"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "whooshing.toolbox-basic"),
+            name: "ToolboxBsc",
+            dependencies: [
+                .product(name: "Crypto", package: "swift-crypto")
+            ]
+        ),
         .testTarget(
-            name: "whooshing.toolbox-basicTests",
-            dependencies: ["whooshing.toolbox-basic"]
+            name: "ToolboxBsc-Tests",
+            dependencies: [
+                .target(name: "ToolboxBsc")
+            ]
         ),
     ]
 )
