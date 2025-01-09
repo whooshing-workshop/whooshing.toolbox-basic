@@ -67,12 +67,14 @@ struct ErrorTests {
 
 enum ErrorTypes1: String, ErrListWithIndeedAddition {
     typealias ErrType = CustomError1
+    var domain: String { "错误测试1" }
     case error1 = "Error 1 summary"
     case error2 = "Error 2 summary"
 }
 
 struct CustomError1: Err {
     typealias AdditionType = [Int]
+    var domain: String!
     var summary: String!
     var explain: String?
     var file: String!
@@ -92,12 +94,14 @@ typealias A = ErrorTypes1
 
 enum ErrorTypes2: String, ErrListWithOptionAddition {
     typealias ErrType = CustomError2
+    var domain: String { "错误测试2" }
     case error3 = "Error 3 summary"
     case error4 = "Error 4 summary"
 }
 
 struct CustomError2: Err {
     typealias AdditionType = [String]?
+    var domain: String!
     var summary: String!
     var explain: String?
     var file: String!
