@@ -42,9 +42,9 @@ struct ErrorTests {
         #expect(err2.line == 22)
     }
 
-    let explains = [0, 1, 1, 0, 1]
-    let marks = [0, 0, 0, 1, 1]
-    let lineStart = 56
+    let explains = [0, 1, 1, 0, 1, 0]
+    let marks = [0, 0, 0, 1, 1, 1]
+    let lineStart = 57
 
     @Test("测试所有方法的参数传递", arguments: [
         0: Self.err.d(#file, #line),
@@ -52,6 +52,7 @@ struct ErrorTests {
         2: Self.err.d(Self.explain, (#file, #line)),
         3: Self.err.d(Self.mark, #file, #line),
         4: Self.err.d(Self.explain, Self.mark, (#file, #line)),
+        5: Self.err.d(Self.mark, (#file, #line)),
     ])
     func testFuncs(i: Int, e: CustomError2) {
         #expect(explains[i] == 0 ? e.explain == nil : e.explain == Self.explain)
@@ -77,7 +78,7 @@ struct ErrorTests {
             #expect(err.summary == B.error3.rawValue)
             #expect(err.mark == 3008)
             #expect(err.subError as! A.ErrType != A.error1.d(1005, #file, #line).adds([1, 2, 3]))
-            #expect(err.subError as! A.ErrType == A.error1.d(1005, #file, 72).adds([1, 2, 3]))
+            #expect(err.subError as! A.ErrType == A.error1.d(1005, #file, 73).adds([1, 2, 3]))
             #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(5000, "Test", 89).adds([0, 0])))
             #expect(!(err.subError as! A.ErrType).isSameType(of: A.error2.d(5000, "Test", 89).adds([0, 0])))
         } catch {

@@ -175,6 +175,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
     func d(_ file: String, _ line: Int) -> ErrType
     func d(_ explain: String, _ file: String, _ line: Int) -> ErrType
     func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType
+    func d(_ mark: Int, _ loc: (String, Int)) -> ErrType
     func d(_ explain: String, _ loc: (String, Int)) -> ErrType
     func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType
 }
@@ -339,6 +340,7 @@ public extension ErrList {
     func d(_ file: String, _ line: Int) -> ErrType { detail(loc: (file, line)) }
     func d(_ explain: String, _ file: String, _ line: Int) -> ErrType { detail(explain: explain, loc: (file, line)) }
     func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, loc: (file, line)) }
+    func d(_ mark: Int, _ loc: (String, Int)) -> ErrType { detail(mark: mark, loc: loc) }
     func d(_ explain: String, _ loc: (String, Int)) -> ErrType { detail(explain: explain, loc: loc) }
     func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, loc: loc) }
 }
