@@ -12,54 +12,93 @@ struct ErrorTests {
     static let datas = (0..<2).map { _ in String(UUID().uuidString.prefix(6)) }
     static let err = B.error3
 
+    static let explain2 = "test explain 2"
+    static let mark2 = Int.random(in: 100..<200)
+    static let datas2 = (0..<2).map { _ in Int.random(in: 100...300) }
+    static let err2 = A.error1
+
+    static let subErr = A.error2.d([1, 2], #file, #line)
+
+    let err2 = Self.err2.d(Self.explain2, Self.mark2, adds: Self.datas2, (#file, #line))
+
     @Test("测试 ErrListWithOptionAddition 扩展的参数传递") func testErrListWithOptionAddition() {
-        let error = Self.err.d(Self.explain, Self.mark, Self.datas, (#file, #line))
+        let error = Self.err.d(Self.explain, Self.mark, adds: Self.datas, (#file, #line))
         #expect(error.summary == B.error3.rawValue)
         #expect(error.explain == Self.explain)
         #expect(error.mark == Self.mark)
         #expect(error.a1 == Self.datas[0])
         #expect(error.a2 == Self.datas[1])
         #expect(error.file == #file)
-        #expect(error.line == 16)
+        #expect(error.line == 25)
     }
 
     @Test("测试 ErrListWithIndeedAddition 扩展的参数传递") func testErrListWithIndeedAddition() {
-        let explain = "Explain 1"
-        let mark = 1
-        let datas = [3, 4, 5]
-        let error = A.error1.d(explain, mark, datas, (#file, #line))
-        #expect(error.summary == A.error1.rawValue)
-        #expect(error.explain == explain)
-        #expect(error.mark == mark)
-        #expect(error.a1 == datas[0])
-        #expect(error.a2 == datas[1])
-        #expect(error.file == #file)
-        #expect(error.line == 30)
+        #expect(err2.summary == A.error1.rawValue)
+        #expect(err2.explain == Self.explain2)
+        #expect(err2.mark == Self.mark2)
+        #expect(err2.a1 == Self.datas2[0])
+        #expect(err2.a2 == Self.datas2[1])
+        #expect(err2.file == #file)
+        #expect(err2.line == 22)
     }
 
-    let explains = [0, 1, 1, 0, 0, 1, 1, 0, 0]
-    let marks = [0, 0, 0, 1, 1, 1, 1, 0, 1]
-    let datass = [0, 0, 0, 0, 1, 1, 0, 1, 1]
-    let lineStart = 56
+    let explains = [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0]
+    let marks = [0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1]
+    let datass = [0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1]
+    let subErrs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    let lineStart = 72
 
     @Test("测试所有方法的参数传递", arguments: [
         0: Self.err.d(#file, #line),
         1: Self.err.d(Self.explain, #file, #line),
         2: Self.err.d(Self.explain, (#file, #line)),
         3: Self.err.d(Self.mark, #file, #line),
-        4: Self.err.d(Self.mark, Self.datas, #file, #line),
-        5: Self.err.d(Self.explain, Self.mark, Self.datas, (#file, #line)),
+        4: Self.err.d(Self.mark, adds: Self.datas, #file, #line),
+        5: Self.err.d(Self.explain, Self.mark, adds: Self.datas, (#file, #line)),
         6: Self.err.d(Self.explain, Self.mark, (#file, #line)),
-        7: Self.err.d(Self.datas ,#file, #line),
-        8: Self.err.d(Self.mark, Self.datas, #file, #line),
+        7: Self.err.d(adds: Self.datas ,#file, #line),
+        8: Self.err.d(Self.mark, adds: Self.datas, #file, #line),
+        
+        9: Self.err.d(Self.subErr, #file, #line),
+        10: Self.err.d(Self.explain, Self.subErr, #file, #line),
+        11: Self.err.d(Self.explain, Self.subErr, (#file, #line)),
+        12: Self.err.d(Self.mark, Self.subErr, #file, #line),
+        13: Self.err.d(Self.mark, Self.subErr, adds: Self.datas, #file, #line),
+        14: Self.err.d(Self.explain, Self.mark, Self.subErr, adds: Self.datas, (#file, #line)),
+        15: Self.err.d(Self.explain, Self.mark, Self.subErr, (#file, #line)),
+        16: Self.err.d(Self.subErr, adds: Self.datas ,#file, #line),
+        17: Self.err.d(Self.mark, Self.subErr, adds: Self.datas, #file, #line),
     ])
     func testFuncs(i: Int, e: CustomError2) {
         #expect(explains[i] == 0 ? e.explain == nil : e.explain == Self.explain)
         #expect(marks[i] == 0 ? e.mark == nil : e.mark == Self.mark)
         #expect(datass[i] == 0 ? e.a1 == "Unset a1" : e.a1 == Self.datas[0])
         #expect(datass[i] == 0 ? e.a2 == "Unset a2" : e.a2 == Self.datas[1])
+        #expect(subErrs[i] == 0 ? e.subError == nil : e.subError as? A.ErrType == Self.subErr)
         #expect(e.file == #file)
         #expect(e.line == lineStart)
+    }
+
+    @Test("测试 Err.subErr() 函数") func testSubError() async throws {
+        #expect(Self.err.d(#file, #line).subErr(Self.subErr).subError as? A.ErrType == Self.subErr)
+    }
+
+    @Test("测试 Guard 以及 == 函数") func testGuardFunction() {
+        do {
+            let _ = try Guard(
+                { throw A.error1.d("hello", 1005, [1, 2, 3], #file, #line) }, 
+                throw: B.error3.d(3008, #file, #line)
+            )
+            #expect(Bool(false))
+        } catch let err as B.ErrType {
+            #expect(err.summary == B.error3.rawValue)
+            #expect(err.mark == 3008)
+            #expect(err.subError as! A.ErrType != A.error1.d(1005, adds: [1, 2, 3], #file, #line))
+            #expect(err.subError as! A.ErrType == A.error1.d(1005, adds: [1, 2, 3], #file, 89))
+            #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d("hello", 5000 as Int, [0, 0], "Test", 89)))
+        } catch {
+            #expect(Bool(false))
+        }
     }
 }
 
@@ -80,6 +119,7 @@ struct CustomError1: Err {
     var file: String!
     var line: Int!
     var mark: Int?
+    var subError: Error?
 
     var a1: Int!
     var a2: Int!
@@ -107,6 +147,7 @@ struct CustomError2: Err {
     var file: String!
     var line: Int!
     var mark: Int?
+    var subError: Error?
 
     var a1: String!
     var a2: String!

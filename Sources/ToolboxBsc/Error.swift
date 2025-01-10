@@ -9,6 +9,7 @@
     - **mark**：该错误的标记，仅用做展示和区分，无其他作用
     - **file**：错误发生所在的文件位置
     - **line**：错误发生所在的行数
+    - **subErr**： 该错误的子错误
 
     但请避免直接使用该 ```struct``` 的初始化方法直接产生 ```BscError```，尽管这是可以的，但十分冗长。
 
@@ -21,7 +22,8 @@
     enum NormalErrorTypes: String, ErrList {
         // 表示该错误列表中的错误，都是 BscError 类型的。
         typealias ErrType = BscError
-        var domain: String { "错误3.domain" }
+        // 为你的错误列表命一个名称
+        var domain: String { "错误列表.domain" }
         case error1 = "Error 1 summary"
         case error2 = "Error 2 summary"
     }
@@ -59,6 +61,8 @@ struct BscError: Err {
     var file: String!
     /// 发生错误的行数。
     var line: Int!
+    /// 该错误的子错误
+    var subError: Error?
 }
 
 /**
@@ -76,8 +80,7 @@ struct BscError: Err {
         typealias ErrType = BscError
         // 为你的错误列表设定域名，仅仅作为展示和区分，无其他作用
         // 在这里设置错误域，这个错误域将会被设置到每一个 BscError 中，见 ```BscError.domain```。
-        // 这行也非必须，那么该名称默认为 "Error"
-        var domain: String { "错误" }
+        var domain: String { "错误列表" }
 
         // 列出所有的错误，并为其指定 summary
         case error1 = "Error 1 summary"
@@ -107,7 +110,8 @@ struct BscError: Err {
     enum NormalErrorTypes: String, ErrListWithIndeedAddition {
         // 表示该错误列表中的错误，都是 CustomError 类型的。
         typealias ErrType = CustomError
-        var domain: String { "错误2" }
+        // 为该错误列表命名
+        var domain: String { "错误列表2" }
         case error1 = "Error 1 summary"
         case error2 = "Error 2 summary"
     }
@@ -120,6 +124,7 @@ struct BscError: Err {
         var file: String!
         var line: Int!
         var mark: Int?
+        var subError: Error?
         // 自定义字段 1
         var addtionInformation: Int!
         // 自定义字段 2
@@ -202,14 +207,25 @@ protocol ErrList: ErrListBasicInterface {
     func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType
     func d(_ explain: String, _ loc: (String, Int)) -> ErrType
     func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType
+
+    func d(_ subErr: Error, _ file: String, _ line: Int) -> ErrType
+    func d(_ explain: String, _ subErr: Error, _ file: String, _ line: Int) -> ErrType
+    func d(_ mark: Int, _ subErr: Error, _ file: String, _ line: Int) -> ErrType
+    func d(_ explain: String, _ subErr: Error, _ loc: (String, Int)) -> ErrType
+    func d(_ explain: String, _ mark: Int, _ subErr: Error, _ loc: (String, Int)) -> ErrType
 }
 
 /// #### 见协议 ```ErrList```
 protocol ErrListWithIndeedAddition: ErrListBasicInterface { 
-    func d(_ addition: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
-    func d(_ mark: Int, _ addition: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
-    func d(_ explain: String, _ addition: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
-    func d(_ explain: String, _ mark: Int, _ addition: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
+    func d(adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
+    func d(_ mark: Int, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
+    func d(_ explain: String, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
+    func d(_ explain: String, _ mark: Int, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
+
+    func d(_ subErr: Error, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
+    func d(_ mark: Int, _ subErr: Error, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType
+    func d(_ explain: String, _ subErr: Error, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
+    func d(_ explain: String, _ mark: Int, _ subErr: Error, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType
 }
 
 /// #### 见协议 ```ErrList```
@@ -245,52 +261,6 @@ protocol ErrListBasicInterface where Self.ErrType: Err, Self.RawValue == String 
         ```
     */
     var rawValue: RawValue { get }
-    /**
-        #### 错误转换函数
-        
-        当某个 api 的 throw 抛出的错误，并非你所希望的错误类型，你可以转换其抛出的错误。例如：
-
-        -----
-        ### 转换抛出错误
-
-        以下模拟了一个函数，并且抛出了一个错误。但是有时，你可能并不希望该函数抛出这样的错误。且该函数由于某些原因你无法修改(例如，该函数来自其他第三方库)
-        ``` swift
-        func throwError() throws {
-            ... do something ...
-            // 抛出 SomeError.err
-            throw SomeError.err
-        }
-
-        enum WanttedErrorTypes: String, ErrList {
-            case error1 = "错误 1"
-            case error2 = "错误 2"
-            case error3 = "错误 3"
-            ...
-        }
-
-        typealias A = WanttedErrorTypes
-
-        try throwError() // 抛出错误为 SomeError.err，并不是我想要的，而我希望它若发生错误便抛出 A.error1.d("错误的解释...", #3, (#file, #line)) 以适应 Whooshing 的错误处理系统。
-        ```
-        你可以使用传统的 ```do - catch``` 结构来完成，像下面这样：
-
-        ``` swift
-        do {
-            try throwError()
-        } catch {   // 当 throwError() 方法发生错误并抛出错误后，捕获该错误，并改为 throw 另一个。
-            throw A.error1.d("错误的解释...", #3, (#file, #line))
-        }
-        ```
-
-        也可以使用所提供的 cv(_, _) 方法：
-
-        ``` swift
-        try A.cv({ throwError() }, .error1.d("错误的解释...", #3, (#file, #line)))  // 当 throwError() 发生错误时，会抛出所期望的错误。
-        ```
-
-        事实上这两种方式的实现方法是一致的，但后者更简洁。
-    */
-    static func cv<T>(_ cmd: () throws -> T, _ to: Self.ErrType) throws -> T
 }
 
 /**
@@ -310,6 +280,7 @@ protocol ErrListBasicInterface where Self.ErrType: Err, Self.RawValue == String 
         var file: String!
         var line: Int!
         var mark: Int?
+        var subError: Error?
         var addtionInformation: String!
         var addtionInformation2: String!
         ....
@@ -322,7 +293,7 @@ protocol ErrListBasicInterface where Self.ErrType: Err, Self.RawValue == String 
     }
     ```
 */
-protocol Err: Error, CustomStringConvertible {
+protocol Err: Error, Equatable, CustomStringConvertible{
     /// 扩展类型，默认为 ErrorAdditionTypeNull，即空类。配合 ```initAdditions(_)``` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = ErrorAdditionTypeNull?
 
@@ -340,17 +311,86 @@ protocol Err: Error, CustomStringConvertible {
     var file: String! { get set }
     /// 错误发生所在的行数
     var line: Int! { get set }
+    /// 该错误的子错误
+    var subError: Error? { get set }
 
     init()
 
     /// #### 错误的初始化方法，默认实现会自动为 ```summary, explain, mark, file, line``` 赋值。
     /// 尽管该方法是开放的，但也避免直接使用该方法生成错误。尽管这是可以的，但十分冗长。
     /// 尽量不要覆写此方法，除非你知道你在做什么。
-    init(domain: String, summary: String, explain: String?, mark: Int?, addition: AdditionType, file: String, line: Int)
+    init(domain: String, summary: String, explain: String?, mark: Int?, subError: Error?, addition: AdditionType, file: String, line: Int)
 
     /// #### 扩展数据初始化，默认不进行任何动作。
     /// 若你需要扩展你的错误类型，覆写该方法。
     mutating func initAddtions(_ data: AdditionType)
+
+    /// #### 判断该错误是否与其他错误同类型。
+    /// 仅检查两者的 domain 以及 summary，若这两者相同，则认为同类型。
+    func isSameType(of err: any Err) -> Bool
+
+    /**
+        #### 设置 subError 参数
+        
+        用法：
+        
+        ``` swift
+        ErrorTypes.aError.d("Some Explain", #file, #line).subErr(yourSubErr)
+        ```
+    */
+    func subErr(_ err: Error?) -> Self
+
+    func adds()
+}
+
+/**
+    #### 错误转换函数
+    
+    当某个 api 的 throw 抛出的错误，并非你所希望的错误类型，你可以转换其抛出的错误。例如：
+
+    -----
+    ### 转换抛出错误
+
+    以下模拟了一个函数，并且抛出了一个错误。但是有时，你可能并不希望该函数抛出这样的错误。且该函数由于某些原因你无法修改(例如，该函数来自其他第三方库)
+    ``` swift
+    func throwError() throws {
+        ... do something ...
+        // 抛出 SomeError.err
+        throw SomeError.err
+    }
+
+    enum WanttedErrorTypes: String, ErrList {
+        case error1 = "错误 1"
+        case error2 = "错误 2"
+        case error3 = "错误 3"
+        ...
+    }
+
+    typealias A = WanttedErrorTypes
+
+    try throwError() // 抛出错误为 SomeError.err，并不是我想要的，而我希望它若发生错误便抛出 A.error1.d("错误的解释...", #3, (#file, #line)) 以适应 Whooshing 的错误处理系统。
+    ```
+    你可以使用传统的 ```do - catch``` 结构来完成，像下面这样：
+
+    ``` swift
+    do {
+        try throwError()
+    } catch {   // 当 throwError() 方法发生错误并抛出错误后，捕获该错误，并改为 throw 另一个。
+        throw A.error1.d("错误的解释...", #3, (#file, #line))
+    }
+    ```
+
+    也可以使用所提供的 cv(_, _) 方法：
+
+    ``` swift
+    try Guard({ throwError() }, throw: A.error1.d("错误的解释...", #3, (#file, #line)))  // 当 throwError() 发生错误时，会抛出所期望的错误。
+    ```
+
+    事实上这两种方式的实现方法是一致的，但后者更简洁。
+*/
+func Guard<T>(_ cmd: () throws -> T, throw to: any Err) throws -> T { 
+    do { let res = try cmd(); return res }
+    catch let err { throw to.subErr(err) }
 }
 
 // MARK: - 以下包括一些协议的默认实现
@@ -363,42 +403,69 @@ extension ErrList where ErrType.AdditionType: ExpressibleByNilLiteral {
     func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, addition: nil, loc: (file, line)) }
     func d(_ explain: String, _ loc: (String, Int)) -> ErrType { detail(explain: explain, addition: nil, loc: loc) }
     func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, addition: nil, loc: loc) }
+
+    func d(_ subErr: Error, _ file: String, _ line: Int) -> ErrType { detail(subErr: subErr, addition: nil, loc: (file, line)) }
+    func d(_ explain: String, _ subErr: Error, _ file: String, _ line: Int) -> ErrType { detail(explain: explain, subErr: subErr, addition: nil, loc: (file, line)) }
+    func d(_ mark: Int, _ subErr: Error, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, subErr: subErr, addition: nil, loc: (file, line)) }
+    func d(_ explain: String, _ subErr: Error, _ loc: (String, Int)) -> ErrType { detail(explain: explain, subErr: subErr, addition: nil, loc: loc) }
+    func d(_ explain: String, _ mark: Int, _ subErr: Error, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, subErr: subErr, addition: nil, loc: loc) }
 }
 
 extension ErrListWithIndeedAddition {
-    func d(_ addition: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(addition: addition, loc: (file, line)) }
-    func d(_ mark: Int, _ addition: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, addition: addition, loc: (file, line)) }
-    func d(_ explain: String, _ addition: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, addition: addition, loc: loc) }
-    func d(_ explain: String, _ mark: Int, _ addition: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, addition: addition, loc: loc) }
+    func d(adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(addition: adds, loc: (file, line)) }
+    func d(_ mark: Int, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, addition: adds, loc: (file, line)) }
+    func d(_ explain: String, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, addition: adds, loc: loc) }
+    func d(_ explain: String, _ mark: Int, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, addition: adds, loc: loc) }
+
+    func d(_ subErr: Error, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(subErr: subErr, addition: adds, loc: (file, line)) }
+    func d(_ mark: Int, _ subErr: Error, adds: ErrType.AdditionType, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, subErr: subErr, addition: adds, loc: (file, line)) }
+    func d(_ explain: String, _ subErr: Error, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, subErr: subErr, addition: adds, loc: loc) }
+    func d(_ explain: String, _ mark: Int, _ subErr: Error, adds: ErrType.AdditionType, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, subErr: subErr, addition: adds, loc: loc) }
 }
 
 extension ErrListBasicInterface {
-    var domain: String { "Error" }
-    fileprivate func detail(explain: String? = nil, mark: Int? = nil, addition: ErrType.AdditionType, loc: (file: String, line: Int)) -> ErrType { ErrType(domain: self.domain, summary: self.rawValue, explain: explain, mark: mark, addition: addition, file: loc.file, line: loc.line) }
-    static func cv<T>(_ cmd: () throws -> T, _ to: Self.ErrType) throws -> T {
-        do { let res = try cmd(); return res }
-        catch { throw to }
-    }
+    fileprivate func detail(explain: String? = nil, mark: Int? = nil, subErr: Error? = nil, addition: ErrType.AdditionType, loc: (file: String, line: Int)) -> ErrType { ErrType(domain: self.domain, summary: self.rawValue, explain: explain, mark: mark, subError: subErr, addition: addition, file: loc.file, line: loc.line) }
 }
 
 extension Err {
-    init(domain: String, summary: String, explain: String?, mark: Int?, addition: AdditionType, file: String, line: Int) {
+    init(domain: String, summary: String, explain: String?, mark: Int?, subError: Error?, addition: AdditionType, file: String, line: Int) {
         self.init()
         self.domain = domain
         self.summary = summary
         self.explain = explain
         self.mark = mark
+        self.subError = subError
         self.file = file
         self.line = line
         initAddtions(addition)
     }
+
+    func subErr(_ err: Error?) -> Self {
+        var new = self
+        new.subError = err
+        return new
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.domain == rhs.domain &&
+        lhs.summary == rhs.summary &&
+        lhs.explain == rhs.explain &&
+        lhs.mark == rhs.mark &&
+        lhs.file == rhs.file &&
+        lhs.line == rhs.line
+    }
     
+    func isSameType(of err: any Err) -> Bool {
+        self.domain == err.domain &&
+        self.description == err.description
+    }
+
     var description: String {
         var res = self.domain + "("
-        let preds = ["\"", "\"", "#", "At \""]
-        let appes = ["\"", "\"", "", "\""]
+        let preds = ["\"", "\"", "#", "At \"", "SubErr:\""]
+        let appes = ["\"", "\"", "", "\"", "\""]
         var resArr: [String] = []
-        for (i, curData) in ([summary, explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line)] as [String?]).enumerated() {
+        for (i, curData) in ([summary, explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line), subError != nil ? "\(subError!)" : nil] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"
