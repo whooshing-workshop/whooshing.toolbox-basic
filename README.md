@@ -12,7 +12,10 @@
 
 ## **部署说明**
 
-代码尚未完成
+在你的 Package.swift 加入：
+``` swift
+.package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", branch: "develop")
+```
 
 ## **代码提交约定**
 
