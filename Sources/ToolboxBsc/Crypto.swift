@@ -1,6 +1,7 @@
 import Crypto
 import Foundation
 
+/// 加解密 Crypto 模块可能出现的所有错误
 public enum CryptoErrorLists: String, ErrList {
     public var domain: String { "Crypto.Error" }
     case encryptFailed = "加密失败"
@@ -17,13 +18,13 @@ public typealias CptErr = CryptoErrorLists
 
     包括：
 
-    - 摘要算法: HASH(哈希)
-    - 对称加密算法: AES(高级加密标准)
-    - 非对称加密算法: EdDSA(Edward 曲线)
-    - 密钥交换算法: Diffie-Hellman 密钥交换协议
-    - 签名和认证:
-        - HMAC: 使用对称加密和 HASH 生成信息来源验证
-        - EdDSA: 非对称的电子签名来源验证
+    - **摘要算法**: HASH(哈希)
+    - **对称加密算法**: AES(高级加密标准)
+    - **非对称加密算法**: EdDSA(Edward 曲线)
+    - **密钥交换算法**: Diffie-Hellman 密钥交换协议
+    - **签名和认证**:
+        - **HMAC**: 使用对称加密和 HASH 生成信息来源验证
+        - **EdDSA**: 非对称的电子签名来源验证
 */
 public enum Crypto {
     
@@ -91,7 +92,7 @@ public enum Crypto {
         -----
         ### HMAC 消息来源验证(即 Sign 声明块中所定义的)
 
-        HMAC 并不负责加密数据，仅负责进行身份验证，即便消息为明文，仍可以保证消息不被篡改(或说，可以判断是否被篡改从而采取行动)。但它并不负责数据是否可被别人读取，仅用做验证身份。
+        HMAC 并不负责加密数据，仅负责进行身份验证，即便消息为明文，仍可以保证消息不被篡改(或说，可以判断是否被篡改从而采取行动)。但它并不负责数据是否被窃取，仅用做验证数据完整性和可靠性。
 
         依然使用 `makeKey()` 生成密钥，`make(_, key)` 创建签名，`validate(_, authCode, key)` 验证签名
 
@@ -201,6 +202,8 @@ public enum Crypto {
         -----
         ### 数字签名 (Curve25519)
 
+        非对称加密创建数字签名，并不负责加密数据，仅负责进行身份验证，即便消息为明文，仍可以保证消息不被篡改(或说，可以判断是否被篡改从而采取行动)。但它并不负责数据是否可被窃取，仅用做验证完整性和可靠性。
+
         使用 `makeSignKeyPair()` 生成签名密钥对(公钥和私钥)，调用 `make(_, key)` 创建签名，`validate(_, sign, key)` 验证签名
 
         ``` swift
@@ -277,6 +280,8 @@ public enum Crypto {
         }
     }
 }
+
+// MARK: - 以下为私有实现
 
 private extension Crypto {
     typealias HashFunction = SHA512

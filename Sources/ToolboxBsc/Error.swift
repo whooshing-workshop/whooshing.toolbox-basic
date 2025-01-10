@@ -11,7 +11,7 @@
     - **line**：错误发生所在的行数
     - **subErr**： 该错误的子错误
 
-    但请避免直接使用该 ```struct``` 的初始化方法直接产生 ```BscError```，尽管这是可以的，但十分冗长。
+    但请避免直接使用该 `struct` 的初始化方法直接产生 `BscError`，尽管这是可以的，但十分冗长。
 
     一般，你需要列出自己的错误列表，使用该错误列表来创建一个错误，见下面的例子：
 
@@ -47,7 +47,7 @@
      }
     ```
 
-    如果愿意，你可以自定自己的错误类型。见 ```protocol Err```
+    如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
 public struct BscError: Err {
     public var domain: String!
@@ -183,7 +183,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
 /**
     #### 错误类型的协议声明
 
-    你可以自定义自己的错误类型，如果你希望扩展它，尝试覆写 ```initAdds(_, new)``` 方法。
+    你可以自定义自己的错误类型，如果你希望扩展它，尝试覆写 `initAdds(_, new)` 方法。
 
     ---
     ## 创建自定义错误类型。
@@ -215,7 +215,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
     ```
 */
 public protocol Err: Error, Equatable, CustomStringConvertible{
-    /// 扩展类型，默认为 Never，即无类型。配合 ```initAdditions(_)``` 方法实现和扩展你的错误类型。
+    /// 扩展类型，默认为 Never，即无类型。配合 `initAdditions(_)` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = Never
 
     /// 该错误类型的错误域，
@@ -311,7 +311,7 @@ public protocol Err: Error, Equatable, CustomStringConvertible{
 
     try throwError() // 抛出错误为 SomeError.err，并不是我想要的，而我希望它若发生错误便抛出 A.error1.d("错误的解释...", #3, (#file, #line)) 以适应 Whooshing 的错误处理系统。
     ```
-    你可以使用传统的 ```do - catch``` 结构来完成，像下面这样：
+    你可以使用传统的 `do - catch` 结构来完成，像下面这样：
 
     ``` swift
     do {

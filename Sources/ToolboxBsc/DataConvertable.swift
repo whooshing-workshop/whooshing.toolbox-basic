@@ -1,5 +1,6 @@
 import Foundation
 
+/// 数据转换模块可能出现的所有错误
 public enum ConvertionErrorTypes: String, ErrList {
     public var domain: String { "Convertion.Error" }
     case dataToString = "将 Data 转换为 String 时出错"
@@ -17,7 +18,7 @@ public typealias CvtErr = ConvertionErrorTypes
 /**
     #### 实现该协议的类型，即表示其转换可能失败，引发 throw
 
-    例如 ```String``` 类型默认实现了该协议，因此它可以：
+    例如 `String` 类型默认实现了该协议，因此它可以：
     ``` swift 
     do {
         // 声明一个字符串
@@ -46,7 +47,7 @@ public typealias CvtErr = ConvertionErrorTypes
     print(string == newString)      // true
     ```
 
-    另外一个协议 ```SafeDataConvertable```，表示该类型执行转换时是安全的，不会抛出错误
+    另外一个协议 `SafeDataConvertable`，表示该类型执行转换时是安全的，不会抛出错误
     
     -----
     ### 数组 与 Data 互转
@@ -132,7 +133,7 @@ public protocol ThrowableDataConvertable {
     let data = int.data()
     let newInt = Int(data: data)
     ```
-    另见协议 ```ThrowableDataConvertable```
+    另见协议 `ThrowableDataConvertable`
 */
 public protocol SafeDataConvertable: ThrowableDataConvertable {
     /// 从 Data 初始化该类型，无错误抛出
