@@ -7,21 +7,33 @@ public enum PGErrorTypes: String, ErrList {
 }
 
 public typealias PgErr = PGErrorTypes
+public typealias PGField = PGFieldParam
 
 public struct PGFieldParam: Sendable {
     public let name: String
     public let dataType: DatabaseSchema.DataType
     public let isUnique: Bool
     public let defaultValue: DatabaseSchema.FieldConstraint?
+    public let foreign: DatabaseSchema.FieldConstraint?
     public let constraints: [DatabaseSchema.FieldConstraint]
     
     public var key: FieldKey { .string(self.name) }
     
-    public func def(_ value: any SQLExpression) -> Self { .init(self, .sql(.default(value))) }
-    public func def(_ value: String) -> Self { .init(self, .sql(.default(value))) }
-    public func def<T: BinaryInteger>(_ value: T) -> Self { .init(self, .sql(.default(value))) }
-    public func def<T: FloatingPoint>(_ value: T) -> Self { .init(self, .sql(.default(value))) }
-    public func def(_ value: Bool) -> Self { .init(self, .sql(.default(value))) }
+    public func def(_ value: any SQLExpression) -> Self { .init(self, def: .sql(.default(value))) }
+    public func def(_ value: String) -> Self { .init(self, def: .sql(.default(value))) }
+    public func def<T: BinaryInteger>(_ value: T) -> Self { .init(self, def: .sql(.default(value))) }
+    public func def<T: FloatingPoint>(_ value: T) -> Self { .init(self, def: .sql(.default(value))) }
+    public func def(_ value: Bool) -> Self { .init(self, def: .sql(.default(value))) }
+    
+    public func foreign<S: PGModel>(
+        _ schema: S.Type,
+        space: String? = nil,
+        _ field: PGFieldParam,
+        onDelete: DatabaseSchema.ForeignKeyAction = .noAction,
+        onUpdate: DatabaseSchema.ForeignKeyAction = .noAction
+    ) -> Self {
+        .init(self, foreign: .references(schema.schema, space: space, .string(field.name), onDelete: onDelete, onUpdate: onUpdate))
+    }
     
     public init(
         _ name: String,
@@ -29,7 +41,7 @@ public struct PGFieldParam: Sendable {
         _ isUnique: Bool = false,
         cons constraints: [DatabaseSchema.FieldConstraint] = []
     ) {
-        self = Self.init(name: name, dataType: dataType, isUnique: isUnique, defaultValue: nil, constraints: constraints)
+        self = Self.init(name: name, dataType: dataType, isUnique: isUnique, defaultValue: nil, foreign: nil, constraints: constraints)
     }
 }
 
@@ -73,7 +85,7 @@ public extension PGMigration {
             typealias Old = (FieldKey, DatabaseSchema.DataType, DatabaseSchema.FieldConstraint...) -> SchemaBuilder
             typealias Function = (FieldKey, DatabaseSchema.DataType, [DatabaseSchema.FieldConstraint]) -> SchemaBuilder
             let fieldConfig = unsafeBitCast(s.field as Old, to: Function.self)
-            let constraints = params.constraints + (params.defaultValue != nil ? [params.defaultValue!] : [])
+            let constraints = params.constraints + (params.defaultValue != nil ? [params.defaultValue!] : []) + (params.foreign != nil ? [params.foreign!] : [])
             s = fieldConfig(.string(params.name), params.dataType, constraints)
         }
         for unique in uniques { s = s.unique(on: unique) }
@@ -159,12 +171,14 @@ fileprivate extension PGFields {
 }
 
 private extension PGFieldParam {
-    init(_ s: Self, _ def: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: def, constraints: s.constraints) }
-    init(name: String, dataType: DatabaseSchema.DataType, isUnique: Bool, defaultValue: DatabaseSchema.FieldConstraint?, constraints: [DatabaseSchema.FieldConstraint]) {
+    init(_ s: Self, def: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: def, foreign: s.foreign, constraints: s.constraints) }
+    init(_ s: Self, foreign: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: s.defaultValue, foreign: foreign, constraints: s.constraints) }
+    init(name: String, dataType: DatabaseSchema.DataType, isUnique: Bool, defaultValue: DatabaseSchema.FieldConstraint?, foreign: DatabaseSchema.FieldConstraint?, constraints: [DatabaseSchema.FieldConstraint]) {
         self.name = name
         self.dataType = dataType
         self.constraints = constraints
         self.defaultValue = defaultValue
+        self.foreign = foreign
         self.isUnique = isUnique
     }
 }

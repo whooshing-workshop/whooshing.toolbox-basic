@@ -25,6 +25,7 @@ struct PGSQLTests {
                 as: .psql
             )
             app.migrations.add(User.MIG())
+            app.migrations.add(Transaction.MIG())
             try await app.autoMigrate()
             return (app, app.db as? PostgresDatabase)
         } catch {
@@ -103,6 +104,31 @@ struct PGSQLTests {
         }
     }
     
+    @Test("测试数据库外键") func testForeign() async throws {
+        let res = await start()
+        guard let app = res.app, let db = res.db else { try #require(Bool(false), "数据库连接失败"); return }
+        
+        defer { Task { if !app.didShutdown { try! await app.asyncShutdown() } } }
+        
+        let id1 = UUID()
+        let user1 = User(id: id1, email: "test2@test.com", age: 50)
+        let transaction1 = Transaction(id: .init(), userId: id1)
+        let transaction2 = Transaction(id: .init(), userId: .init())
+        
+        do {
+            try await user1.save(on: db as! Database)
+            try await transaction1.save(on: db as! Database)
+            do {
+                try await transaction2.save(on: db as! Database)
+                #expect(Bool(false), "外键约束设置失败")
+            } catch {
+                #expect(Bool(true))
+            }
+        } catch let err {
+            try #require(Bool(false), "\(String(reflecting: err))")
+        }
+    }
+    
 }
 
 final class User: PGModel, @unchecked Sendable {
@@ -110,11 +136,11 @@ final class User: PGModel, @unchecked Sendable {
     static let schema = "users"
     
     struct Fields: PGFields {
-        let id = PGFieldParam("id", .bool)
-        let email = PGFieldParam("email", .string, cons: [.sql(.default("null@null.com")), .required])
-        let age = PGFieldParam("age", .int, true).def(30)
-        let createdAt = PGFieldParam("create_at", .string, true)
-        let updateAt = PGFieldParam("update_at", .string).def("2001-02-27")
+        let id = PGField("id", .uuid)
+        let email = PGField("email", .string, cons: [.sql(.default("null@null.com")), .required])
+        let age = PGField("age", .int, true).def(30)
+        let createdAt = PGField("create_at", .string, true)
+        let updateAt = PGField("update_at", .string).def("2001-02-27")
     }
     
     static let fields = Fields()
@@ -138,12 +164,43 @@ final class User: PGModel, @unchecked Sendable {
 }
 
 extension User {
-    
     convenience init(id: UUID, email: String? = nil, age: Int? = nil) {
         self.init()
         self.id = id
         if email != nil { self.email = email }
         if age != nil { self.age = age }
     }
+}
+
+
+final class Transaction: PGModel, @unchecked Sendable {
+
+    static let schema = "transactions"
     
+    struct Fields: PGFields {
+        let id = PGField("id", .uuid)
+        let userId = PGField("user_id", User.fields.id.dataType).foreign(User.self, User.fields.id)
+    }
+    
+    static let fields = Fields()
+    
+    @ID(key: .id)                                                   var id: UUID?
+    @Parent(fields.userId)                                          var user: User
+
+    struct DTO: Content, Sendable {
+        let id: UUID
+        let email: String
+    }
+    
+    @Sendable func dto(req: Request) throws -> DTO { fatalError() }
+    
+    struct MIG: PGMigration, Sendable { typealias DataModel = Transaction }
+}
+
+extension Transaction {
+    convenience init(id: UUID, userId: User.IDValue) {
+        self.init()
+        self.id = id
+        self.$user.id = userId
+    }
 }
