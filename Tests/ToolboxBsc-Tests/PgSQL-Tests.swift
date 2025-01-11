@@ -8,24 +8,29 @@ import Fluent
 @Suite("PostgreSQL 数据定义测试", .serialized)
 struct PGSQLTests {
     
-    func start() async throws -> (app: Application, db: PostgresDatabase) {
-        let app = try await Application.make(.testing)
-        app.databases.use(
-            .postgres(
-                configuration: .init(
-                    hostname: "localhost",
-                    port: 5432,
-                    username: "testing",
-                    password: "testing",
-                    database: "testing",
-                    tls: .disable
-                )
-            ),
-            as: .psql
-        )
-        app.migrations.add(User.MIG())
-        try await app.autoMigrate()
-        return (app, app.db as! PostgresDatabase)
+    func start() async -> (app: Application?, db: PostgresDatabase?) {
+        let app = try! await Application.make(.testing)
+        do {
+            app.databases.use(
+                .postgres(
+                    configuration: .init(
+                        hostname: "localhost",
+                        port: 5432,
+                        username: "testing",
+                        password: "testing",
+                        database: "testing",
+                        tls: .disable
+                    )
+                ),
+                as: .psql
+            )
+            app.migrations.add(User.MIG())
+            try await app.autoMigrate()
+            return (app, app.db as? PostgresDatabase)
+        } catch {
+            try! await app.asyncShutdown()
+            return (nil, nil)
+        }
     }
     
     @Test("测试 PGFieldParam 初始化")
@@ -44,8 +49,11 @@ struct PGSQLTests {
     }
     
     @Test("测试 SQL 语句运行") func testSQLStatement() async throws {
-        let (app, db) = try #require(await start())
+        let res = await start()
+        guard let app = res.app, let db = res.db else { try #require(Bool(false), "数据库连接失败"); return }
+        
         defer { Task { if !app.didShutdown { try! await app.asyncShutdown() } } }
+        
         do {
             let res = try await db.query("DROP SCHEMA public CASCADE").get()
             #expect(res.metadata.command == "DROP SCHEMA")
@@ -58,7 +66,9 @@ struct PGSQLTests {
     }
     
     @Test("检查所创建的表结构") func testPropertyWrappers() async throws {
-        let (app, db) = try #require(await start())
+        let res = await start()
+        guard let app = res.app, let db = res.db else { try #require(Bool(false), "数据库连接失败"); return }
+        
         defer { Task { if !app.didShutdown { try! await app.asyncShutdown() } } }
         
         let user1 = User(id: .init(), email: "test1@test.com", age: 24)
