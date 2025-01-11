@@ -15,6 +15,8 @@ let package = Package(
             targets: ["ToolboxBsc"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.111.0"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0")
     ],
     targets: [
@@ -23,6 +25,8 @@ let package = Package(
         .target(
             name: "ToolboxBsc",
             dependencies: [
+                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+                .product(name: "Vapor", package: "vapor"),
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),
