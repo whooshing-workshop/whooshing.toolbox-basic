@@ -133,11 +133,11 @@ struct PGSQLTests {
 
 final class User: PGModel, @unchecked Sendable {
 
-    static let schema = "users"
+    static let name = "users"
     
     struct Fields: PGFields {
         let id = PGField("id", .uuid)
-        let email = PGField("email", .string, cons: [.sql(.default("null@null.com")), .required])
+        let email = PGField("email", .string).cons([.sql(.default("null@null.com")), .required])
         let age = PGField("age", .int, true).def(30)
         let createdAt = PGField("create_at", .string, true)
         let updateAt = PGField("update_at", .string).def("2001-02-27")
@@ -175,7 +175,7 @@ extension User {
 
 final class Transaction: PGModel, @unchecked Sendable {
 
-    static let schema = "transactions"
+    static let name = "transactions"
     
     struct Fields: PGFields {
         let id = PGField("id", .uuid)
