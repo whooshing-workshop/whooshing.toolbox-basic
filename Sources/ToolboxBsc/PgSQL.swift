@@ -3,46 +3,47 @@ import FluentPostgresDriver
 
 public enum PGErrorTypes: String, ErrList {
     public var domain: String { "ToolboxBsc.PgSQL" }
-    case fieldDefineError = "Field 定义错误"
+    case fieldDefineError = "Field 定义出现错误"
 }
 
 public typealias PgErr = PGErrorTypes
 
-public class PGFieldParam {
+public struct PGFieldParam: Sendable {
+    public let name: String
     public let dataType: DatabaseSchema.DataType
     public let isUnique: Bool
-    public private(set) var defaultValue: DatabaseSchema.FieldConstraint?
+    public let defaultValue: DatabaseSchema.FieldConstraint?
     public let constraints: [DatabaseSchema.FieldConstraint]
     
+    public var key: FieldKey { .string(self.name) }
+    
+    public func def(_ value: any SQLExpression) -> Self { .init(self, .sql(.default(value))) }
+    public func def(_ value: String) -> Self { .init(self, .sql(.default(value))) }
+    public func def<T: BinaryInteger>(_ value: T) -> Self { .init(self, .sql(.default(value))) }
+    public func def<T: FloatingPoint>(_ value: T) -> Self { .init(self, .sql(.default(value))) }
+    public func def(_ value: Bool) -> Self { .init(self, .sql(.default(value))) }
+    
     public init(
+        _ name: String,
         _ dataType: DatabaseSchema.DataType,
         _ isUnique: Bool = false,
-        _ constraints: [DatabaseSchema.FieldConstraint] = []
+        cons constraints: [DatabaseSchema.FieldConstraint] = []
     ) {
-        self.dataType = dataType
-        self.constraints = constraints
-        self.defaultValue = nil
-        self.isUnique = isUnique
+        self = Self.init(name: name, dataType: dataType, isUnique: isUnique, defaultValue: nil, constraints: constraints)
     }
-    
-    public func def(_ value: any SQLExpression) -> Self { self.defaultValue = .sql(.default(value)); return self }
-    public func def(_ value: String) -> Self { self.defaultValue = .sql(.default(value)); return self }
-    public func def<T: BinaryInteger>(_ value: T) -> Self { self.defaultValue = .sql(.default(value)); return self }
-    public func def<T: FloatingPoint>(_ value: T) -> Self { self.defaultValue = .sql(.default(value)); return self }
-    public func def(_ value: Bool) -> Self { self.defaultValue = .sql(.default(value)); return self }
 }
 
-public protocol PGFields {
+public protocol PGFields: Sendable {
     var id: PGFieldParam { get }
     init()
 }
 
-public protocol PGModel: Model, AsyncResponseEncodable, Sendable {
+public protocol PGModel: Model, AsyncResponseEncodable, Sendable where Self.MIG.DataModel == Self {
     associatedtype DTO: Content & Sendable
     associatedtype MIG: PGMigration
     associatedtype Fields: PGFields
     static var schema: String { get }
-    static var pgsql: PGSQL { get set }
+    static var fields: Fields { get }
     @Sendable func dto(req: Request) async throws -> DTO
 }
 
@@ -56,31 +57,24 @@ public extension PGModel {
         let dto = try await self.dto(req: request)
         return try await dto.encodeResponse(for: request)
     }
-    
-    static func n(_ keypath: KeyPath<Self.Fields, PGFieldParam>) -> FieldKey {
-        .string(Self.pgsql.getName(k: keypath))
-    }
 }
 
 public extension PGMigration {
-    func prepare(on database: Database) -> EventLoopFuture<Void> {
-        let params = Self.DataModel.pgsql.addFieldPara(field: Self.DataModel.Fields())
-        return Self.tableCreate(DataModel.schema, database: database, fields: params).map { migrationFinished(on: database) }
-    }
+    func prepare(on database: Database) -> EventLoopFuture<Void> { Self.tableCreate(DataModel.schema, database: database, fields: DataModel.Fields().params()).map { migrationFinished(on: database) } }
     func revert(on database: Database) -> EventLoopFuture<Void> { database.schema(DataModel.schema).delete() }
     func migrationFinished(on database: Database) {}
     
-    private static func tableCreate(_ name: String, database: Database, fields: [String: PGFieldParam]) -> EventLoopFuture<Void> {
+    private static func tableCreate(_ name: String, database: Database, fields: [PGFieldParam]) -> EventLoopFuture<Void> {
         var s = database.schema(name).id()
         var uniques: [FieldKey] = []
-        for (name, params) in fields {
-            if name == "id" { continue }
-            if params.isUnique == true { uniques.append(.string(name)) }
+        for params in fields {
+            if params.name == "id" { continue }
+            if params.isUnique == true { uniques.append(.string(params.name)) }
             typealias Old = (FieldKey, DatabaseSchema.DataType, DatabaseSchema.FieldConstraint...) -> SchemaBuilder
             typealias Function = (FieldKey, DatabaseSchema.DataType, [DatabaseSchema.FieldConstraint]) -> SchemaBuilder
-            let sumOfArray = unsafeBitCast(s.field as Old, to: Function.self)
+            let fieldConfig = unsafeBitCast(s.field as Old, to: Function.self)
             let constraints = params.constraints + (params.defaultValue != nil ? [params.defaultValue!] : [])
-            s = sumOfArray(.string(name), params.dataType, constraints)
+            s = fieldConfig(.string(params.name), params.dataType, constraints)
         }
         for unique in uniques { s = s.unique(on: unique) }
         return s.create()
@@ -118,47 +112,59 @@ public extension PostgresRow {
     }
 }
 
-// MARK: - 以下为内部私有实现
+public extension FieldProperty {
+    convenience init(_ params: PGFieldParam) {
+        self.init(key: .string(params.name))
+    }
+}
 
-public class PGSQL {
-    fileprivate var fieldParamsResolved: [String: [String: String]]  = [:]
-    fileprivate var fieldParams: [String: [String: PGFieldParam]] = [:]
-    fileprivate var fields: [String: Any] = [:]
-    
-    public init() {}
-    
-    fileprivate func getName<K: PGFields>(k: KeyPath<K, PGFieldParam>) -> String {
-        let typeName = String(describing: type(of: k).rootType)
-        guard
-            let resolved = self.fieldParamsResolved[typeName],
-            let params = self.fieldParams[typeName],
-            let fs = self.fields[typeName] as? K
-        else { fatalError(PgErr.fieldDefineError.d("解析失败", 1022, (#file, #line)).description) }
-        
-        let kk = "\(k)"
-        if let name = resolved[kk] { return name }
-        for (key, value) in params {
-            if value === fs[keyPath: k] {
-                self.fieldParamsResolved[typeName]![kk] = key
-                return key
-            }
-        }
-        fatalError(PgErr.fieldDefineError.d("解析失败", 1021, (#file, #line)).description)
+public extension TimestampProperty {
+    convenience init(
+        _ params: PGFieldParam,
+        on trigger: TimestampTrigger,
+        format: TimestampFormatFactory<Format>
+    ) {
+        self.init(key: .string(params.name), on: trigger, format: format.makeFormat())
     }
     
-    fileprivate func addFieldPara<K: PGFields>(field: K) -> [String: PGFieldParam] {
-        let typeName = String(describing: type(of: field))
-        var properties: [String: Any] = [:]
-        let mirror = Mirror(reflecting: field)
-        for case let (label?, value) in mirror.children {
-            properties[label] = value
+    convenience init(_ params: PGFieldParam, on trigger: TimestampTrigger, format: Format) {
+        self.init(key: .string(params.name), on: trigger, format: format)
+    }
+}
+
+public extension TimestampProperty where Format == DefaultTimestampFormat {
+    convenience init(_ params: PGFieldParam, on trigger: TimestampTrigger) {
+        self.init(key: .string(params.name), on: trigger, format: .default)
+    }
+}
+
+public extension ParentProperty {
+    convenience init(_ params: PGFieldParam) {
+        self.init(key: .string(params.name))
+    }
+}
+
+// MARK: - 以下为内部私有实现
+
+fileprivate extension PGFields {
+    func params() -> [PGFieldParam] {
+        var properties: [PGFieldParam] = []
+        let mirror = Mirror(reflecting: self)
+        for case let (_, value) in mirror.children {
+            guard let val = value as? PGFieldParam else { fatalError(PgErr.fieldDefineError.d("解析失败", 1020, (#file, #line)).description) }
+            properties.append(val)
         }
-        guard let props = properties as? [String: PGFieldParam] else { fatalError(PgErr.fieldDefineError.d("解析失败", 1020, (#file, #line)).description) }
-        
-        self.fields[typeName] = field
-        self.fieldParams[typeName] = props
-        self.fieldParamsResolved[typeName] = [:]
-        
-        return props
+        return properties
+    }
+}
+
+private extension PGFieldParam {
+    init(_ s: Self, _ def: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: def, constraints: s.constraints) }
+    init(name: String, dataType: DatabaseSchema.DataType, isUnique: Bool, defaultValue: DatabaseSchema.FieldConstraint?, constraints: [DatabaseSchema.FieldConstraint]) {
+        self.name = name
+        self.dataType = dataType
+        self.constraints = constraints
+        self.defaultValue = defaultValue
+        self.isUnique = isUnique
     }
 }

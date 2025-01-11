@@ -1,5 +1,5 @@
 {
-  "originHash" : "2d71c3cafc75aa9f2c90e34875bc976c28f1c5a3e78d4eb17306f4f0ba3b9479",
+  "originHash" : "d179ecce9d5986dca2968b9708c0d3ca8d4d89fdd09d565ea72780d76d47b0d2",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -26,6 +26,15 @@
       "state" : {
         "revision" : "966d89ae64cd71c652a1e981bc971de59d64f13d",
         "version" : "4.15.1"
+      }
+    },
+    {
+      "identity" : "fluent",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/fluent.git",
+      "state" : {
+        "revision" : "223b27d04ab2b51c25503c9922eecbcdf6c12f89",
+        "version" : "4.12.0"
       }
     },
     {
