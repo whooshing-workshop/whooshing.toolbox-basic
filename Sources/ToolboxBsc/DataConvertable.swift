@@ -2,7 +2,7 @@ import Foundation
 
 /// 数据转换模块可能出现的所有错误
 public enum ConvertionErrorTypes: String, ErrList {
-    public var domain: String { "Convertion.Error" }
+    public var domain: String { "ToolboxBsc.Convertion" }
     case dataToString = "将 Data 转换为 String 时出错"
     case StringtoData = "将 String 转换为 Data 时出错"
     case dataToNum = "将 Data 转换为 Number 时出错"

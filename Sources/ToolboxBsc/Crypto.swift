@@ -3,7 +3,7 @@ import Foundation
 
 /// 加解密 Crypto 模块可能出现的所有错误
 public enum CryptoErrorLists: String, ErrList {
-    public var domain: String { "Crypto.Error" }
+    public var domain: String { "ToolboxBsc.Crypto" }
     case encryptFailed = "加密失败"
     case decryptFailed = "解密失败"
     case signFailed = "签名失败"

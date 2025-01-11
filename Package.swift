@@ -15,7 +15,10 @@ let package = Package(
             targets: ["ToolboxBsc"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0")
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.111.0"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
+        .package(url: "https://github.com/vapor/fluent.git", from: "4.12.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -23,13 +26,16 @@ let package = Package(
         .target(
             name: "ToolboxBsc",
             dependencies: [
+                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+                .product(name: "Vapor", package: "vapor"),
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),
         .testTarget(
             name: "ToolboxBsc-Tests",
             dependencies: [
-                .target(name: "ToolboxBsc")
+                .target(name: "ToolboxBsc"),
+                .product(name: "Fluent", package: "fluent")
             ]
         ),
     ]
