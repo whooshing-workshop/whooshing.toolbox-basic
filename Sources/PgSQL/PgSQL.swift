@@ -335,7 +335,7 @@ public extension PGMigration {
             guard encrypt == true else { return database.eventLoop.makeSucceededVoidFuture() }
             guard let db = database as? PostgresDatabase else { return database.eventLoop.future(error: PgErr.dataBaseError.d("数据库类型不是 PostgreSQL", 1023, (#file, #line))) }
             return db.query("ALTER TABLE \(name) SET ACCESS METHOD heap;").flatMapError { err in
-                db.query("DROP TABLE \(name);").flatMapError { return database.eventLoop.future(error: PgErr.dataBaseTdeError.d("恢复失败", 1025, (#file, #line)).subErr($0))}
+                database.schema(name).delete().flatMapError { return database.eventLoop.future(error: PgErr.dataBaseTdeError.d("恢复失败", 1025, (#file, #line)).subErr($0))}
                 .flatMap { _ in database.eventLoop.future(error: PgErr.dataBaseTdeError.d("加密未成功，已删除该表格", 1024, (#file, #line)).subErr(err)) }
             }.transform(to: ())
         }
