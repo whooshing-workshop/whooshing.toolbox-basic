@@ -9,9 +9,11 @@ let package = Package(
        .macOS(.v11)
     ],
     products: [
-        .library(
-            name: "ToolboxBsc",
-            targets: ["ErrorHandle", "DataConvertable", "Cryptos", "PgSQL"]),
+        .library( name: "ToolboxBsc", targets: ["ErrorHandle", "DataConvertable", "Cryptos", "PgSQL"] ),
+        .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
+        .library( name: "DataConvertable", targets: ["DataConvertable"] ),
+        .library( name: "Cryptos", targets: ["Cryptos"] ),
+        .library( name: "PgSQL", targets: ["PgSQL"] ),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.111.0"),
