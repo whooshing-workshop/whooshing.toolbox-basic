@@ -4,11 +4,12 @@ import Foundation
 import Vapor
 import Fluent
 @preconcurrency import FluentPostgresDriver
+import ErrorHandle
 
 @Suite("PostgreSQL 数据定义测试", .serialized)
 struct PGSQLTests {
     
-    func start() async -> (app: Application?, db: PostgresDatabase?) {
+    func start() async -> (app: Application?, db: PostgresDatabase?, err: Error?) {
         let app = try! await Application.make(.testing)
         do {
             app.databases.use(
@@ -27,10 +28,10 @@ struct PGSQLTests {
             app.migrations.add(User.MIG())
             app.migrations.add(Transaction.MIG())
             try await app.autoMigrate()
-            return (app, app.db as? PostgresDatabase)
-        } catch {
+            return (app, app.db as? PostgresDatabase, nil)
+        } catch let err {
             try! await app.asyncShutdown()
-            return (nil, nil)
+            return (nil, nil, err)
         }
     }
     
@@ -51,7 +52,7 @@ struct PGSQLTests {
     
     @Test("测试 SQL 语句运行") func testSQLStatement() async throws {
         let res = await start()
-        guard let app = res.app, let db = res.db else { try #require(Bool(false), "数据库连接失败"); return }
+        guard let app = res.app, let db = res.db else { try #require(Bool(false), "\(res.err!)"); return }
         
         defer { Task { if !app.didShutdown { try! await app.asyncShutdown() } } }
         
@@ -68,7 +69,7 @@ struct PGSQLTests {
     
     @Test("检查所创建的表结构") func testPropertyWrappers() async throws {
         let res = await start()
-        guard let app = res.app, let db = res.db else { try #require(Bool(false), "数据库连接失败"); return }
+        guard let app = res.app, let db = res.db else { try #require(Bool(false), "\(res.err!)"); return }
         
         defer { Task { if !app.didShutdown { try! await app.asyncShutdown() } } }
         
@@ -136,6 +137,7 @@ final class User: PGModel, @unchecked Sendable {
     static let name = "users"
     
     struct Fields: PGFields {
+        static let tdeEncrypt: Bool = false
         let id = PGField("id", .uuid)
         let email = PGField("email", .string).cons([.sql(.default("null@null.com")), .required])
         let age = PGField("age", .int, true).def(30)
@@ -178,6 +180,7 @@ final class Transaction: PGModel, @unchecked Sendable {
     static let name = "transactions"
     
     struct Fields: PGFields {
+        static let tdeEncrypt: Bool = false
         let id = PGField("id", .uuid)
         let userId = PGField("user_id", User.fields.id.dataType).foreign(User.self, User.fields.id)
     }
