@@ -1,5 +1,5 @@
 import Testing
-@testable import ToolboxBsc
+@testable import Cryptos
 import Foundation
 import Crypto
 

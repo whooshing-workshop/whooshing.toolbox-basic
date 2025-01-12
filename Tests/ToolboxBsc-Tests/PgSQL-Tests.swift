@@ -1,5 +1,5 @@
 import Testing
-@testable import ToolboxBsc
+@testable import PgSQL
 import Foundation
 import Vapor
 import Fluent

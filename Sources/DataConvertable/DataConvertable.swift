@@ -1,4 +1,5 @@
 import Foundation
+import ErrorHandle
 
 /// 数据转换模块可能出现的所有错误
 public enum ConvertionErrorTypes: String, ErrList {

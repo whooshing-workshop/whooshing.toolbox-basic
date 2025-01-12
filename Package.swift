@@ -9,10 +9,9 @@ let package = Package(
        .macOS(.v11)
     ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "ToolboxBsc",
-            targets: ["ToolboxBsc"]),
+            targets: ["ErrorHandle", "DataConvertable", "Cryptos", "PgSQL"]),
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.111.0"),
@@ -21,20 +20,36 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent.git", from: "4.12.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
+        .target( name: "ErrorHandle" ),
         .target(
-            name: "ToolboxBsc",
+            name:  "Cryptos",
             dependencies: [
-                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
-                .product(name: "Vapor", package: "vapor"),
+                .target(name: "ErrorHandle"),
+                .target(name: "DataConvertable"),
                 .product(name: "Crypto", package: "swift-crypto")
+            ]
+        ),
+        .target(
+            name: "DataConvertable",
+            dependencies: [
+                .target(name: "ErrorHandle")
+            ]
+        ),
+        .target(
+            name:  "PgSQL",
+            dependencies: [
+                .target(name: "ErrorHandle"),
+                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+                .product(name: "Vapor", package: "vapor")
             ]
         ),
         .testTarget(
             name: "ToolboxBsc-Tests",
             dependencies: [
-                .target(name: "ToolboxBsc"),
+                .target(name: "ErrorHandle"),
+                .target(name: "DataConvertable"),
+                .target(name: "PgSQL"),
+                .target(name: "Cryptos"),
                 .product(name: "Fluent", package: "fluent")
             ]
         ),

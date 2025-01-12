@@ -1,5 +1,6 @@
 import Vapor
 import FluentPostgresDriver
+import ErrorHandle
 
 /// 数据库模块所有可能出现的错误
 public enum PGErrorTypes: String, ErrList {
