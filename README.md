@@ -23,7 +23,7 @@
 
   ``` swift
   dependencies:[
-  	.product(name: "ToolboxBsc", package: "swift-crypto"),
+  	.product(name: "ToolboxBsc", package: "whooshing.toolbox-basic"),
   ]
   ```
   
@@ -31,10 +31,10 @@
   
   ``` swift
   dependencies:[
-  	.product(name: "Crypto", package: "swift-crypto"),
-    .product(name: "PgSQL", package: "swift-crypto"),
-    .product(name: "DataConvertable", package: "swift-crypto"),
-    .product(name: "ErrorHandle", package: "swift-crypto"),
+  	.product(name: "Crypto", package: "whooshing.toolbox-basic"),
+    .product(name: "PgSQL", package: "whooshing.toolbox-basic"),
+    .product(name: "DataConvertable", package: "whooshing.toolbox-basic"),
+    .product(name: "ErrorHandle", package: "whooshing.toolbox-basic"),
   ]
   ```
   
