@@ -9,7 +9,7 @@ let package = Package(
        .macOS(.v11)
     ],
     products: [
-        .library( name: "ToolboxBsc", targets: ["ErrorHandle", "DataConvertable", "Cryptos", "PgSQL"] ),
+        .library( name: "Whooshing", targets: ["Whooshing"] ),
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
@@ -45,6 +45,17 @@ let package = Package(
                 .product(name: "Vapor", package: "vapor")
             ]
         ),
+        .target(
+            name: "Whooshing",
+            dependencies: [
+                .target(name: "ErrorHandle"),
+                .target(name: "DataConvertable"),
+                .target(name: "Cryptos"),
+                .target(name: "PgSQL"),
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+            ]
+        ),
         .testTarget(
             name: "ToolboxBsc-Tests",
             dependencies: [
@@ -52,6 +63,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "PgSQL"),
                 .target(name: "Cryptos"),
+                .target(name: "Whooshing"),
                 .product(name: "Fluent", package: "fluent")
             ]
         ),
