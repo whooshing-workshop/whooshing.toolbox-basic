@@ -6,21 +6,24 @@ internal extension Whooshing {
 }
 
 extension Woo.Env.Project: Woo.Env.Template {
-    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "#domain": .string, "db": .dataTemplate(Woo.Env.DB.self) ] }
-    internal init() { self.name = ""; self.databases = []; self.domain = nil }
+    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "port": .int, "#domain": .string, "db": .dataTemplate(Woo.Env.DB.self) ] }
+    internal init() { self.name = ""; self.databases = []; self.port = 0; self.domain = nil }
     internal init(data: [String : Any]) {
         self.name = data["name"] as! String
+        self.port = data["port"] as! Int
         self.databases = data["db"] as! [Woo.Env.DB]
         self.domain = data["domain"] as? String
     }
 }
 
 extension Woo.Env.DB: Woo.Env.Template {
-    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "port": .int ] }
-    internal init() { self.name = ""; self.port = 0; }
+    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "port": .int, "user": .string, "password": .string ] }
+    internal init() { self.name = ""; self.port = 0; self.user = ""; self.password = "" }
     internal init(data: [String : Any]) {
         self.name = data["name"] as! String
         self.port = data["port"] as! Int
+        self.user = data["user"] as! String
+        self.password = data["password"] as! String
     }
 }
 
@@ -72,8 +75,8 @@ internal extension Woo.Env.Template {
                 case .stringArr: values[key] = value.split(separator: ",").map { String($0) }
                 case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Woo.Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
                 case .dataTemplate(let template):
-                    guard let countStr = getValue(k + "_COUNT") else { throw Woo.Env.Err.missingKey.d(k, 10000, (#file, #line)) }
-                    guard let count = Int(countStr) else { throw Woo.Env.Err.typeIncorrect.d(k, 10000, (#file, #line)) }
+                    guard let countStr = getValue(k + "_COUNT") else { throw Woo.Env.Err.missingKey.d(k, 10001, (#file, #line)) }
+                    guard let count = Int(countStr) else { throw Woo.Env.Err.typeIncorrect.d(k, 10002, (#file, #line)) }
                     var vs: [Woo.Env.Template] = []
                     for i in 1...count {
                         vs.append(try template.parse(prefix: "\(k)_\(i)", getValue: getValue))

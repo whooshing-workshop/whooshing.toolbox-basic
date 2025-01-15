@@ -1,4 +1,5 @@
 import Vapor
+import FluentPostgresDriver
 
 public typealias Woo = Whooshing
 
@@ -15,6 +16,7 @@ public struct Whooshing {
         
         public struct Project {
             public let name: String
+            public let port: Int
             public let databases: [DB]
             public let domain: String?
         }
@@ -22,7 +24,29 @@ public struct Whooshing {
         public struct DB {
             public let name: String
             public let port: Int
+            public let user: String
+            
+            public var maxConnectionsPerEventLoop: Int = 1
+            public var connectionPoolTimeout: TimeAmount = .seconds(10)
+            public var sqlLogLevel: Logger.Level = .info
+            
+            internal let password: String
+            
+            public var id: DatabaseID { .init(string: name) }
+            
+            public var config: DatabaseConfigurationFactory {
+                .postgres(configuration: .init(
+                    hostname: "localhost",
+                    port: port,
+                    username: user,
+                    password: password,
+                    database: name,
+                    tls: .disable
+                ),
+                maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+                connectionPoolTimeout: connectionPoolTimeout,
+                sqlLogLevel: sqlLogLevel)
+            }
         }
     }
-    
 }
