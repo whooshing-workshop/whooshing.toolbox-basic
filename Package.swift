@@ -53,6 +53,7 @@ let package = Package(
                 .target(name: "Cryptos"),
                 .target(name: "PgSQL"),
                 .product(name: "Vapor", package: "vapor"),
+                .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
             ]
         ),

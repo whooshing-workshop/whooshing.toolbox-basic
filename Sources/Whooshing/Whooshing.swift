@@ -1,17 +1,25 @@
 import Vapor
+import Fluent
 import FluentPostgresDriver
 
 public typealias Woo = Whooshing
 
 public struct Whooshing {
-    
     public static let main: String = "woo"
     public static let template: String = "api"
     public static let project: String = { Environment.get("\(Self.EnvBase)_NAME")! }()
     public static let domain: String = { "\(main).\(template).\(project)" }()
     
-    public enum Env {
-        
+    /// 通过 Whooshing 系统自动配置数据库以及监听端口号
+    public static func configure(_ app: Application) async throws {
+        let project = try Env.get()
+        app.http.server.configuration.port = project.port
+        for db in project.databases { app.databases.use(db.config, as: db.id) }
+    }
+}
+
+public extension Woo {
+    enum Env {
         public static func get() throws -> Project { try .parse(prefix: EnvBase) }
         
         public struct Project {
