@@ -2,22 +2,22 @@ import Vapor
 import ErrorHandle
 
 internal extension Whooshing {
-    static var EnvBase: String { "WHOOSHING_API_SERVICE" }
+    static var EnvBase: String { "WHOOSHING_\(Woo.template.rawValue.uppercased())_SERVICE" }
 }
 
-extension Woo.Env.Project: Woo.Env.Template {
-    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "port": .int, "#domain": .string, "db": .dataTemplate(Woo.Env.DB.self) ] }
+extension Env.Project: Env.Template {
+    internal static var envs: [String: Env.Types] { [ "name": .string, "port": .int, "#domain": .string, "db": .dataTemplate(Env.DB.self) ] }
     internal init() { self.name = ""; self.databases = []; self.port = 0; self.domain = nil }
     internal init(data: [String : Any]) {
         self.name = data["name"] as! String
         self.port = data["port"] as! Int
-        self.databases = data["db"] as! [Woo.Env.DB]
+        self.databases = data["db"] as! [Env.DB]
         self.domain = data["domain"] as? String
     }
 }
 
-extension Woo.Env.DB: Woo.Env.Template {
-    internal static var envs: [String: Woo.Env.Types] { [ "name": .string, "port": .int, "user": .string, "password": .string ] }
+extension Env.DB: Env.Template {
+    internal static var envs: [String: Env.Types] { [ "name": .string, "port": .int, "user": .string, "password": .string ] }
     internal init() { self.name = ""; self.port = 0; self.user = ""; self.password = "" }
     internal init(data: [String : Any]) {
         self.name = data["name"] as! String
@@ -27,7 +27,7 @@ extension Woo.Env.DB: Woo.Env.Template {
     }
 }
 
-internal extension Woo.Env {
+internal extension Env {
     enum Types {
         case string
         case int
@@ -51,7 +51,7 @@ internal extension Woo.Env {
     }
 }
 
-internal extension Woo.Env.Template {
+internal extension Env.Template {
     static func parse(prefix: String?, getValue: @escaping ((String) -> String?) = { Environment.get($0) }) throws -> Self {
         var values: [String: Any] = [:]
         for (key, v) in Self.envs {
@@ -65,19 +65,19 @@ internal extension Woo.Env.Template {
             let value: String!
             
             switch v {
-                case .string, .int, .intArr, .stringArr: guard let vv = getValue(k) else { throw Woo.Env.Err.missingKey.d(k, 10000, (#file, #line)) }; value = vv
+                case .string, .int, .intArr, .stringArr: guard let vv = getValue(k) else { throw Env.Err.missingKey.d(k, 10000, (#file, #line)) }; value = vv
                 default: value = nil
             }
             
             switch v {
                 case .string: values[key] = value
-                case .int: guard let v = Int(value) else { throw Woo.Env.Err.typeIncorrect.d(k, (#file, #line)) }; values[key] = v
+                case .int: guard let v = Int(value) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; values[key] = v
                 case .stringArr: values[key] = value.split(separator: ",").map { String($0) }
-                case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Woo.Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
+                case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
                 case .dataTemplate(let template):
-                    guard let countStr = getValue(k + "_COUNT") else { throw Woo.Env.Err.missingKey.d(k, 10001, (#file, #line)) }
-                    guard let count = Int(countStr) else { throw Woo.Env.Err.typeIncorrect.d(k, 10002, (#file, #line)) }
-                    var vs: [Woo.Env.Template] = []
+                    guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k, 10001, (#file, #line)) }
+                    guard let count = Int(countStr) else { throw Env.Err.typeIncorrect.d(k, 10002, (#file, #line)) }
+                    var vs: [Env.Template] = []
                     for i in 1...count {
                         vs.append(try template.parse(prefix: "\(k)_\(i)", getValue: getValue))
                     }
