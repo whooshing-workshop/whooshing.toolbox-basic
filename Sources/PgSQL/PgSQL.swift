@@ -11,7 +11,7 @@ public enum PGErrorTypes: String, ErrList {
 }
 
 public typealias PgErr = PGErrorTypes
-public typealias PGField = PGFieldParam
+public typealias PGFieldParam = PGField
 
 /**
     #### 描述数据库表字段信息
@@ -65,7 +65,7 @@ public typealias PGField = PGFieldParam
     let userName = PGField("user_name", .string, true).cons([.require])
     ```
 */
-public struct PGFieldParam: Sendable {
+public struct PGField: Sendable {
     /// 字段的名称
     public let name: String
     /// 字段的数据类型
