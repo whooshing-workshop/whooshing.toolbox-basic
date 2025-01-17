@@ -120,7 +120,7 @@ public struct PGFieldParam: Sendable {
     public func foreign<S: PGModel>(
         _ model: S.Type,
         space: String? = nil,
-        _ field: PGFieldParam,
+        _ field: PGField,
         onDelete: DatabaseSchema.ForeignKeyAction = .noAction,
         onUpdate: DatabaseSchema.ForeignKeyAction = .noAction
     ) -> Self {
@@ -188,7 +188,7 @@ public protocol PGFields: Sendable {
     static var tdeEncrypt: Bool { get }
     
     /// id 索引字段，每个表必须设置
-    var id: PGFieldParam { get }
+    var id: PGField { get }
     init()
 }
 
@@ -317,7 +317,7 @@ public extension PGMigration {
     func revert(on database: Database) -> EventLoopFuture<Void> { database.schema(DataModel.schema).delete() }
     func migrationFinished(on database: Database) {}
     
-    private static func tableCreate(_ name: String, database: Database, fields: [PGFieldParam], encrypt: Bool) -> EventLoopFuture<Void> {
+    private static func tableCreate(_ name: String, database: Database, fields: [PGField], encrypt: Bool) -> EventLoopFuture<Void> {
         var s = database.schema(name).id()
         var uniques: [FieldKey] = []
         for params in fields {
@@ -378,33 +378,33 @@ public extension PostgresRow {
 }
 
 public extension FieldProperty {
-    convenience init(_ params: PGFieldParam) {
+    convenience init(_ params: PGField) {
         self.init(key: .string(params.name))
     }
 }
 
 public extension TimestampProperty {
     convenience init(
-        _ params: PGFieldParam,
+        _ params: PGField,
         on trigger: TimestampTrigger,
         format: TimestampFormatFactory<Format> = .iso8601(withMilliseconds: true)
     ) {
         self.init(key: .string(params.name), on: trigger, format: format.makeFormat())
     }
     
-    convenience init(_ params: PGFieldParam, on trigger: TimestampTrigger, format: Format) {
+    convenience init(_ params: PGField, on trigger: TimestampTrigger, format: Format) {
         self.init(key: .string(params.name), on: trigger, format: format)
     }
 }
 
 public extension TimestampProperty where Format == DefaultTimestampFormat {
-    convenience init(_ params: PGFieldParam, on trigger: TimestampTrigger) {
+    convenience init(_ params: PGField, on trigger: TimestampTrigger) {
         self.init(key: .string(params.name), on: trigger, format: .default)
     }
 }
 
 public extension ParentProperty {
-    convenience init(_ params: PGFieldParam) {
+    convenience init(_ params: PGField) {
         self.init(key: .string(params.name))
     }
 }
@@ -412,18 +412,18 @@ public extension ParentProperty {
 // MARK: - 以下为内部私有实现
 
 fileprivate extension PGFields {
-    func params() -> [PGFieldParam] {
-        var properties: [PGFieldParam] = []
+    func params() -> [PGField] {
+        var properties: [PGField] = []
         let mirror = Mirror(reflecting: self)
         for case let (_, value) in mirror.children {
-            guard let val = value as? PGFieldParam else { fatalError(PgErr.fieldDefineError.d("解析失败", 1020, (#file, #line)).description) }
+            guard let val = value as? PGField else { fatalError(PgErr.fieldDefineError.d("解析失败", 1020, (#file, #line)).description) }
             properties.append(val)
         }
         return properties
     }
 }
 
-private extension PGFieldParam {
+private extension PGField {
     init(_ s: Self, def: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: def, foreigns: s.foreigns, constraints: s.constraints) }
     init(_ s: Self, foreign: DatabaseSchema.FieldConstraint) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: s.defaultValue, foreigns: s.foreigns + [foreign], constraints: s.constraints) }
     init(_ s: Self, constraints: [DatabaseSchema.FieldConstraint]) { self = Self.init(name: s.name, dataType: s.dataType, isUnique: s.isUnique, defaultValue: s.defaultValue, foreigns: s.foreigns, constraints: constraints) }
