@@ -397,12 +397,6 @@ public extension TimestampProperty {
     }
 }
 
-public extension TimestampProperty where Format == DefaultTimestampFormat {
-    convenience init(_ params: PGFieldParam, on trigger: TimestampTrigger) {
-        self.init(key: .string(params.name), on: trigger, format: .default)
-    }
-}
-
 public extension ParentProperty {
     convenience init(_ params: PGFieldParam) {
         self.init(key: .string(params.name))

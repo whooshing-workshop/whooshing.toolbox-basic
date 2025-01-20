@@ -150,10 +150,8 @@ final class User: PGModel, @unchecked Sendable {
     @ID(key: .id)                                                   var id: UUID?
     @Field(fields.email)                                            var email: String?
     @Field(fields.age)                                              var age: Int?
-    @Timestamp(fields.createdAt, on: .create,
-               format: .iso8601(withMilliseconds: true))            var createdAt: Date?
-    @Timestamp(fields.updateAt, on: .update,
-               format: .iso8601(withMilliseconds: true))            var updatedAt: Date?
+    @Timestamp(fields.createdAt, on: .create)                       var createdAt: Date?
+    @Timestamp(fields.updateAt, on: .update)                        var updatedAt: Date?
 
     struct DTO: Content, Sendable {
         let id: UUID
