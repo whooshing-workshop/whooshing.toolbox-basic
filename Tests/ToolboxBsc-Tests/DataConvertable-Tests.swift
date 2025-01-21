@@ -93,10 +93,23 @@ struct DataConvertableTest {
     @Test("字典类型擦除测试 2")
     func testTypeEraseConversion_2() {
         let o: [Int: Int] = [1: 1, 2: 2, 3: 3]
-        let originalDictionary: [AnySafeDataConvertable: AnySafeDataConvertable] = [.init(1): .init(1), .init(2): .init(2), .init(3): .init(3)]
+        let originalDictionary: [AnySafeDataConvertable: AnySafeDataConvertable] = o.any
         let data = originalDictionary.data()
         let convertedDictionary = [Int: Int](data: data)
         #expect(convertedDictionary == o, "字典类型擦除测试 2 失败")
+    }
+    
+    @Test("字典类型擦除测试 3")
+    func testTypeEraseConversion_3() {
+        let o: [String: Int?] = ["one": 1, "two": 2, "three": 3, "four": nil]
+        let originalDictionary: [AnyThrowableDataConvertable: AnyThrowableDataConvertable] = o.filtered.any
+        do {
+            let data = try originalDictionary.data()
+            let convertedDictionary = try [String: Int](data: data)
+            #expect(convertedDictionary == o.filtered, "字典类型擦除测试 3 失败")
+        } catch {
+            #expect(Bool(false), "字典类型擦除 3 抛出错误: \(error)")
+        }
     }
     
     @Test("空字典转换测试")
