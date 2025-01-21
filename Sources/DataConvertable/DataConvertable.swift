@@ -171,7 +171,6 @@ public extension ThrowableDataConvertable {
 
 public extension SafeDataConvertable {
     func hash(into hasher: inout Hasher) { hasher.combine(self.data()) }
-    static func == (lhs: Self, rhs: Self) -> Bool { lhs.data() == rhs.data() }
 }
 
 // MARK: - 以下为各协议的默认实现

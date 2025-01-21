@@ -101,12 +101,12 @@ struct DataConvertableTest {
     
     @Test("字典类型擦除测试 3")
     func testTypeEraseConversion_3() {
-        let o: [String: Int?] = ["one": 1, "two": 2, "three": 3, "four": nil]
+        let o: [String: (any ThrowableDataConvertable)?] = ["one": 1, "two": 2, "three": 3, "four": nil]
         let originalDictionary: [AnyThrowableDataConvertable: AnyThrowableDataConvertable] = o.filtered.any
         do {
             let data = try originalDictionary.data()
             let convertedDictionary = try [String: Int](data: data)
-            #expect(convertedDictionary == o.filtered, "字典类型擦除测试 3 失败")
+            #expect(convertedDictionary == o.filtered.reduce(into: [String: Int]()) { $0[$1.key] = ($1.value as! Int) }, "字典类型擦除测试 3 失败")
         } catch {
             #expect(Bool(false), "字典类型擦除 3 抛出错误: \(error)")
         }

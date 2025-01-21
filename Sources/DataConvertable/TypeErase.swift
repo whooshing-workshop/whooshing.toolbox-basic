@@ -28,6 +28,23 @@ public extension Dictionary where Key: SafeDataConvertable {
 
 
 
+public extension Dictionary where Value == any ThrowableDataConvertable {
+    var anyValue: [Key: AnyThrowableDataConvertable] { self.reduce(into: [Key: AnyThrowableDataConvertable]()) { $0[$1.key] = .init($1.value) } }
+}
+
+public extension Dictionary where Key: ThrowableDataConvertable, Value == any ThrowableDataConvertable {
+    var any: [AnyThrowableDataConvertable: AnyThrowableDataConvertable] { self.reduce(into: [AnyThrowableDataConvertable: AnyThrowableDataConvertable]()) { $0[.init($1.key)] = .init($1.value) } }
+}
+
+public extension Dictionary where Value == any SafeDataConvertable {
+    var anyValue: [Key: AnySafeDataConvertable] { self.reduce(into: [Key: AnySafeDataConvertable]()) { $0[$1.key] = .init($1.value) } }
+}
+
+public extension Dictionary where Key: SafeDataConvertable, Value == any SafeDataConvertable {
+    var any: [AnySafeDataConvertable: AnySafeDataConvertable] { self.reduce(into: [AnySafeDataConvertable: AnySafeDataConvertable]()) { $0[.init($1.key)] = .init($1.value) } }
+}
+
+
 public extension Dictionary where Value: ThrowableDataConvertable {
     var anyValue: [Key: AnyThrowableDataConvertable] { self.reduce(into: [Key: AnyThrowableDataConvertable]()) { $0[$1.key] = .init($1.value) } }
 }
