@@ -23,7 +23,7 @@
 
   ``` swift
   dependencies:[
-  	.product(name: "ToolboxBsc", package: "whooshing.toolbox-basic"),
+  	.product(name: "Whooshing", package: "whooshing.toolbox-basic"),
   ]
   ```
   
