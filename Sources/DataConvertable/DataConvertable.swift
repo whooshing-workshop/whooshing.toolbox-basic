@@ -120,7 +120,7 @@ public typealias CvtErr = ConvertionErrorTypes
 
     你也可以自己实现该协议，以创建转换类型
 */
-public protocol ThrowableDataConvertable { 
+public protocol ThrowableDataConvertable: Codable { 
     init(data: Data) throws
     func data() throws -> Data 
 }
@@ -143,14 +143,27 @@ public protocol SafeDataConvertable: ThrowableDataConvertable {
     func data() -> Data 
 }
 
+public extension ThrowableDataConvertable {
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let data = try container.decode(Data.self)
+        try self.init(data: data)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(self.data())
+    }
+}
+
+// MARK: - 以下为各协议的默认实现
+
 extension Data: SafeDataConvertable {
     /// 从 Data 初始化该类型，有错误抛出
     public init(data: Data) { self = data }
     /// 转换为 Data，有错误抛出
     public func data() -> Data { self }
 }
-
-// MARK: - 以下为各协议的默认实现
 
 extension String: ThrowableDataConvertable {
     public init(data: Data) throws {
@@ -207,8 +220,8 @@ extension Array: SafeDataConvertable where Element: SafeDataConvertable {
     public func data() -> Data { try! self.toData() }
 }
 
-extension Dictionary: ThrowableDataConvertable {
-    public init(data: Data) throws { 
+extension Dictionary: ThrowableDataConvertable where Key: Encodable & Decodable, Value: Encodable & Decodable {
+    public init(data: Data) throws {
         guard let dic = (try Guard({ try JSONSerialization.jsonObject(with: data) }, throw: CvtErr.dataToDictionary.d("JSON 解包失败", 1011, (#file, #line)))) as? Self else {
             print(CvtErr.dataToDictionary.d("转换结果为 nil，将字典以空处理", 1012, (#file, #line)))
             self = [:]

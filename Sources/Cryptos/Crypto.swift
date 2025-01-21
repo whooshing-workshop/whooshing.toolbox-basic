@@ -283,25 +283,35 @@ public enum Crypto {
     }
 }
 
+extension Crypto.Symm.Key: @retroactive Encodable {}
+extension Crypto.Symm.Key: @retroactive Decodable {}
 extension Crypto.Symm.Key: SafeDataConvertable {
     public func data() -> Data { self.withUnsafeBytes { Data($0) } }
 }
 
+extension Crypto.Asym.CPrivateKey: @retroactive Encodable {}
+extension Crypto.Asym.CPrivateKey: @retroactive Decodable {}
 extension Crypto.Asym.CPrivateKey: ThrowableDataConvertable {
     public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
     public func data() -> Data { self.rawRepresentation }
 }
 
+extension Crypto.Asym.CPublicKey: @retroactive Encodable {}
+extension Crypto.Asym.CPublicKey: @retroactive Decodable {}
 extension Crypto.Asym.CPublicKey: ThrowableDataConvertable {
     public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
     public func data() -> Data { self.rawRepresentation }
 }
 
+extension Crypto.Asym.SPrivateKey: @retroactive Encodable {}
+extension Crypto.Asym.SPrivateKey: @retroactive Decodable {}
 extension Crypto.Asym.SPrivateKey: ThrowableDataConvertable {
     public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
     public func data() -> Data { self.rawRepresentation }
 }
 
+extension Crypto.Asym.SPublicKey: @retroactive Encodable {}
+extension Crypto.Asym.SPublicKey: @retroactive Decodable {}
 extension Crypto.Asym.SPublicKey: ThrowableDataConvertable {
     public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
     public func data() -> Data { self.rawRepresentation }
