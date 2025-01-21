@@ -152,13 +152,6 @@ final class User: PGModel, @unchecked Sendable {
     @Field(fields.age)                                              var age: Int?
     @Timestamp(fields.createdAt, on: .create)                       var createdAt: Date?
     @Timestamp(fields.updateAt, on: .update)                        var updatedAt: Date?
-
-    struct DTO: Content, Sendable {
-        let id: UUID
-        let email: String
-    }
-    
-    @Sendable func dto(req: Request) throws -> DTO { fatalError() }
     
     struct MIG: PGMigration, Sendable { typealias DataModel = User }
 }
@@ -187,13 +180,6 @@ final class Transaction: PGModel, @unchecked Sendable {
     
     @ID(key: .id)                                                   var id: UUID?
     @Parent(fields.userId)                                          var user: User
-
-    struct DTO: Content, Sendable {
-        let id: UUID
-        let email: String
-    }
-    
-    @Sendable func dto(req: Request) throws -> DTO { fatalError() }
     
     struct MIG: PGMigration, Sendable { typealias DataModel = Transaction }
 }

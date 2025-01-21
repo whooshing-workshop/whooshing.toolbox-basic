@@ -42,7 +42,6 @@ let package = Package(
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
-                .product(name: "Vapor", package: "vapor")
             ]
         ),
         .target(

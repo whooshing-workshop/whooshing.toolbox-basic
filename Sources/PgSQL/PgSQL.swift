@@ -1,4 +1,3 @@
-import Vapor
 import FluentPostgresDriver
 import ErrorHandle
 
@@ -233,17 +232,6 @@ public protocol PGFields: Sendable {
         // 将数据库表 users 中的 update_at 字段绑定到该模型的 updateAt 属性
         @Timestamp(fields.updateAt, on: .update,
                 format: .iso8601(withMilliseconds: true))               var updatedAt: Date?
-
-        // 定义一个数据展示，你可以此放入你希望暴露的内容
-        // 例如，你作为服务器，你要将数据从这里发送到客户端，则你需要筛选哪些要发送，哪些敏感信息不能发送
-        // 你可以将要暴露的内容，即要发送的内容记录在此
-        struct DTO: Content, Sendable {
-            let id: UUID
-            let email: String
-        }
-        
-        // 你需要在这里定义 DTO 模型的创建方式
-        @Sendable func dto(req: Request) throws -> DTO { DTO(id: try self.requireID(), email: self.email) }
         
         // 数据库表结构生成和迁移，负责与数据库交互，进行表创建，迁移，恢复等等交涉
         // 你需要确保 typealias DataModel = User 中，DataModel 正确地指向你的表数据模块
@@ -274,17 +262,13 @@ public protocol PGFields: Sendable {
     );
     ```
 */
-public protocol PGModel: Model, AsyncResponseEncodable, Sendable where Self.MIG.DataModel == Self {
-    associatedtype DTO: Content & Sendable
+public protocol PGModel: Model, Sendable where Self.MIG.DataModel == Self {
     associatedtype MIG: PGMigration
     associatedtype Fields: PGFields
     /// 表的名称
     static var name: String { get }
     /// 表字段列表的实例
     static var fields: Fields { get }
-    /// 创建一个数据展示
-    /// 你需要在你的自定类型中实现该函数以提供数据展示
-    @Sendable func dto(req: Request) async throws -> DTO
 }
 
 /**
@@ -303,14 +287,6 @@ public protocol PGMigration: Migration, Sendable {
 // MARK: - 以下为协议扩展实现
 
 extension PostgresQueryResult: @unchecked @retroactive Sendable {}
-
-public extension PGModel {
-    static var schema: String { Self.name }
-    @Sendable func encodeResponse(for request: Request) async throws -> Response {
-        let dto = try await self.dto(req: request)
-        return try await dto.encodeResponse(for: request)
-    }
-}
 
 public extension PGMigration {
     func prepare(on database: Database) -> EventLoopFuture<Void> { Self.tableCreate(DataModel.schema, database: database, fields: DataModel.Fields().params(), encrypt: DataModel.Fields.tdeEncrypt).map { migrationFinished(on: database) } }
@@ -346,10 +322,8 @@ public extension PGFields {
     static var tdeEncrypt: Bool { true }
 }
 
-extension Array where Element: PGModel {
-    @Sendable public func dtos(req: Request) async throws -> [Element.DTO] {
-        try await self.asyncMap { try await $0.dto(req: req) }
-    }
+public extension PGModel {
+    static var schema: String { Self.name }
 }
 
 public extension Array {
