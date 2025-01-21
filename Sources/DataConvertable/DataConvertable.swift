@@ -12,6 +12,8 @@ public enum ConvertionErrorTypes: String, ErrList {
     case arrayToData = "将 Array 转换为 Data 时出错"
     case dataToDictionary = "将 Data 转换为 Dictionary 时出错"
     case dictionaryToData = "将 Dictionary 转换为 Data 时出错"
+    case uuidToData = "将 UUID 转换为 Data 时出错"
+    case dataToUuid = "将 Data 转换为 UUID 时出错"
 }
 
 public typealias CvtErr = ConvertionErrorTypes
@@ -111,11 +113,17 @@ public typealias CvtErr = ConvertionErrorTypes
         - Float
         - Double
         - Decimal
+        - Date
+        - Range<SafeDataConvertable>
+        - ClosedRange<SafeDataConvertable>
         - Array<SafeDataConvertable>
 
     - ThrowableDataConvertable
         - String
+        - UUID
         - Dictionary
+        - Range<ThrowableDataConvertable>
+        - ClosedRange<ThrowableDataConvertable>
         - Array<ThrowableDataConvertable>
 
     你也可以自己实现该协议，以创建转换类型
@@ -232,6 +240,76 @@ extension Dictionary: ThrowableDataConvertable where Key: Encodable & Decodable,
 
     public func data() throws -> Data { 
         return try Guard({ try JSONSerialization.data(withJSONObject: self, options: [.prettyPrinted]) }, throw: CvtErr.dictionaryToData.d("JSON 封装失败", 1013, (#file, #line)))
+    }
+}
+
+extension UUID: ThrowableDataConvertable {
+    public init(data: Data) throws {
+        guard let v = try UUID(uuidString: String(data: data)) else { throw CvtErr.dataToUuid.d(1050, (#file, #line)) }
+        self = v
+    }
+    
+    public func data() -> Data { try! self.uuidString.data() }
+}
+
+extension Date: SafeDataConvertable {
+    public init(data: Data) { self = Date(timeIntervalSince1970: TimeInterval(data: data)) }
+    public func data() -> Data { self.timeIntervalSince1970.data() }
+}
+
+extension Range: SafeDataConvertable where Bound: SafeDataConvertable {
+    public init(data: Data) {
+        let size = MemoryLayout.size(ofValue: Int.self)
+        let lowerBoundSize = Int(data: data.prefix(size))
+        let upperBoundSize = Int(data: data.subdata(in: size..<(size + size)))
+        let lowerBound = Bound(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize)))
+        let upperBound = Bound(data: data.suffix(upperBoundSize))
+        self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
+    }
+    public func data() -> Data { try! (self as ThrowableDataConvertable).data() }
+}
+
+extension Range: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
+    public init(data: Data) throws {
+        let size = MemoryLayout.size(ofValue: Int.self)
+        let lowerBoundSize = Int(data: data.prefix(size))
+        let upperBoundSize = Int(data: data.subdata(in: size..<(size + size)))
+        let lowerBound = try Bound(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize)))
+        let upperBound = try Bound(data: data.suffix(upperBoundSize))
+        self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
+    }
+    public func data() throws -> Data {
+        let lowerData = try self.lowerBound.data()
+        let upperData = try self.upperBound.data()
+        return lowerData.count.data() + upperData.count.data() + lowerData + upperData
+    }
+}
+
+extension ClosedRange: SafeDataConvertable where Bound: SafeDataConvertable {
+    public init(data: Data) {
+        let size = MemoryLayout.size(ofValue: Int.self)
+        let lowerBoundSize = Int(data: data.prefix(size))
+        let upperBoundSize = Int(data: data.subdata(in: size..<(size + size)))
+        let lowerBound = Bound(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize)))
+        let upperBound = Bound(data: data.suffix(upperBoundSize))
+        self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
+    }
+    public func data() -> Data { try! (self as ThrowableDataConvertable).data() }
+}
+
+extension ClosedRange: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
+    public init(data: Data) throws {
+        let size = MemoryLayout.size(ofValue: Int.self)
+        let lowerBoundSize = Int(data: data.prefix(size))
+        let upperBoundSize = Int(data: data.subdata(in: size..<(size + size)))
+        let lowerBound = try Bound(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize)))
+        let upperBound = try Bound(data: data.suffix(upperBoundSize))
+        self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
+    }
+    public func data() throws -> Data {
+        let lowerData = try self.lowerBound.data()
+        let upperData = try self.upperBound.data()
+        return lowerData.count.data() + upperData.count.data() + lowerData + upperData
     }
 }
 
