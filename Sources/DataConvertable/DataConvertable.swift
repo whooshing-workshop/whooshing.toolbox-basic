@@ -14,6 +14,7 @@ public enum ConvertionErrorTypes: String, ErrList {
     case dictionaryToData = "将 Dictionary 转换为 Data 时出错"
     case uuidToData = "将 UUID 转换为 Data 时出错"
     case dataToUuid = "将 Data 转换为 UUID 时出错"
+    case typeEraseCastFailed = "类型擦除转换失败"
 }
 
 public typealias CvtErr = ConvertionErrorTypes
@@ -114,6 +115,7 @@ public typealias CvtErr = ConvertionErrorTypes
         - Double
         - Decimal
         - Date
+        - Dictionary<SafeDataConvertable: SafeDataConvertable>
         - Range<SafeDataConvertable>
         - ClosedRange<SafeDataConvertable>
         - Array<SafeDataConvertable>
@@ -121,14 +123,14 @@ public typealias CvtErr = ConvertionErrorTypes
     - ThrowableDataConvertable
         - String
         - UUID
-        - Dictionary
+        - Dictionary<key == ThrowableDataConvertable or value == ThrowableDataConvertable>
         - Range<ThrowableDataConvertable>
         - ClosedRange<ThrowableDataConvertable>
         - Array<ThrowableDataConvertable>
 
     你也可以自己实现该协议，以创建转换类型
 */
-public protocol ThrowableDataConvertable: Codable { 
+public protocol ThrowableDataConvertable: Codable, Hashable { 
     init(data: Data) throws
     func data() throws -> Data 
 }
@@ -162,6 +164,14 @@ public extension ThrowableDataConvertable {
         var container = encoder.singleValueContainer()
         try container.encode(self.data())
     }
+    
+    func hash(into hasher: inout Hasher) { try! hasher.combine(self.data()) }
+    static func == (lhs: Self, rhs: Self) -> Bool { (try? lhs.data() == rhs.data()) ?? false }
+}
+
+public extension SafeDataConvertable {
+    func hash(into hasher: inout Hasher) { hasher.combine(self.data()) }
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.data() == rhs.data() }
 }
 
 // MARK: - 以下为各协议的默认实现
@@ -228,18 +238,38 @@ extension Array: SafeDataConvertable where Element: SafeDataConvertable {
     public func data() -> Data { try! self.toData() }
 }
 
-extension Dictionary: ThrowableDataConvertable where Key: Encodable & Decodable, Value: Encodable & Decodable {
+extension Dictionary: SafeDataConvertable where Key: SafeDataConvertable, Value: SafeDataConvertable {
+    public init(data: Data) {
+        let d = try! [AnyThrowableDataConvertable: AnyThrowableDataConvertable](data: data)
+        let res = d.reduce(into: [Key: Value]()) { try! $0[$1.key.cast(to: Key.self)] = $1.value.cast(to: Value.self) }
+        self = res
+    }
+    public func data() -> Data { try! (self as (any ThrowableDataConvertable)).data() }
+}
+
+extension Dictionary: ThrowableDataConvertable where Key: ThrowableDataConvertable, Value: ThrowableDataConvertable {
     public init(data: Data) throws {
-        guard let dic = (try Guard({ try JSONSerialization.jsonObject(with: data) }, throw: CvtErr.dataToDictionary.d("JSON 解包失败", 1011, (#file, #line)))) as? Self else {
-            print(CvtErr.dataToDictionary.d("转换结果为 nil，将字典以空处理", 1012, (#file, #line)))
-            self = [:]
-            return
+        let lsize = MemoryLayout.size(ofValue: Int.self)
+        var curLength = 0
+        var res: [Key: Value] = [:]
+        while (curLength < data.count) {
+            let kLength = Int(data: data.subdata(in: curLength..<(curLength + lsize))); curLength += lsize
+            let vLength = Int(data: data.subdata(in: curLength..<(curLength + lsize))); curLength += lsize
+            let k = try Key(data: data.subdata(in: curLength..<(curLength + kLength))); curLength += kLength
+            let v = try Value(data: data.subdata(in: curLength..<(curLength + vLength))); curLength += vLength
+            res[k] = v
         }
-        self = dic
+        self = res
     }
 
     public func data() throws -> Data { 
-        return try Guard({ try JSONSerialization.data(withJSONObject: self, options: [.prettyPrinted]) }, throw: CvtErr.dictionaryToData.d("JSON 封装失败", 1013, (#file, #line)))
+        var res = Data()
+        for (key, value) in self {
+            let kData = try key.data()
+            let vData = try value.data()
+            res += kData.count.data() + vData.count.data() + kData + vData
+        }
+        return res
     }
 }
 
@@ -266,7 +296,7 @@ extension Range: SafeDataConvertable where Bound: SafeDataConvertable {
         let upperBound = Bound(data: data.suffix(upperBoundSize))
         self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
     }
-    public func data() -> Data { try! (self as ThrowableDataConvertable).data() }
+    public func data() -> Data { try! (self as (any ThrowableDataConvertable)).data() }
 }
 
 extension Range: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
@@ -294,7 +324,7 @@ extension ClosedRange: SafeDataConvertable where Bound: SafeDataConvertable {
         let upperBound = Bound(data: data.suffix(upperBoundSize))
         self = Self(uncheckedBounds: (lower: lowerBound, upper: upperBound))
     }
-    public func data() -> Data { try! (self as ThrowableDataConvertable).data() }
+    public func data() -> Data { try! (self as (any ThrowableDataConvertable)).data() }
 }
 
 extension ClosedRange: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
