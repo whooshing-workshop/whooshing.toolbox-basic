@@ -1,18 +1,15 @@
 import Vapor
 import ErrorHandle
 
-internal extension Whooshing {
-    static var EnvBase: String { "WHOOSHING_\(Woo.template.rawValue.uppercased())_SERVICE" }
-}
-
 extension Env.Project: Env.Template {
-    internal static var envs: [String: Env.Types] { [ "name": .string, "port": .int, "#domain": .string, "db": .dataTemplate(Env.DB.self) ] }
-    internal init() { self.name = ""; self.databases = []; self.port = 0; self.domain = nil }
+    internal static var envs: [String: Env.Types] { [ "name": .string, "port": .int, "#domain": .string, "db": .dataTemplate(Env.DB.self), "manager_url": .url ] }
+    internal init() { self.name = ""; self.databases = []; self.port = 0; self.domain = nil; self.managerUrl = URL(string: "https://example.com")! }
     internal init(data: [String : Any]) {
         self.name = data["name"] as! String
         self.port = data["port"] as! Int
         self.databases = data["db"] as! [Env.DB]
         self.domain = data["domain"] as? String
+        self.managerUrl = data["manager_url"] as! URL
     }
 }
 
@@ -33,6 +30,8 @@ internal extension Env {
         case int
         case stringArr
         case intArr
+        case url
+        case uri
         case dataTemplate(Template.Type)
     }
 
@@ -44,7 +43,7 @@ internal extension Env {
     }
 
     enum Err: String, ErrList {
-        var domain: String { "\(Woo.main).\(Woo.template).sys.err" }
+        var domain: String { "woo.sys.err" }
         case parseFailed = "环境变量解析失败"
         case typeIncorrect = "环境变量配置类型不匹配"
         case missingKey = "环境变量配置字段缺失"
@@ -71,8 +70,10 @@ internal extension Env.Template {
             
             switch v {
                 case .string: values[key] = value
-                case .int: guard let v = Int(value) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; values[key] = v
+                case .int: guard let v = Int(value) else { throw Env.Err.typeIncorrect.d(k, 10003, (#file, #line)) }; values[key] = v
                 case .stringArr: values[key] = value.split(separator: ",").map { String($0) }
+                case .url: guard let v = URL(string: value) else { throw Env.Err.typeIncorrect.d(k, 10004, (#file, #line)) }; values[key] = v
+                case .uri: values[key] = URI(string: value)
                 case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
                 case .dataTemplate(let template):
                     guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k, 10001, (#file, #line)) }
