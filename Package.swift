@@ -16,7 +16,7 @@ let package = Package(
         .library( name: "PgSQL", targets: ["PgSQL"] ),
     ],
     dependencies: [
-        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "developer-clwang-custom-crypto"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "main"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
         .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", branch: "main"),
