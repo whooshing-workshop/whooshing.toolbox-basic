@@ -3,15 +3,15 @@ import Cryptos
 import ErrorHandle
 import DataConvertable
 
-enum InlineInits {
-    struct ServiceData: StorageKey {
-        typealias Value = Self
-        let rootKey: Crypto.Symm.Key
-        let moduleDatas: [ModuleData]
+public enum InlineInit {
+    public struct ServiceData: StorageKey, Sendable {
+        public typealias Value = Self
+        public let rootKey: Crypto.Symm.Key
+        public let moduleDatas: [ModuleData]
     }
     
-    enum Err: String, ErrList {
-        var domain: String { "woo.api.sys.init.err" }
+    public enum Err: String, ErrList {
+        public var domain: String { "woo.api.sys.init.err" }
         case initializeFailed = "服务初始化失败"
     }
     
@@ -29,25 +29,18 @@ enum InlineInits {
         )
     }
     
-    struct InitParaRes: Content {
-        let pub: Crypto.Asym.CPublicKey
-        let root: Data
-        let modules: [Data]
-    }
-    
-    struct ModuleData: Content, Sendable, ThrowableDataConvertable {
-        let name: String
-        let serviceId: UUID
-        let connection: String?
-        init(name: String, serviceId: UUID, connection: String?) { self.name = name; self.serviceId = serviceId; self.connection = connection }
-        init(data: Data) throws {
+    public struct ModuleData: Content, Sendable, ThrowableDataConvertable {
+        public let name: String
+        public let serviceId: UUID
+        public let connection: String?
+        public init(data: Data) throws {
             let paras = try [String: AnyThrowableDataConvertable](data: data)
             self.name = try paras["name"]!.cast(to: String.self)
             self.serviceId = try paras["serviceId"]!.cast(to: UUID.self)
             self.connection = try? paras["connection"]?.cast(to: String.self)
         }
 
-        func data() throws -> Data {
+        public func data() throws -> Data {
             let d: [String: (any ThrowableDataConvertable)?] = [
                 "name": name,
                 "serviceId": serviceId,
@@ -55,6 +48,12 @@ enum InlineInits {
             ]
             return try d.filtered.anyValue.data()
         }
+    }
+    
+    private struct InitParaRes: Content {
+        internal let pub: Crypto.Asym.CPublicKey
+        internal let root: Data
+        internal let modules: [Data]
     }
 }
 
