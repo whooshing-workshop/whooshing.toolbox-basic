@@ -12,6 +12,7 @@ struct WhooshingTests {
             "WHOOSHING_API_SERVICE_PORT": "7777",
             "WHOOSHING_API_SERVICE_DOMAIN": "testing.whooshing.space",
             "WHOOSHING_API_SERVICE_DB_COUNT": "2",
+            "WHOOSHING_API_SERVICE_MANAGER_URL": "https://example.com",
             "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
             "WHOOSHING_API_SERVICE_DB_1_PORT": "5432",
             "WHOOSHING_API_SERVICE_DB_1_USER": "woo",
@@ -25,6 +26,7 @@ struct WhooshingTests {
         #expect(project.domain == "testing.whooshing.space")
         #expect(project.port == 7777)
         #expect(project.databases.count == 2)
+        #expect(project.managerUrl.absoluteString == "https://example.com")
         #expect(project.databases[0].name == "testdb")
         #expect(project.databases[0].port == 5432)
         #expect(project.databases[0].user == "woo")
@@ -40,6 +42,7 @@ struct WhooshingTests {
             "WHOOSHING_API_SERVICE_NAME": "Testing Project",
             "WHOOSHING_API_SERVICE_PORT": "7777",
             "WHOOSHING_API_SERVICE_DB_COUNT": "2",
+            "WHOOSHING_API_SERVICE_MANAGER_URL": "https://example.com",
             "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
             "WHOOSHING_API_SERVICE_DB_1_PORT": "5432",
             "WHOOSHING_API_SERVICE_DB_1_USER": "woo",
@@ -53,6 +56,7 @@ struct WhooshingTests {
         #expect(project.domain == nil)
         #expect(project.port == 7777)
         #expect(project.databases.count == 2)
+        #expect(project.managerUrl.absoluteString == "https://example.com")
         #expect(project.databases[0].name == "testdb")
         #expect(project.databases[0].port == 5432)
         #expect(project.databases[0].user == "woo")

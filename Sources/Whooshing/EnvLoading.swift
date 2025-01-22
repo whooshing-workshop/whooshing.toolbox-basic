@@ -64,7 +64,7 @@ internal extension Env.Template {
             let value: String!
             
             switch v {
-                case .string, .int, .intArr, .stringArr: guard let vv = getValue(k) else { throw Env.Err.missingKey.d(k, 10000, (#file, #line)) }; value = vv
+            case .string, .int, .intArr, .url, .uri, .stringArr: guard let vv = getValue(k) else { throw Env.Err.missingKey.d(k, 10000, (#file, #line)) }; value = vv
                 default: value = nil
             }
             
