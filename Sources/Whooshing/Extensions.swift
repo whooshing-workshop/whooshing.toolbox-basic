@@ -47,3 +47,25 @@ extension Crypto.Asym.SPublicKey: @retroactive AsyncRequestDecodable {}
 extension Crypto.Asym.SPublicKey: @retroactive ResponseEncodable {}
 extension Crypto.Asym.SPublicKey: @retroactive RequestDecodable {}
 extension Crypto.Asym.SPublicKey: @retroactive Content {}
+
+public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key: Sendable & Hashable, Value: Sendable {
+    public var allKey: [Key: Value].Keys { lock.sync { wrapped.keys } }
+    public var allValue: [Key: Value].Values { lock.sync { wrapped.values } }
+    private var wrapped: [Key: Value]
+    private let lock: DispatchQueue
+    public init(wrapped: [Key: Value] = [:], lockLabel: String = String(Int.random())) {
+        self.wrapped = wrapped
+        self.lock = DispatchQueue(label: "woo.SendableDictionary.lock.\(lockLabel)")
+    }
+    public subscript(key: Key) -> Value? {
+        get { lock.sync { wrapped[key] } }
+        set {
+            if let v = newValue { lock.sync { wrapped[key] = v } }
+            else { lock.sync { _ = wrapped.removeValue(forKey: key) } }
+        }
+    }
+    
+    public func forEach(closure: @escaping ((key: Key, value: Value)) -> ()) {
+        lock.sync { wrapped.forEach { closure($0) } }
+    }
+}

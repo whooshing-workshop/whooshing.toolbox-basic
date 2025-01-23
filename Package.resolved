@@ -1,5 +1,5 @@
 {
-  "originHash" : "b6d604e135df7d52b9734b84c7c443b55de05f260e01fe0d24b27925c6967b94",
+  "originHash" : "2ec7ba57dcaa857f5373bc5731224e9212762e5614fa1bc068be9b0c2e976872",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -277,7 +277,7 @@
       "location" : "https://github.com/SJJC-Team/whooshing-fluent.git",
       "state" : {
         "branch" : "main",
-        "revision" : "65a9f3b828aca88f26d73b02ebe800cc250c637d"
+        "revision" : "c271d6c0d738c8a10ab4fb219bea8cd449080cb0"
       }
     },
     {
@@ -285,8 +285,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/SJJC-Team/whooshing-vapor.git",
       "state" : {
-        "branch" : "developer-clwang-custom-crypto",
-        "revision" : "7ed6f01407cd63872cac8f81946921ab0a4e7ace"
+        "branch" : "main",
+        "revision" : "1818b7cd8f4095fe4e14834e180a3db88cfa1556"
       }
     }
   ],

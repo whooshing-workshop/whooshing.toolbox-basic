@@ -7,7 +7,6 @@ public extension Application {
     enum TemplateType: String, Sendable { case api = "api", https = "https", inline = "inline" }
 
     var project: Env.Project! { self.storage[Env.Project.self] }
-    var serviceData: InlineInit.ServiceData! { self.storage[InlineInit.ServiceData.self] }
     
     /// 通过 Whooshing 系统自动配置数据库以及监听端口号
     static func configure(_ app: Application, template: TemplateType) async throws {
