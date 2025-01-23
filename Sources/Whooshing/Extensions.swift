@@ -69,3 +69,7 @@ public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key
         lock.sync { wrapped.forEach { closure($0) } }
     }
 }
+
+public extension URL {
+    func toUri(with path: String) -> URI { .init(string: self.absoluteString + path) }
+}
