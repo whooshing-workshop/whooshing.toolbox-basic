@@ -14,6 +14,8 @@ enum Inline {
         fileprivate enum Err: String, ErrList {
             var domain: String { "woo.inline.sys.init.err" }
             case initializeFailed = "服务初始化失败"
+            case relayParseFailed = "中继转送解析失败"
+            case relaySendFailed = "中继转送失败"
         }
         
         static func config(_ app: Application) async throws {
@@ -83,16 +85,23 @@ enum Inline {
         fileprivate struct HttpIOCrypto: HTTPIOHandler, Sendable {
             let app: Application
             /// 有客户端请求进入
-            func input(request: Data, context: ChannelHandlerContext, info: ChannelInfo) throws -> Data {
-                let id = ObjectIdentifier(context.channel)
-                let req: Data
-                if let key = app.serviceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
-                else { req = try Crypto.Symm.decrypt(request, key: app.serviceData.rootKey) }
-                return req
+            func input(request: Data, context: ChannelHandlerContext, info: ChannelInfo) throws -> Data? {
+                if let relayData = try relayDataHandle(request) {
+                    // 中继请求
+                    do { try context.writeAndFlush(.init(dataToByteBuffer(data: relayData))).wait() } catch let err { throw Err.relaySendFailed.d(10064, (#file, #line)) }
+                    return nil
+                } else {
+                    // 一般请求(加密)
+                    let id = ObjectIdentifier(context.channel)
+                    let req: Data
+                    if let key = app.serviceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
+                    else { req = try Crypto.Symm.decrypt(request, key: app.serviceData.rootKey) }
+                    return req
+                }
             }
             
             /// 将有服务器响应请求发出
-            func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo) throws -> Data {
+            func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo) throws -> Data? {
                 let id = ObjectIdentifier(context.channel)
                 let res: Data
                 // 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密
@@ -100,6 +109,52 @@ enum Inline {
                     res = try Crypto.Symm.encrypt(response, key: key) }
                 else { res = try Crypto.Symm.encrypt(response, key: app.serviceData.rootKey) }
                 return res
+            }
+            
+            private func relayDataHandle(_ request: Data) throws -> Data? {
+                guard let req = String(data: request, encoding: .utf8) else { return nil }
+                let relayReq = try relayRequestModify(data: req)
+                return relayReq.data(using: .utf8)
+            }
+            
+            private func relayRequestModify(data: String) throws -> String {
+                // 分割请求头和主体
+                let components = data.components(separatedBy: "\r\n\r\n")
+                guard components.count >= 2 else { throw Err.relayParseFailed.d("非完整的中继 HTTP 请求", 10066, (#file, #line)) }
+                var headers = components[0].components(separatedBy: "\r\n")
+                let body = components.dropFirst().joined(separator: "\r\n\r\n")
+                guard headers.count >= 1 else { throw Err.relayParseFailed.d("中继 HTTP 请求的格式不正确", 10067, (#file, #line)) }
+                let separator = "/whooshing-relay"
+                let requestLine = headers[0].components(separatedBy: " ")
+                guard requestLine.count == 3 else { throw Err.relayParseFailed.d("中继 HTTP 请求的第一行 Header 格式不正确", 10067, (#file, #line)) }
+                
+                // 修改请求 URI
+                let method = requestLine[0]
+                let relayUri = requestLine[1].components(separatedBy: separator)
+                guard relayUri.count == 2 else { throw Err.relayParseFailed.d("中继 HTTP 请求的 URI 格式不正确", 10068, (#file, #line)) }
+                guard relayUri[0].count > 1 else { throw Err.relayParseFailed.d("中继 HTTP 请求的 URI 格式不正确", 10069, (#file, #line)) }
+                let newHost = relayUri[0].dropFirst()
+                let newURI = relayUri[1]
+                let httpVersion = requestLine[2]
+                headers[0] = "\(method) \(newURI) \(httpVersion)"
+                
+                // 修改 Header
+                for (index, header) in headers.enumerated() {
+                    if header.lowercased().hasPrefix("host:") {
+                        headers[index] = "Host: \(newHost)"
+                        break
+                    }
+                }
+                
+                // 重组请求头和主体
+                let newRequest = headers.joined(separator: "\r\n") + "\r\n\r\n" + body
+                return newRequest
+            }
+            
+            private func dataToByteBuffer(data: Data) -> ByteBuffer {
+                var buffer = ByteBufferAllocator().buffer(capacity: data.count)
+                buffer.writeBytes(data)
+                return buffer
             }
             
             /// 连线结束
