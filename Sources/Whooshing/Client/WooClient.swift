@@ -3,14 +3,15 @@ import Cryptos
 import ErrorHandle
 import NIO
 
-struct HTTP: Client {
+struct WooClient: Client {
     
     let eventLoop: EventLoop
     var logger: Logger?
     var byteBufferAllocator: ByteBufferAllocator
+    var ioHandler: RequestIOHandler?
     
     func delegating(to eventLoop: any EventLoop) -> any Client {
-        HTTP(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+        WooClient(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
     }
     
     func send(
@@ -28,7 +29,7 @@ struct HTTP: Client {
             
             let bootstrap = ClientBootstrap(group: eventLoop)
                 .channelInitializer { channel in
-                    channel.pipeline.addHandler(RequestHandler(promise: promise))
+                    channel.pipeline.addHandler(RequestHandler(promise: promise, logger: logger, ioHandler: ioHandler))
                 }
                 .channelOption(.socketOption(.tcp_nodelay), value: 1)
                 .channelOption(.socketOption(.so_reuseaddr), value: 1)
@@ -46,29 +47,6 @@ struct HTTP: Client {
     enum Err: String, ErrList {
         var domain: String { "woo.sys.http.client.err" }
         case requestFormatError = "请求格式有误"
-    }
-}
-
-extension HTTP {
-    final class RequestHandler: ChannelDuplexHandler, Sendable {
-        typealias InboundIn = ByteBuffer
-        typealias OutboundIn = ByteBuffer
-        private let promise: EventLoopPromise<ClientResponse>
-        
-        init(promise: EventLoopPromise<ClientResponse>) {
-            self.promise = promise
-        }
-        
-        func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-            let buffer = unwrapInboundIn(data)
-            let res = try! ClientResponse(data: buffer)
-            promise.succeed(res)
-        }
-        
-        func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-            let buffer = unwrapInboundIn(data)
-            context.write(data, promise: promise)
-        }
     }
 }
 
