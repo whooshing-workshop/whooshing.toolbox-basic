@@ -48,6 +48,12 @@ extension Crypto.Asym.SPublicKey: @retroactive ResponseEncodable {}
 extension Crypto.Asym.SPublicKey: @retroactive RequestDecodable {}
 extension Crypto.Asym.SPublicKey: @retroactive Content {}
 
+
+extension ByteBuffer: SafeDataConvertable {
+    public func data() -> Data { .init(buffer: self) }
+}
+
+
 public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key: Sendable & Hashable, Value: Sendable {
     public var allKey: [Key: Value].Keys { lock.sync { wrapped.keys } }
     public var allValue: [Key: Value].Values { lock.sync { wrapped.values } }

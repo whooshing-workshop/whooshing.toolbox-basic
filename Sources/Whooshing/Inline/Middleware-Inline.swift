@@ -35,7 +35,7 @@ internal extension Inline {
         }
         
         // 进行密钥交换
-        @Sendable func keyExchange(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
+        @Sendable private func keyExchange(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
             do {
                 // 收到对方的公钥
                 let pubKey = try req.content.decode(Crypto.Asym.CPublicKey.self)
@@ -54,7 +54,7 @@ internal extension Inline {
         }
 
         // 进行服务验证，确认对方的服务 ID 是可信的
-        @Sendable func validateService(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
+        @Sendable private func validateService(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
             do {
                 req.application.serviceData.connectionValidate[id] = false
                 // 取得对方的服务 ID

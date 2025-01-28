@@ -1,48 +1,70 @@
 import Vapor
 import Cryptos
 import ErrorHandle
+import NIOConcurrencyHelpers
 import NIO
 
-struct WooClient: Client {
-    
+protocol WhooshingServiceType {}
+
+final class ReqClient<ServiceType>: Client, @unchecked Sendable where ServiceType: WhooshingServiceType {
     let eventLoop: EventLoop
-    var logger: Logger?
-    var byteBufferAllocator: ByteBufferAllocator
-    var ioHandler: RequestIOHandler?
+    let logger: Logger?
+    let byteBufferAllocator: ByteBufferAllocator
+    var storage: Storage {
+        get { lock.withLock { self._storage } }
+        set { lock.withLock { self._storage = newValue } }
+    }
+    lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
+    private var ioHandler: RequestIOHandler?
+    private var lock: NIOLock = .init()
     
     func delegating(to eventLoop: any EventLoop) -> any Client {
-        WooClient(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+        ReqClient(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+    }
+    
+    init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+        self.eventLoop = eventLoop
+        self.logger = logger
+        self.byteBufferAllocator = byteBufferAllocator
+        self.ioHandler = ioHandler
+    }
+    
+    func makeChannel(url: URI) throws -> (Channel, EventLoopPromise<ClientResponse>) {
+        guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
+        guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
+        
+        let promise = eventLoop.makePromise(of: ClientResponse.self)
+        let handler = RequestHandler(promise: promise, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
+        
+        let bootstrap = ClientBootstrap(group: eventLoop)
+            .channelInitializer { channel in
+                channel.pipeline.addHandler(handler)
+            }
+            .channelOption(.socketOption(.tcp_nodelay), value: 1)
+            .channelOption(.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(.maxMessagesPerRead, value: 1)
+        
+        let channel = try bootstrap.connect(host: host, port: port).wait()
+        
+        return (channel, promise)
     }
     
     func send(
-        _ client: ClientRequest
+        _ client: ClientRequest,
+        channel: Channel,
+        promise: EventLoopPromise<ClientResponse>
     ) -> EventLoopFuture<ClientResponse> {
-        let promise = eventLoop.makePromise(of: ClientResponse.self)
-        let urlString = client.url.string
-        guard let url = URL(string: urlString) else {
-            self.logger?.debug("\(urlString) is an invalid URL")
-            return self.eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "\(urlString) is an invalid URL"))
-        }
         do {
-            guard let host = client.url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
-            guard let port = client.url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
-            
-            let bootstrap = ClientBootstrap(group: eventLoop)
-                .channelInitializer { channel in
-                    channel.pipeline.addHandler(RequestHandler(promise: promise, logger: logger, ioHandler: ioHandler))
-                }
-                .channelOption(.socketOption(.tcp_nodelay), value: 1)
-                .channelOption(.socketOption(.so_reuseaddr), value: 1)
-                .channelOption(.maxMessagesPerRead, value: 1)
-            
-            let channel = try bootstrap.connect(host: host, port: port).wait()
-            let buffer = try client.data(bufferAllocator: byteBufferAllocator)
-            try channel.writeAndFlush(buffer).wait()
-        } catch {
-            promise.fail(error)
+            try channel.writeAndFlush(client).wait()
+        } catch let err {
+            self.logger?.error("发送请求失败，\(err)")
+            promise.fail(err)
+            return self.eventLoop.makeFailedFuture(err)
         }
         return promise.futureResult
     }
+    
+    func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
     
     enum Err: String, ErrList {
         var domain: String { "woo.sys.http.client.err" }
