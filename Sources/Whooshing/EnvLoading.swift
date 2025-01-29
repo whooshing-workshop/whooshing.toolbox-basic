@@ -83,8 +83,8 @@ extension Env.Template {
                     guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k, 10001, (#file, #line)) }
                     guard let count = Int(countStr) else { throw Env.Err.typeIncorrect.d(k, 10002, (#file, #line)) }
                     var vs: [Env.Template] = []
-                    for i in 1...count {
-                        vs.append(try template.parse(prefix: "\(k)_\(i)", getValue: getValue))
+                    for i in 0..<count {
+                        vs.append(try template.parse(prefix: "\(k)_\(i + 1)", getValue: getValue))
                     }
                     values[key] = vs
             }
