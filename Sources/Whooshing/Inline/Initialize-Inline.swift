@@ -26,15 +26,19 @@ enum Inline {
         }
         guard res.status == .ok else { throw Err.initializeFailed.d("请求模块管理器的结果为: \(res.status)", 10010, (#file, #line)) }
         // 解包服务器回复
+        print("解包服务器回复")
         let paras = try res.content.decode(InitParaRes.self)
         // 生成共享密钥
+        print("生成共享密钥")
         let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: paras.pub, salt: Crypto.hash("manager.shared.key"), info: "")
         let rootKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(paras.root, key: sharedKey)
+        print("保存到上下文")
         // 保存到上下文
         app.storage[ServiceData.self] = try ServiceData(
             rootKey: rootKey,
             moduleDatas: paras.modules.map { try Crypto.Symm.decrypt($0, key: sharedKey) }
         )
+        print("注册 HTTP IO 加密模块")
         // 注册 HTTP IO 加密模块
         app.use(httpIOHandler: HttpIOCrypto(app: app))
         // 注册服务来源验证中间件
