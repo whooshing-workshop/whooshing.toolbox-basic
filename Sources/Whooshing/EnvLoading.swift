@@ -24,7 +24,9 @@ extension Env.DB: Env.Template {
     }
 }
 
-internal extension Env {
+extension Env {
+    static func get(template: Application.TemplateType) throws -> Project { try .parse(prefix: "WHOOSHING_\(template.rawValue.uppercased())_SERVICE") }
+    
     enum Types {
         case string
         case int
@@ -32,6 +34,7 @@ internal extension Env {
         case intArr
         case url
         case uri
+        case uuid
         case dataTemplate(Template.Type)
     }
 
@@ -50,7 +53,7 @@ internal extension Env {
     }
 }
 
-internal extension Env.Template {
+extension Env.Template {
     static func parse(prefix: String?, getValue: @escaping ((String) -> String?) = { Environment.get($0) }) throws -> Self {
         var values: [String: Any] = [:]
         for (key, v) in Self.envs {
@@ -74,6 +77,7 @@ internal extension Env.Template {
                 case .stringArr: values[key] = value.split(separator: ",").map { String($0) }
                 case .url: guard let v = URL(string: value) else { throw Env.Err.typeIncorrect.d(k, 10004, (#file, #line)) }; values[key] = v
                 case .uri: values[key] = URI(string: value)
+                case .uuid: guard let v = UUID(uuidString: value) else { throw Env.Err.typeIncorrect.d(k, 10096, (#file, #line)) }; values[key] = v
                 case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
                 case .dataTemplate(let template):
                     guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k, 10001, (#file, #line)) }

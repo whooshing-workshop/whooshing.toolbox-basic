@@ -6,10 +6,10 @@ import NIO
 import Logging
 
 extension Application {
-    var serviceData: Inline.Init.ServiceData! { self.storage[Inline.Init.ServiceData.self] }
+    var serviceData: Inline.ServiceData! { self.storage[Inline.ServiceData.self] }
 }
 
-extension Inline.Init {
+extension Inline {
     final class ServiceData: StorageKey, Sendable {
         typealias Value = ServiceData
         let rootKey: Crypto.Symm.Key
@@ -48,7 +48,9 @@ extension Inline.Init {
         
         /// 连线结束
         func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) throws {
-            app.serviceData.connectionKeys[ObjectIdentifier(context.channel)] = nil
+            let id = ObjectIdentifier(context.channel)
+            app.serviceData.connectionKeys[id] = nil
+            app.serviceData.connectionValidate[id] = nil
         }
     }
 }

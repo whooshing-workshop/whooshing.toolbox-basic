@@ -6,20 +6,20 @@ import NIO
 import Logging
 
 extension ReqClient where ServiceType == Inline {
-    var requestIoData: Inline.Init.RequestIOData! { self.storage[Inline.Init.RequestIOData.self] }
+    var requestIoData: Inline.RequestIOData! { self.storage[Inline.RequestIOData.self] }
 }
 
-extension Inline.Init {
+extension Inline {
     final class RequestIOData: StorageKey, Sendable {
         typealias Value = RequestIOData
         let rootKey: Crypto.Symm.Key
-        let module: ModuleData
+        let serviceID: UUID
         let connectionValidate: SendableDictionary<ObjectIdentifier, Bool> = .init()
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         
-        init(rootKey: Crypto.Symm.Key, module: ModuleData) {
+        init(rootKey: Crypto.Symm.Key, serviceID: UUID) {
             self.rootKey = rootKey
-            self.module = module
+            self.serviceID = serviceID
         }
     }
     
@@ -46,6 +46,13 @@ extension Inline.Init {
             if let key = client.requestIoData.connectionKeys[id] { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key) }
             else { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: client.requestIoData.rootKey) }
             return try .init(data: plain)
+        }
+        
+        // 连线结束，进行清理
+        func connectionEnd(context: ChannelHandlerContext) throws {
+            let id = ObjectIdentifier(context.channel)
+            client.requestIoData.connectionKeys[id] = nil
+            client.requestIoData.connectionValidate[id] = nil
         }
     }
 }

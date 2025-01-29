@@ -78,7 +78,7 @@ extension ReqClient where ServiceType == Inline {
     
     private func serviceValidate(req: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) throws {
         // 将自己的服务 ID 发送于目标
-        let response = try self.send(.init(method: .POST, url: req.url, body: .init(data: self.requestIoData.module.serviceId.data())), channel: channel, promise: promise).wait()
+        let response = try self.send(.init(method: .POST, url: req.url, body: .init(data: self.requestIoData.serviceID.data())), channel: channel, promise: promise).wait()
         // 检查对方的响应
         guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
         // 设置标志位

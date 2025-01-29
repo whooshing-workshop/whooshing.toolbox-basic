@@ -14,12 +14,12 @@ public extension Application {
         app.storage[Env.Project.self] = project
         app.http.server.configuration.port = project.port
         for db in project.databases { app.databases.use(db.config, as: db.id) }
+        // 初始化 Inline 扩展
+        try await Inline.config(app)
     }
 }
 
 public enum Env {
-    public static func get(template: Application.TemplateType) throws -> Project { try .parse(prefix: "WHOOSHING_\(template.rawValue.uppercased())_SERVICE") }
-    
     public struct Project: StorageKey, Sendable {
         public typealias Value = Self
         public let name: String

@@ -6,20 +6,29 @@ import NIO
 
 protocol WhooshingServiceType {}
 
-final class ReqClient<ServiceType>: Client, @unchecked Sendable where ServiceType: WhooshingServiceType {
+final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
+    typealias Value = ReqClient<ServiceType>
     let eventLoop: EventLoop
     let logger: Logger?
     let byteBufferAllocator: ByteBufferAllocator
+    var ioHandler: RequestIOHandler?
     var storage: Storage {
         get { lock.withLock { self._storage } }
         set { lock.withLock { self._storage = newValue } }
     }
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
-    private var ioHandler: RequestIOHandler?
     private var lock: NIOLock = .init()
     
-    func delegating(to eventLoop: any EventLoop) -> any Client {
-        ReqClient(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+    func delegating(to eventLoop: EventLoop) -> Client {
+        ReqClient<ServiceType>(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+    }
+
+    func logging(to logger: Logger) -> Client {
+        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
+    }
+
+    func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
+        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
     }
     
     init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {

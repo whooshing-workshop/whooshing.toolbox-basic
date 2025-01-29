@@ -5,7 +5,7 @@ import DataConvertable
 import NIO
 import Logging
 
-internal extension Inline {
+extension Inline {
 
     struct GuardMiddleware: Middleware {
         
