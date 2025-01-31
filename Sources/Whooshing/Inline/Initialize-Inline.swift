@@ -22,7 +22,7 @@ enum Inline {
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
         // 向模块管理器请求取得服务模块信息，首先将自己的公钥发出
         let res = try await app.client.post(app.project.managerUrl.toUri(with: "/params/init")) { postRequest in
-            try postRequest.content.encode(["pub": keyPair.private], as: .json)
+            try postRequest.content.encode(keyPair.public, as: .json)
         }
         guard res.status == .ok else { throw Err.initializeFailed.d("请求模块管理器的结果为: \(res.status)", 10010, (#file, #line)) }
         // 解包服务器回复
