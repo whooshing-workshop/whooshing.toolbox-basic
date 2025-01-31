@@ -1,16 +1,18 @@
 import Testing
 @testable import Whooshing
+import Vapor
 import Foundation
 
 @Suite("Whooshing 工具测试")
 struct WhooshingTests {
     
     @Test("测试环境变量读取") func testEnvironmentDetect() async throws {
-        let project = try #require(Env.Project.parse(prefix: Woo.EnvBase) { key in [
+        let project = try #require(Env.Project.parse(prefix: "WHOOSHING_API_SERVICE") { key in [
             "WHOOSHING_API_SERVICE_NAME": "Testing Project",
             "WHOOSHING_API_SERVICE_PORT": "7777",
             "WHOOSHING_API_SERVICE_DOMAIN": "testing.whooshing.space",
             "WHOOSHING_API_SERVICE_DB_COUNT": "2",
+            "WHOOSHING_API_SERVICE_MANAGER_URL": "https://example.com",
             "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
             "WHOOSHING_API_SERVICE_DB_1_PORT": "5432",
             "WHOOSHING_API_SERVICE_DB_1_USER": "woo",
@@ -24,6 +26,7 @@ struct WhooshingTests {
         #expect(project.domain == "testing.whooshing.space")
         #expect(project.port == 7777)
         #expect(project.databases.count == 2)
+        #expect(project.managerUrl.absoluteString == "https://example.com")
         #expect(project.databases[0].name == "testdb")
         #expect(project.databases[0].port == 5432)
         #expect(project.databases[0].user == "woo")
@@ -35,10 +38,11 @@ struct WhooshingTests {
     }
     
     @Test("测试环境变量读取2") func testEnvironmentDetect2() async throws {
-        let project = try #require(Env.Project.parse(prefix: Woo.EnvBase) { key in [
+        let project = try #require(Env.Project.parse(prefix: "WHOOSHING_API_SERVICE") { key in [
             "WHOOSHING_API_SERVICE_NAME": "Testing Project",
             "WHOOSHING_API_SERVICE_PORT": "7777",
             "WHOOSHING_API_SERVICE_DB_COUNT": "2",
+            "WHOOSHING_API_SERVICE_MANAGER_URL": "https://example.com",
             "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
             "WHOOSHING_API_SERVICE_DB_1_PORT": "5432",
             "WHOOSHING_API_SERVICE_DB_1_USER": "woo",
@@ -52,6 +56,7 @@ struct WhooshingTests {
         #expect(project.domain == nil)
         #expect(project.port == 7777)
         #expect(project.databases.count == 2)
+        #expect(project.managerUrl.absoluteString == "https://example.com")
         #expect(project.databases[0].name == "testdb")
         #expect(project.databases[0].port == 5432)
         #expect(project.databases[0].user == "woo")
@@ -64,7 +69,7 @@ struct WhooshingTests {
     
     @Test("测试环境变量读取3") func testEnvironmentDetect3() async throws {
         do {
-            let _ = try #require(Env.Project.parse(prefix: Woo.EnvBase) { key in [
+            let _ = try #require(Env.Project.parse(prefix: "WHOOSHING_API_SERVICE") { key in [
                 "WHOOSHING_API_SERVICE_NAME": "Testing Project",
                 "WHOOSHING_API_SERVICE_DB_COUNT": "3",
                 "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
@@ -81,7 +86,7 @@ struct WhooshingTests {
     
     @Test("测试环境变量读取4") func testEnvironmentDetect4() async throws {
         do {
-            let _ = try #require(Env.Project.parse(prefix: Woo.EnvBase) { key in [
+            let _ = try #require(Env.Project.parse(prefix: "WHOOSHING_API_SERVICE") { key in [
                 "WHOOSHING_API_SERVICE_NAME": "Testing Project",
                 "WHOOSHING_API_SERVICE_DB_COUNT": "3",
                 "WHOOSHING_API_SERVICE_DB_1_NAME": "testdb",
