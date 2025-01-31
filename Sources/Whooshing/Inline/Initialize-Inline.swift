@@ -31,6 +31,7 @@ enum Inline {
         // 生成共享密钥
         print("生成共享密钥")
         let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: paras.pub, salt: Crypto.hash("manager.shared.key"), info: "")
+        print(sharedKey.data().base64EncodedString())
         let rootKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(paras.root, key: sharedKey)
         print("保存到上下文")
         // 保存到上下文
