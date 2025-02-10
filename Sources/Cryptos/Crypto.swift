@@ -70,7 +70,7 @@ public enum Crypto {
     */
     public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
         if salt == nil { salt = try saltGenerate(length: 32) }
-        return .init(try HashFunction.hash(data: data.data() + salt!))
+        return .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
     }
     
     /**
