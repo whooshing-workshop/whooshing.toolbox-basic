@@ -6,6 +6,8 @@ public enum ConvertionErrorTypes: String, ErrList {
     public var domain: String { "ToolboxBsc.Convertion" }
     case dataToString = "将 Data 转换为 String 时出错"
     case StringtoData = "将 String 转换为 Data 时出错"
+    case dataToBase64String = "将 Data 转换为 Base64String 时出错"
+    case base64StringtoData = "将 Base64String 转换为 Data 时出错"
     case dataToNum = "将 Data 转换为 Number 时出错"
     case numToData = "将 Number 转换为 Data 时出错"
     case dataToArray = "将 Data 转换为 Array 时出错"
@@ -99,34 +101,35 @@ public typealias CvtErr = ConvertionErrorTypes
     -----
     ### 目前所有实现该协议的类型：
 
-    - SafeDataConvertable
-        - Data
-        - Int
-        - Int8
-        - Int16
-        - Int32
-        - Int64
-        - UInt
-        - UInt8
-        - UInt16
-        - UInt32
-        - UInt64
-        - Float
-        - Double
-        - Decimal
-        - Date
-        - Dictionary<SafeDataConvertable: SafeDataConvertable>
-        - Range<SafeDataConvertable>
-        - ClosedRange<SafeDataConvertable>
-        - Array<SafeDataConvertable>
+    - `SafeDataConvertable`
+        - `Data`
+        - `Int`
+        - `Int8`
+        - `Int16`
+        - `Int32`
+        - `Int64`
+        - `UInt`
+        - `UInt8`
+        - `UInt16`
+        - `UInt32`
+        - `UInt64`
+        - `Float`
+        - `Double`
+        - `Decimal`
+        - `Date`
+        - `Dictionary<SafeDataConvertable: SafeDataConvertable>`
+        - `Range<SafeDataConvertable>`
+        - `ClosedRange<SafeDataConvertable>`
+        - `Array<SafeDataConvertable>`
 
-    - ThrowableDataConvertable
-        - String
-        - UUID
-        - Dictionary<key == ThrowableDataConvertable or value == ThrowableDataConvertable>
-        - Range<ThrowableDataConvertable>
-        - ClosedRange<ThrowableDataConvertable>
-        - Array<ThrowableDataConvertable>
+    - `ThrowableDataConvertable`
+        - `String`
+        - `Base64String`
+        - `UUID`
+        - `Dictionary<key == ThrowableDataConvertable or value == ThrowableDataConvertable>`
+        - `Range<ThrowableDataConvertable>`
+        - `ClosedRange<ThrowableDataConvertable>`
+        - `Array<ThrowableDataConvertable>`
 
     你也可以自己实现该协议，以创建转换类型
 */
@@ -171,6 +174,19 @@ public extension ThrowableDataConvertable {
 
 public extension SafeDataConvertable {
     func hash(into hasher: inout Hasher) { hasher.combine(self.data()) }
+}
+
+/// Base64 编码的字符串，用于加解密时进行数据传输时使用。对于有特殊字符的字符串进行数据转换会出错。
+public struct Base64String: ThrowableDataConvertable, CustomStringConvertible, Equatable {
+    public let string: String
+    public var description: String { string }
+    public init(_ string: String) { self.string = string }
+    public init(data: Data) { self.string = data.base64EncodedString() }
+    public func data() throws -> Data {
+        guard let d = Data(base64Encoded: string) else { throw CvtErr.base64StringtoData.d(1030, (#file, #line)) }
+        return d
+    }
+    public static func == (lhs: Self, rhs: Self) -> Bool { lhs.string == rhs.string }
 }
 
 // MARK: - 以下为各协议的默认实现
