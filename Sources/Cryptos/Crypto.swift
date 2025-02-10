@@ -11,6 +11,7 @@ public enum CryptoErrorLists: String, ErrList {
     case signFailed = "签名失败"
     case validateFailed = "签名验证失败"
     case keyEncapsulateFailed = "密钥协商失败"
+    case saltGenerateFailed = "盐值生成失败"
 }
 
 public typealias CptErr = CryptoErrorLists
@@ -35,7 +36,7 @@ public enum Crypto {
 
         哈希算法由于其不可逆且高效的优点，常用与密码加密，完整性验证等等。
 
-        该函数使用 SHA256 进行哈希摘要。
+        该函数使用 SHA512 进行哈希摘要。
 
         - 参数
             - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
@@ -56,6 +57,33 @@ public enum Crypto {
     */
     public static func hash(_ data: any SafeDataConvertable) -> Data { try! hash(data as (any ThrowableDataConvertable)) }
     public static func hash(_ data: any ThrowableDataConvertable) throws -> Data { .init(try HashFunction.hash(data: data.data())) }
+    
+    /**
+        #### 哈希摘要算法，加盐哈希
+     
+        该函数使用 SHA512 进行哈希摘要。
+        
+        - 参数
+            - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
+            - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
+        - 返回值: 哈希摘要，只提供 Data 类型。
+    */
+    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
+        if salt == nil { salt = try saltGenerate(length: 32) }
+        return .init(try HashFunction.hash(data: data.data() + salt!))
+    }
+    
+    /**
+        #### 随机盐生成
+        
+        生成任意长度的 Data 作为盐
+    */
+    public static func saltGenerate(length: Int = 32) throws -> Data {
+        var salt = Data(count: length)
+        let result = salt.withUnsafeMutableBytes { buffer in SecRandomCopyBytes(kSecRandomDefault, length, buffer.baseAddress!) }
+        guard result == errSecSuccess else { throw CptErr.saltGenerateFailed.d(11000, (#file, #line)) }
+        return salt
+    }
 
     /**
         #### 对称加密算法

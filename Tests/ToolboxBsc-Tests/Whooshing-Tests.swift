@@ -1,5 +1,5 @@
 import Testing
-@testable import Whooshing
+@testable import WhooshingCore
 import Vapor
 import Foundation
 

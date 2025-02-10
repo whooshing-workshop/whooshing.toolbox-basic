@@ -9,7 +9,7 @@ let package = Package(
        .macOS(.v11)
     ],
     products: [
-        .library( name: "Whooshing", targets: ["Whooshing"] ),
+        .library( name: "WhooshingInline", targets: ["WhooshingInline"] ),
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
@@ -45,7 +45,17 @@ let package = Package(
             ]
         ),
         .target(
-            name: "Whooshing",
+            name: "WhooshingInline",
+            dependencies: [ .target(name: "WhooshingCore") ],
+            swiftSettings: [ .define("INLINE") ]
+        ),
+        .target(
+            name: "WhooshingAPI",
+            dependencies: [ .target(name: "WhooshingCore") ],
+            swiftSettings: [ .define("API") ]
+        ),
+        .target(
+            name: "WhooshingCore",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
@@ -63,7 +73,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "PgSQL"),
                 .target(name: "Cryptos"),
-                .target(name: "Whooshing"),
+                .target(name: "WhooshingCore"),
                 .product(name: "Fluent", package: "whooshing-fluent")
             ]
         ),

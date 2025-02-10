@@ -1,3 +1,5 @@
+#if INLINE
+
 import Vapor
 import Cryptos
 import ErrorHandle
@@ -54,3 +56,5 @@ extension Inline {
         }
     }
 }
+
+#endif

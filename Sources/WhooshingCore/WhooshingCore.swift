@@ -3,19 +3,18 @@ import Fluent
 import FluentPostgresDriver
 
 public extension Application {
-    
-    enum TemplateType: String, Sendable { case api = "api", https = "https", inline = "inline" }
-
     var project: Env.Project! { self.storage[Env.Project.self] }
     
     /// 通过 Whooshing 系统自动配置数据库以及监听端口号
-    static func configure(_ app: Application, template: TemplateType) async throws {
-        let project = try Env.get(template: template)
+    static func configure(_ app: Application) async throws {
+        let project = try Env.get()
         app.storage[Env.Project.self] = project
         app.http.server.configuration.port = project.port
         for db in project.databases { app.databases.use(db.config, as: db.id) }
         // 初始化 Inline 扩展
+        #if INLINE
         try await Inline.config(app)
+        #endif
     }
 }
 
