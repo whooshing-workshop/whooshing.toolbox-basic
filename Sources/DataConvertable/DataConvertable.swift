@@ -177,7 +177,7 @@ public extension SafeDataConvertable {
 }
 
 /// Base64 编码的字符串，用于加解密时进行数据传输时使用。对于有特殊字符的字符串进行数据转换会出错。
-public struct Base64String: ThrowableDataConvertable, CustomStringConvertible, Equatable {
+public struct Base64String: ThrowableDataConvertable, CustomStringConvertible, Equatable, Sendable {
     public let string: String
     public var description: String { string }
     public init(_ string: String) { self.string = string }
