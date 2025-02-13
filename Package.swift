@@ -10,6 +10,8 @@ let package = Package(
     ],
     products: [
         .library( name: "WhooshingInline", targets: ["WhooshingInline"] ),
+        .library( name: "WhooshingAPI", targets: ["WhooshingAPI"] ),
+        .library( name: "WhooshingHttps", targets: ["WhooshingHttps"] ),
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
