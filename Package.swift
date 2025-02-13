@@ -45,6 +45,11 @@ let package = Package(
             ]
         ),
         .target(
+            name: "WhooshingHttps",
+            dependencies: [ .target(name: "WhooshingCore") ],
+            swiftSettings: [ .define("HTTPS") ]
+        ),
+        .target(
             name: "WhooshingInline",
             dependencies: [ .target(name: "WhooshingCore") ],
             swiftSettings: [ .define("INLINE") ]
@@ -64,7 +69,8 @@ let package = Package(
                 .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Fluent", package: "whooshing-fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
-            ]
+            ],
+            swiftSettings: [ .define("INLINE") ]
         ),
         .testTarget(
             name: "ToolboxBsc-Tests",

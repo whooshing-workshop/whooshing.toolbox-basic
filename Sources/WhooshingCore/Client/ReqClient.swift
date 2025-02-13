@@ -90,17 +90,13 @@ extension ClientRequest {
     
     func data(bufferAllocator: ByteBufferAllocator) throws -> ByteBuffer {
         var buffer = bufferAllocator.buffer(capacity: 0)
-        
         // 转换 HTTP 方法和 URL
         let requestLine = "\(method.rawValue) \(url.path) HTTP/1.1\r\n"
         buffer.writeString(requestLine)
-        
         // 转换 headers
         headers.forEach { (name, value) in buffer.writeString("\(name): \(value)\r\n") }
-        
         // 添加一个空行，表示头部结束
         buffer.writeString("\r\n")
-
         // 如果有请求体 (body)，则添加请求体的内容
         if var body = body {
             buffer.writeBuffer(&body)

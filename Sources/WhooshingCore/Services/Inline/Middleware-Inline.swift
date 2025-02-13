@@ -7,8 +7,12 @@ import DataConvertable
 import NIO
 import Logging
 
-extension Inline {
+/// 该文件定义了一个守护中间件，拒绝非法连接请求(例如加密算法错误导致的数据格式不正确)并解密加密请求。
+/// 确保传递到之后的路由时该请求是被解密的以便处理。
 
+extension Inline {
+    
+    /// 守护中间件，实现了加密访问的加密算法流程，确保后续路由可以正确解析请求
     struct GuardMiddleware: Middleware {
         
         fileprivate enum Err: String, ErrList {

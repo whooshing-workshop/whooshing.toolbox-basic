@@ -7,6 +7,9 @@ import NIOCore
 import Logging
 import Cryptos
 
+/// 该文件实现了发送加密请求的功能。由于目标模块的加密算法并非传统的 HTTPS，
+/// 而是自定的加密算法，因此向其请求时需要使用特定的加密逻辑。
+
 extension Inline: WhooshingServiceType {}
 
 extension ReqClient where ServiceType == Inline {

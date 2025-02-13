@@ -14,6 +14,8 @@ public extension Application {
         // 初始化 Inline 扩展
         #if INLINE
         try await Inline.config(app)
+        #elseif HTTPS
+        try await Https.config(app)
         #endif
     }
 }
