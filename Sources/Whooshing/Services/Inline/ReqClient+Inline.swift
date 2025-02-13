@@ -1,5 +1,3 @@
-#if INLINE
-
 import Vapor
 import ErrorHandle
 import DataConvertable
@@ -90,5 +88,3 @@ extension ReqClient where ServiceType == Inline {
         self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
     }
 }
-
-#endif

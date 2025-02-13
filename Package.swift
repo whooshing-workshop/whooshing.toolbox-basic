@@ -9,9 +9,7 @@ let package = Package(
        .macOS(.v11)
     ],
     products: [
-        .library( name: "WhooshingInline", targets: ["WhooshingInline"] ),
-        .library( name: "WhooshingAPI", targets: ["WhooshingAPI"] ),
-        .library( name: "WhooshingHttps", targets: ["WhooshingHttps"] ),
+        .library( name: "Whooshing", targets: ["Whooshing"] ),
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
@@ -47,22 +45,7 @@ let package = Package(
             ]
         ),
         .target(
-            name: "WhooshingHttps",
-            dependencies: [ .target(name: "WhooshingCore") ],
-            swiftSettings: [ .define("HTTPS") ]
-        ),
-        .target(
-            name: "WhooshingInline",
-            dependencies: [ .target(name: "WhooshingCore") ],
-            swiftSettings: [ .define("INLINE") ]
-        ),
-        .target(
-            name: "WhooshingAPI",
-            dependencies: [ .target(name: "WhooshingCore") ],
-            swiftSettings: [ .define("API") ]
-        ),
-        .target(
-            name: "WhooshingCore",
+            name: "Whooshing",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
@@ -71,8 +54,7 @@ let package = Package(
                 .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Fluent", package: "whooshing-fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
-            ],
-            swiftSettings: [ .define("INLINE") ]
+            ]
         ),
         .testTarget(
             name: "ToolboxBsc-Tests",
@@ -81,7 +63,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "PgSQL"),
                 .target(name: "Cryptos"),
-                .target(name: "WhooshingCore"),
+                .target(name: "Whooshing"),
                 .product(name: "Fluent", package: "whooshing-fluent")
             ]
         ),

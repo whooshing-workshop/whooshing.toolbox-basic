@@ -1,5 +1,3 @@
-#if INLINE
-
 import Foundation
 
 extension Inline {
@@ -15,5 +13,3 @@ extension Inline.ServicePara: Env.Template {
         self.serviceID = data["service_id"] as! UUID
     }
 }
-
-#endif

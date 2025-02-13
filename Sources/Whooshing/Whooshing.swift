@@ -3,20 +3,26 @@ import Fluent
 import FluentPostgresDriver
 
 public extension Application {
+    enum ServiceType: String {
+        case inline = "WHOOSHING_INLINE_SERVICE"
+        case https = "WHOOSHING_HTTP_SERVICE"
+        case api = "WHOOSHING_API_SERVICE"
+    }
+    
     var project: Env.Project! { self.storage[Env.Project.self] }
     
     /// 通过 Whooshing 系统自动配置数据库以及监听端口号
-    static func configure(_ app: Application) async throws {
-        let project = try Env.get()
-        app.storage[Env.Project.self] = project
-        app.http.server.configuration.port = project.port
-        for db in project.databases { app.databases.use(db.config, as: db.id) }
-        // 初始化 Inline 扩展
-        #if INLINE
-        try await Inline.config(app)
-        #elseif HTTPS
-        try await Https.config(app)
-        #endif
+    func configure(for service: ServiceType) async throws {
+        let project = try Env.get(with: service.rawValue)
+        self.storage[Env.Project.self] = project
+        self.http.server.configuration.port = project.port
+        for db in project.databases { self.databases.use(db.config, as: db.id) }
+        // 初始化对应的服务扩展
+        switch service {
+        case .inline: try await Inline.config(self)
+        case .https: try await Https.config(self)
+        case .api: try await API.config(self)
+        }
     }
 }
 

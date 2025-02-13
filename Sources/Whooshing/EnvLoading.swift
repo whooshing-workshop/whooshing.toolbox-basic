@@ -25,17 +25,7 @@ extension Env.DB: Env.Template {
 }
 
 extension Env {
-    static func get() throws -> Project {
-        #if INLINE
-        try .parse(prefix: "WHOOSHING_INLINE_SERVICE")
-        #elseif HTTP
-        try .parse(prefix: "WHOOSHING_HTTP_SERVICE")
-        #elseif API
-        try .parse(prefix: "WHOOSHING_API_SERVICE")
-        #else
-        fatalError("预编译设置错误！")
-        #endif
-    }
+    static func get(with prefix: String) throws -> Project { try .parse(prefix: prefix) }
     
     enum Types {
         case string

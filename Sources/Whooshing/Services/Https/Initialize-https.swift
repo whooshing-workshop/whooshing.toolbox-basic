@@ -1,5 +1,3 @@
-#if HTTPS
-
 import Vapor
 
 /// 对于 HTTPS 模块无需进行其他配置，使用默认的 HTTPS 加密即可
@@ -8,5 +6,3 @@ import Vapor
 enum Https {
     static func config(_ app: Application) async throws {}
 }
-
-#endif
