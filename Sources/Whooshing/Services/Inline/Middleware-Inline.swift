@@ -24,11 +24,11 @@ extension Inline {
         func respond(to req: Request, chainingTo next: any Responder) -> NIOCore.EventLoopFuture<Response> {
             guard let channel = req.channel else { return req.eventLoop.makeFailedFuture(Err.unknowError.d("未找到 Channel", 10013, (#file, #line))) }
             let id = ObjectIdentifier(channel)
-            if req.application.serviceData.connectionValidate[id] == true {
+            if req.application.inlineServiceData.connectionValidate[id] == true {
                 // 服务模块已成功经过验证，开始处理请求
                 return next.respond(to: req)
             } else {
-                if let _ = req.application.serviceData.connectionKeys[id] {
+                if let _ = req.application.inlineServiceData.connectionKeys[id] {
                     // 密钥交换已经完成，验证服务
                     return validateService(req: req, id: id)
                 } else {
@@ -48,8 +48,8 @@ extension Inline {
                 // 计算共享密钥
                 let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: pubKey, salt: Crypto.hash("inline.shared.key"), info: "")
                 // 将 sharedKey 记录在 connectionKeys 中，却把 validate 设置为 nil，表示下次请求时需要进行 Validate，而无需再交换密钥
-                req.application.serviceData.connectionKeys[id] = sharedKey
-                req.application.serviceData.connectionValidate[id] = nil
+                req.application.inlineServiceData.connectionKeys[id] = sharedKey
+                req.application.inlineServiceData.connectionValidate[id] = nil
                 // 发送自己的公钥
                 return req.eventLoop.makeSucceededFuture(Response(status: .ok, body: .init(data: keyPair.public.data())))
             } catch let err {
@@ -60,14 +60,14 @@ extension Inline {
         // 进行服务验证，确认对方的服务 ID 是可信的
         @Sendable private func validateService(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
             do {
-                req.application.serviceData.connectionValidate[id] = false
+                req.application.inlineServiceData.connectionValidate[id] = false
                 // 取得对方的服务 ID
                 let serviceId = try req.content.decode(UUID.self)
                 // 判断该 ID 是否可信
-                let res = req.application.serviceData.moduleDatas.contains { $0.serviceId == serviceId }
+                let res = req.application.inlineServiceData.moduleDatas.contains { $0.serviceId == serviceId }
                 guard res == true else { throw Err.serviceIdNotValid.d(10011, #file, #line) }
                 // 设置标志位
-                req.application.serviceData.connectionValidate[id] = true
+                req.application.inlineServiceData.connectionValidate[id] = true
                 // 发送回执，表示验证成功
                 return req.eventLoop.makeSucceededFuture(.init(status: .ok))
             } catch let err {

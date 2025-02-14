@@ -13,7 +13,7 @@ extension Inline: WhooshingServiceType {}
 extension ReqClient where ServiceType == Inline {
     
     enum InlineReqErr: String, ErrList {
-        var domain: String { "woo.sys.inline.reqclient.inlinereqerr" }
+        var domain: String { "woo.sys.inline.reqclient.err" }
         case targetBadResponse = "目标返回了不正常的响应"
         case targetIncorrectResponseBody = "目标的响应体不正确"
         case unknowSendError = "发送时遇到未知错误"

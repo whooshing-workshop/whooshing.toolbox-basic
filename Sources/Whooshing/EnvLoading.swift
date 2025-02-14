@@ -40,7 +40,6 @@ extension Env {
 
     protocol Template {
         static var envs: [String: Types] { get }
-        static func parse(prefix: String?, getValue: @escaping ((String) -> String?)) throws -> Self
         init(data: [String: Any])
         init()
     }

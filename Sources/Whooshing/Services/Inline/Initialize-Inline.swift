@@ -19,13 +19,12 @@ enum Inline {
     static func config(_ app: Application) async throws {
         // 从环境变量中取得该服务模块的参数
         let env = try ServicePara.parse(prefix: "WHOOSHING_INLINE_SERVICE_PRIVATE")
-        
         // 注册 HTTP IO 加密模块
         app.use(httpIOHandler: HttpIOCrypto(app: app))
         // 注册服务来源验证中间件
         app.middleware.use(GuardMiddleware())
         // 与模块管理器交互，取得可信服务列表并交换密钥
-        let (rootKey, sharedKey) = try await self.keyExchangeFromManager(app)
+        let (rootKey, _) = try await self.keyExchangeFromManager(app)
         // 创建请求 API 提供者
         let client = ReqClient<Inline>(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator:.init() )
         let ioHandler = RequestIOCrypto(client: client)
