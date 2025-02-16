@@ -4,6 +4,7 @@ import ErrorHandle
 import DataConvertable
 import NIO
 import Logging
+import WhooshingClient
 
 /// 该文件从 HTTP 基层 TCP 实现了请求加密的加解密算法。保证整个请求报文都是被加密或被解密的(解密或加密取决于是入站请求还是出站响应)
 /// 是与 ReqClient 配套实现请求加密逻辑的
@@ -31,31 +32,40 @@ extension Inline {
         let client: ReqClient<Inline>
         
         /// 发送请求时，进行编码并加密
-        func send(request: ClientRequest, context: ChannelHandlerContext, allocator: ByteBufferAllocator) throws -> ByteBuffer {
-            var plain = try request.data(bufferAllocator: allocator)
-            let cipher: Data
-            let id = ObjectIdentifier(context.channel)
-            if let key = client.requestIoData.connectionKeys[id] { cipher = try Crypto.Symm.encrypt(plain, key: key) }
-            else { cipher = try Crypto.Symm.encrypt(plain, key: client.requestIoData.rootKey) }
-            plain.clear()
-            plain.writeData(cipher)
-            return plain
+        func send(request: ClientRequest, context: ChannelHandlerContext, allocator: ByteBufferAllocator) -> EventLoopFuture<ByteBuffer> {
+            do {
+                var plain = try request.data(bufferAllocator: allocator)
+                let cipher: Data
+                let id = ObjectIdentifier(context.channel)
+                if let key = client.requestIoData.connectionKeys[id] { cipher = try Crypto.Symm.encrypt(plain, key: key) }
+                else { cipher = try Crypto.Symm.encrypt(plain, key: client.requestIoData.rootKey) }
+                plain.clear()
+                plain.writeData(cipher)
+                return context.eventLoop.makeSucceededFuture(plain)
+            } catch let err {
+                return context.eventLoop.makeFailedFuture(err)
+            }
         }
         
         /// 收到响应时，进行解密并解码
-        func get(response: ByteBuffer, context: ChannelHandlerContext) throws -> ClientResponse {
-            let id = ObjectIdentifier(context.channel)
-            let plain: ByteBuffer
-            if let key = client.requestIoData.connectionKeys[id] { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key) }
-            else { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: client.requestIoData.rootKey) }
-            return try .init(data: plain)
+        func get(response: ByteBuffer, context: ChannelHandlerContext) -> EventLoopFuture<ClientResponse> {
+            do {
+                let id = ObjectIdentifier(context.channel)
+                let plain: ByteBuffer
+                if let key = client.requestIoData.connectionKeys[id] { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key) }
+                else { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: client.requestIoData.rootKey) }
+                return try context.eventLoop.makeSucceededFuture(.init(data: plain))
+            } catch let err {
+                return context.eventLoop.makeFailedFuture(err)
+            }
         }
         
         // 连线结束，进行清理
-        func connectionEnd(context: ChannelHandlerContext) throws {
+        func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
             let id = ObjectIdentifier(context.channel)
             client.requestIoData.connectionKeys[id] = nil
             client.requestIoData.connectionValidate[id] = nil
+            return context.eventLoop.makeSucceededVoidFuture()
         }
     }
 }

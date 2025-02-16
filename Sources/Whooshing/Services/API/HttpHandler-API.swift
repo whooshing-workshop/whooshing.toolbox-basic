@@ -4,6 +4,7 @@ import ErrorHandle
 import DataConvertable
 import NIO
 import Logging
+import WhooshingClient
 
 extension Application {
     var apiServiceData: API.ServiceData! { self.storage[API.ServiceData.self] }

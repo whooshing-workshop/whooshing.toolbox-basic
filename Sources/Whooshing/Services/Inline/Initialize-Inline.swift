@@ -1,4 +1,5 @@
 import Vapor
+import WhooshingClient
 import Cryptos
 import ErrorHandle
 import DataConvertable

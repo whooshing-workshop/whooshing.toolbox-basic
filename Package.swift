@@ -45,12 +45,19 @@ let package = Package(
             ]
         ),
         .target(
+            name: "WhooshingClient",
+            dependencies: [
+                .product(name: "Vapor", package: "whooshing-vapor")
+            ]
+        ),
+        .target(
             name: "Whooshing",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
                 .target(name: "PgSQL"),
+                .target(name: "WhooshingClient"),
                 .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Fluent", package: "whooshing-fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),

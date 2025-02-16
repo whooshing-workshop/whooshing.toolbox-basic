@@ -4,41 +4,41 @@ import ErrorHandle
 import NIOConcurrencyHelpers
 import NIO
 
-protocol WhooshingServiceType {}
+public protocol WhooshingServiceType {}
 
-final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
-    typealias Value = ReqClient<ServiceType>
-    let eventLoop: EventLoop
-    let logger: Logger?
-    let byteBufferAllocator: ByteBufferAllocator
-    var ioHandler: RequestIOHandler?
-    var storage: Storage {
+public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
+    public typealias Value = ReqClient<ServiceType>
+    public let eventLoop: EventLoop
+    public let logger: Logger?
+    public let byteBufferAllocator: ByteBufferAllocator
+    public var ioHandler: RequestIOHandler?
+    public var storage: Storage {
         get { lock.withLock { self._storage } }
         set { lock.withLock { self._storage = newValue } }
     }
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
     
-    func delegating(to eventLoop: EventLoop) -> Client {
+    public func delegating(to eventLoop: EventLoop) -> Client {
         ReqClient<ServiceType>(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
-    func logging(to logger: Logger) -> Client {
+    public func logging(to logger: Logger) -> Client {
         ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
-    func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
+    public func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
         ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
     }
     
-    init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    public init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.eventLoop = eventLoop
         self.logger = logger
         self.byteBufferAllocator = byteBufferAllocator
         self.ioHandler = ioHandler
     }
     
-    func makeChannel(url: URI) throws -> (Channel, EventLoopPromise<ClientResponse>) {
+    public func makeChannel(url: URI) throws -> (Channel, EventLoopPromise<ClientResponse>) {
         guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
         guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
         
@@ -58,7 +58,7 @@ final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable wher
         return (channel, promise)
     }
     
-    func send(
+    public func send(
         _ client: ClientRequest,
         channel: Channel,
         promise: EventLoopPromise<ClientResponse>
@@ -73,7 +73,7 @@ final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable wher
         return promise.futureResult
     }
     
-    func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
+    public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
     
     enum Err: String, ErrList {
         var domain: String { "woo.sys.http.client.err" }
@@ -81,9 +81,9 @@ final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable wher
     }
 }
 
-extension ClientRequest {
+public extension ClientRequest {
     
-    enum Err: String, ErrList {
+    internal enum Err: String, ErrList {
         var domain: String { "woo.sys.client.request.err" }
         case requestToDataFailed = "将请求转为 Data 失败"
     }
@@ -107,13 +107,13 @@ extension ClientRequest {
 
 extension ClientResponse {
     
-    enum Err: String, ErrList {
+     enum Err: String, ErrList {
         var domain: String { "woo.sys.client.response.err" }
         case responseParseFailed = "响应解析失败"
         case unknowErr = "解析响应时出现未知错误"
     }
     
-    init(data: ByteBuffer) throws {
+    public init(data: ByteBuffer) throws {
         var (header, body) = try Self.parseHTTPResponse(from: data)
         guard let headers = header.readString(length: header.readableBytes)?.components(separatedBy: "\r\n") else { throw Err.responseParseFailed.d("无法将请求转为 String", 10070, (#file, #line)) }
         
