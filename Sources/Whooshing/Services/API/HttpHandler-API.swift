@@ -6,6 +6,9 @@ import NIO
 import Logging
 import WhooshingClient
 
+/// 该文件实现了 API 模块接收和发出的加密机制 Socket 流处理
+/// 每个 API 请求前必须经过身份验证
+
 extension Application {
     var apiServiceData: API.ServiceData! { self.storage[API.ServiceData.self] }
 }

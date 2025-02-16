@@ -46,17 +46,17 @@ extension ReqClient where ServiceType == Inline {
             else { procedure = 2 }
             let response: ClientResponse
             switch (procedure) {
-            case 0:
-                // 首次请求，需要交换密钥
-                try keyExchange(req: request, channel: channel, promise: promise)
-                fallthrough
-            case 1:
-                // 密钥交换已完成，配合对方进行验证
-                try serviceValidate(req: request, channel: channel, promise: promise)
-                fallthrough
-            default:
-                // 已成功经过验证，开始发送请求
-                response = try self.send(request, channel: channel, promise: promise).wait()
+                case 0:
+                    // 首次请求，需要交换密钥
+                    try keyExchange(req: request, channel: channel, promise: promise)
+                    fallthrough
+                case 1:
+                    // 密钥交换已完成，配合对方进行验证
+                    try serviceValidate(req: request, channel: channel, promise: promise)
+                    fallthrough
+                default:
+                    // 已成功经过验证，开始发送请求
+                    response = try self.send(request, channel: channel, promise: promise).wait()
             }
             return eventLoop.makeSucceededFuture(response)
         } catch let err {

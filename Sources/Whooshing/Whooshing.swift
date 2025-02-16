@@ -19,9 +19,9 @@ public extension Application {
         for db in project.databases { self.databases.use(db.config, as: db.id) }
         // 初始化对应的服务扩展
         switch service {
-        case .inline: try await Inline.config(self)
-        case .https: try await Https.config(self)
-        case .api: try await API.config(self)
+            case .inline: try await Inline.config(self)
+            case .https: try await Https.config(self)
+            case .api: try await API.config(self)
         }
     }
 }
