@@ -5,7 +5,7 @@ import FluentPostgresDriver
 public extension Application {
     enum ServiceType: String {
         case inline = "WHOOSHING_INLINE_SERVICE"
-        case https = "WHOOSHING_HTTP_SERVICE"
+        case https = "WHOOSHING_HTTPS_SERVICE"
         case api = "WHOOSHING_API_SERVICE"
     }
     
