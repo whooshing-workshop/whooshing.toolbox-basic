@@ -69,16 +69,14 @@ public enum Crypto {
         - 返回值: 哈希摘要，只提供 Data 类型。
     */
     public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
-        if salt == nil { salt = try randomDataGenerate(length: 32) }
+        if salt == nil { salt = randomDataGenerate(length: 32) }
         return .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
     }
     
     /// 随机数据生成函数，可指定长度以生成随机数据
-    public static func randomDataGenerate(length: Int = 32) throws -> Data {
-        var salt = Data(count: length)
-        let result = salt.withUnsafeMutableBytes { buffer in SecRandomCopyBytes(kSecRandomDefault, length, buffer.baseAddress!) }
-        guard result == errSecSuccess else { throw CptErr.saltGenerateFailed.d(11000, (#file, #line)) }
-        return salt
+    public static func randomDataGenerate(length: Int = 32) -> Data {
+        let randomBytes = SymmetricKey(size: .init(bitCount: length * 8)).withUnsafeBytes { Data($0) }
+        return randomBytes
     }
 
     /**

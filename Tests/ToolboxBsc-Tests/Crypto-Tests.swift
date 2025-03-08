@@ -72,10 +72,10 @@ struct CryptoTest {
     func testSaltyHash() {
         let data = "Hello, Hash!".data(using: .utf8)!
         do {
-            var salt: Data? = try Crypto.randomDataGenerate()
+            var salt: Data? = Crypto.randomDataGenerate()
             let hash = try Crypto.saltyHash(data, salt: &salt)
             #expect(!hash.isEmpty, "加盐哈希生成失败")
-            var salt2: Data? = try Crypto.randomDataGenerate()
+            var salt2: Data? = Crypto.randomDataGenerate()
             let hash2 = try Crypto.saltyHash(data, salt: &salt2)
             #expect(!hash2.isEmpty, "加盐哈希 2 生成失败")
             #expect(salt != salt2, "加盐哈希验证失败，生成了相同的盐值")
