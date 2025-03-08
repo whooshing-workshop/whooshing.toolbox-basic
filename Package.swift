@@ -61,6 +61,9 @@ let package = Package(
                 .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Fluent", package: "whooshing-fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
+            ],
+            resources: [
+                .process("Services/API/3.API请求流程.png")
             ]
         ),
         .testTarget(
