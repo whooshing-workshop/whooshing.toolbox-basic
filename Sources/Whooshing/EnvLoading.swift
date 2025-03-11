@@ -79,7 +79,7 @@ extension Env.Template {
                 case .uuid: guard let v = UUID(uuidString: value) else { throw Env.Err.typeIncorrect.d(k, 10096, (#file, #line)) }; values[key] = v
                 case .intArr: values[key] = try value.split(separator: ",").map { guard let v = Int($0) else { throw Env.Err.typeIncorrect.d(k, (#file, #line)) }; return v }
                 case .dataTemplate(let template):
-                    guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k, 10001, (#file, #line)) }
+                    guard let countStr = getValue(k + "_COUNT") else { throw Env.Err.missingKey.d(k + "_COUNT", 10001, (#file, #line)) }
                     guard let count = Int(countStr) else { throw Env.Err.typeIncorrect.d(k, 10002, (#file, #line)) }
                     var vs: [Env.Template] = []
                     for i in 0..<count {
