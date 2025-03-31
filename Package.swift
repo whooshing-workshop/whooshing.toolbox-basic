@@ -48,6 +48,8 @@ let package = Package(
         .target(
             name: "WhooshingClient",
             dependencies: [
+                .target(name: "ErrorHandle"),
+                .target(name: "Cryptos"),
                 .product(name: "Vapor", package: "whooshing-vapor")
             ]
         ),
