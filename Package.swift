@@ -14,6 +14,7 @@ let package = Package(
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
         .library( name: "PgSQL", targets: ["PgSQL"] ),
+        .library( name: "Client", targets: ["WhooshingClient"] ),
     ],
     dependencies: [
         .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "main"),
