@@ -15,19 +15,19 @@ public extension RequestIOHandler {
     func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> { context.eventLoop.makeSucceededVoidFuture() }
 }
 
-final class RequestHandler: ChannelDuplexHandler, Sendable {
+final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = ClientResponse
     typealias OutboundIn = ClientRequest
     typealias OutboundOut = ByteBuffer
     
-    let promise: EventLoopPromise<ClientResponse>
+    var promise: EventLoopPromise<ClientResponse>!
     
     private let logger: Logger?
     private let byteBufferAllocator: ByteBufferAllocator
     private let ioHandler: RequestIOHandler?
     
-    init(promise: EventLoopPromise<ClientResponse>, logger: Logger?, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    init(promise: EventLoopPromise<ClientResponse>?, logger: Logger?, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.promise = promise
         self.ioHandler = ioHandler
         self.byteBufferAllocator = byteBufferAllocator
@@ -39,6 +39,7 @@ final class RequestHandler: ChannelDuplexHandler, Sendable {
         if let ioHandler = self.ioHandler {
             ioHandler.get(response: buffer, context: context).flatMapThrowing { response in
                 var res = response
+                print(res)
                 res.channel = context.channel
                 self.promise.succeed(res)
             }.flatMapErrorThrowing { err in

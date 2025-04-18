@@ -81,15 +81,15 @@ extension ReqClient where ServiceType == Inline {
             let response: ClientResponse
             switch (procedure) {
                 case 0:
-                    // 首次请求，需要交换密钥
+                    print("// 首次请求，需要交换密钥")
                     try keyExchange(req: request, channel: channel, promise: promise)
                     fallthrough
                 case 1:
-                    // 密钥交换已完成，配合对方进行验证
+                    print("// 密钥交换已完成，配合对方进行验证")
                     try serviceValidate(req: request, channel: channel, promise: promise)
                     fallthrough
                 default:
-                    // 已成功经过验证，开始发送请求
+                    print("// 已成功经过验证，开始发送请求")
                     response = try self.send(request, channel: channel, promise: promise).wait()
             }
             return eventLoop.makeSucceededFuture(response)
@@ -97,29 +97,37 @@ extension ReqClient where ServiceType == Inline {
             return eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
         }
     }
+
+    struct JSONData: Content {
+        let data: Data
+    }
     
     private func keyExchange(req: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) throws {
-        // 创建公私钥对
+        print("// 创建公私钥对")
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
-        // 将公钥发送于目标
-        let response = try self.send(.init(method: .POST, url: req.url, body: .init(data: keyPair.public.data())), channel: channel, promise: promise).wait()
-        // 检查对方的响应，对方应当发来自己的公钥
+        print("// 将公钥发送于目标")
+        let body = try JSONEncoder().encode(JSONData(data: keyPair.public.data()))
+        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, promise: promise).wait()
+        print("Key exchange response:")
+        print(response)
+        print("// 检查对方的响应，对方应当发来自己的公钥")
         guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10090, (#file, #line)) }
         guard let data = response.body?.data() else { throw InlineReqErr.targetIncorrectResponseBody.d("预期为公钥，但得到不正确回复", 10091, (#file, #line)) }
-        // 解包对方发来的公钥
+        print("// 解包对方发来的公钥")
         let targetPub = try Crypto.Asym.CPublicKey(data: data)
-        // 计算共享密钥
+        print("// 计算共享密钥")
         let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: targetPub, salt: Crypto.hash("inline.shared.key"), info: "")
-        // 设置标志位
+        print("// 设置标志位")
         self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
     }
     
     private func serviceValidate(req: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) throws {
-        // 将自己的服务 ID 发送于目标
-        let response = try self.send(.init(method: .POST, url: req.url, body: .init(data: self.requestIoData.serviceID.data())), channel: channel, promise: promise).wait()
-        // 检查对方的响应
+        print("// 将自己的服务 ID 发送于目标")
+        let body = try JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data()))
+        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, promise: promise).wait()
+        print("// 检查对方的响应")
         guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
-        // 设置标志位
+        print("// 设置标志位")
         self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
     }
 }

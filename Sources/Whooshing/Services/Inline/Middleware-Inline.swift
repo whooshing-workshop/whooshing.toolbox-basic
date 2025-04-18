@@ -26,7 +26,10 @@ extension Inline {
             let id = ObjectIdentifier(channel)
             if req.application.inlineServiceData.connectionValidate[id] == true {
                 // 服务模块已成功经过验证，开始处理请求
-                return next.respond(to: req)
+                return next.respond(to: req).map { res in
+                    print(res)
+                    return res
+                }
             } else {
                 if let _ = req.application.inlineServiceData.connectionKeys[id] {
                     // 密钥交换已经完成，验证服务
@@ -37,20 +40,24 @@ extension Inline {
                 }
             }
         }
+
+        struct JSONData: Content {
+            let data: Data
+        }
         
         // 进行密钥交换
         @Sendable private func keyExchange(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
             do {
-                // 收到对方的公钥
-                let pubKey = try req.content.decode(Crypto.Asym.CPublicKey.self)
-                // 创建自己的密钥对
+                print("// 收到对方的公钥")
+                let pubKey = try Crypto.Asym.CPublicKey(data: req.content.decode(JSONData.self).data)
+                print("// 创建自己的密钥对")
                 let keyPair = Crypto.Asym.makeCryptoKeyPair()
-                // 计算共享密钥
+                print("// 计算共享密钥")
                 let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: pubKey, salt: Crypto.hash("inline.shared.key"), info: "")
-                // 将 sharedKey 记录在 connectionKeys 中，却把 validate 设置为 nil，表示下次请求时需要进行 Validate，而无需再交换密钥
+                print("// 将 sharedKey 记录在 connectionKeys 中，却把 validate 设置为 nil，表示下次请求时需要进行 Validate，而无需再交换密钥")
                 req.application.inlineServiceData.connectionKeys[id] = sharedKey
                 req.application.inlineServiceData.connectionValidate[id] = nil
-                // 发送自己的公钥
+                print("// 发送自己的公钥")
                 return req.eventLoop.makeSucceededFuture(Response(status: .ok, body: .init(data: keyPair.public.data())))
             } catch let err {
                 return req.eventLoop.makeFailedFuture(Err.keyExchangeFailed.d(10012, #file, #line).subErr(err))
@@ -61,15 +68,15 @@ extension Inline {
         @Sendable private func validateService(req: Request, id: ObjectIdentifier) -> EventLoopFuture<Response> {
             do {
                 req.application.inlineServiceData.connectionValidate[id] = false
-                // 取得对方的服务 ID
-                let serviceId = try req.content.decode(UUID.self)
-                // 判断该 ID 是否可信
+                print("// 取得对方的服务 ID")
+                let serviceId = try UUID(data: req.content.decode(JSONData.self).data)
+                print("// 判断该 ID 是否可信")
                 let res = req.application.inlineServiceData.moduleDatas.contains { $0.serviceId == serviceId }
                 guard res == true else { throw Err.serviceIdNotValid.d(10011, #file, #line) }
-                // 设置标志位
+                print("// 设置标志位")
                 req.application.inlineServiceData.connectionValidate[id] = true
-                // 发送回执，表示验证成功
-                return req.eventLoop.makeSucceededFuture(.init(status: .ok))
+                print("// 发送回执，表示验证成功")
+                return req.eventLoop.makeSucceededFuture(.init(status: .ok, body: .init(data: "authorized".data(using: .utf8)!)))
             } catch let err {
                 return req.eventLoop.makeFailedFuture(Err.serviceValidateFailed.d(10013, #file, #line).subErr(err))
             }

@@ -43,19 +43,23 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
         
         let promise = eventLoop.makePromise(of: ClientResponse.self)
-        let handler = RequestHandler(promise: promise, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
+        do {
+            let handler = RequestHandler(promise: promise, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
+            
+            let bootstrap = ClientBootstrap(group: eventLoop)
+                .channelInitializer { channel in
+                    channel.pipeline.addHandler(handler)
+                }
+                .channelOption(.socketOption(.tcp_nodelay), value: 1)
+                .channelOption(.socketOption(.so_reuseaddr), value: 1)
+                .channelOption(.maxMessagesPerRead, value: 1)
         
-        let bootstrap = ClientBootstrap(group: eventLoop)
-            .channelInitializer { channel in
-                channel.pipeline.addHandler(handler)
-            }
-            .channelOption(.socketOption(.tcp_nodelay), value: 1)
-            .channelOption(.socketOption(.so_reuseaddr), value: 1)
-            .channelOption(.maxMessagesPerRead, value: 1)
-        
-        let channel = try bootstrap.connect(host: host, port: port).wait()
-        
-        return (channel, promise)
+            let channel = try bootstrap.connect(host: host, port: port).wait()
+            return (channel, promise)
+        } catch let err {
+            promise.fail(err)
+            throw err
+        }
     }
     
     public func send(
@@ -70,7 +74,11 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
             promise.fail(err)
             return self.eventLoop.makeFailedFuture(err)
         }
-        return promise.futureResult
+        return promise.futureResult.map { res in
+            print("promise:")
+            print(res)
+            return res
+        }
     }
     
     public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
@@ -116,17 +124,16 @@ extension ClientResponse {
     public init(data: ByteBuffer) throws {
         var (header, body) = try Self.parseHTTPResponse(from: data)
         guard let headers = header.readString(length: header.readableBytes)?.components(separatedBy: "\r\n") else { throw Err.responseParseFailed.d("无法将请求转为 String", 10070, (#file, #line)) }
-        
         // Headers 解析
         guard headers.count >= 1 else { throw Err.responseParseFailed.d("格式不正确，无效的 Header", 10072, (#file, #line)) }
         let requestLine = headers[0].components(separatedBy: " ")
-        guard requestLine.count == 3 else { throw Err.responseParseFailed.d("第一行 Header 格式不正确", 10073, (#file, #line)) }
+        guard requestLine.count >= 3 else { throw Err.responseParseFailed.d("第一行 Header 格式不正确", 10073, (#file, #line)) }
         guard let statusCode = Int(requestLine[1]) else { throw Err.responseParseFailed.d("状态码无效", 10074, (#file, #line)) }
         let status = HTTPStatus(statusCode: statusCode, reasonPhrase: requestLine[2])
         var hs: [(String, String)] = []
         for (i, h) in headers.enumerated() {
             if i == 0 { continue }
-            let comps = h.components(separatedBy: " ")
+            let comps = h.components(separatedBy: ": ")
             guard comps.count == 2 else { throw Err.responseParseFailed.d("Header 解析失败：格式不正确", 10075, (#file, #line)) }
             hs.append((comps[0], comps[1]))
         }
