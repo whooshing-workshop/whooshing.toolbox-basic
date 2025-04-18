@@ -11,6 +11,40 @@ import WhooshingClient
 
 extension Inline: WhooshingServiceType {}
 
+public extension ReqClient where ServiceType == Inline {
+    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend)
+    }
+
+    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend)
+    }
+
+    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend)
+    }
+
+    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend)
+    }
+
+    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend)
+    }
+    
+    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.post(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    }
+
+    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.patch(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    }
+
+    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.put(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    }
+}
+
 extension ReqClient where ServiceType == Inline {
     
     enum InlineReqErr: String, ErrList {

@@ -7,17 +7,17 @@ import NIO
 import Logging
 
 public extension Application {
-    var inlineClient: Client { self.storage[ReqClient<Inline>.self]! }
+    var inlineClient: ReqClient<Inline> { self.storage[ReqClient<Inline>.self]! }
 }
 
-enum Inline {
-    enum Err: String, ErrList {
+public enum Inline {
+    internal enum Err: String, ErrList {
         var domain: String { "woo.inline.sys.init.err" }
         case initializeFailed = "服务初始化失败"
     }
     
     /// 配置 Inline 服务模块
-    static func config(_ app: Application) async throws {
+    internal static func config(_ app: Application) async throws {
         // 从环境变量中取得该服务模块的参数
         let env = try ServicePara.parse(prefix: "WHOOSHING_INLINE_SERVICE_PRIVATE")
         // 注册 HTTP IO 加密模块
@@ -35,7 +35,7 @@ enum Inline {
     }
     
     /// 与模块管理器交互，取得可信服务列表并交换密钥
-    static func keyExchangeFromManager(_ app: Application) async throws -> (Crypto.Symm.Key, Crypto.Symm.Key) {
+    internal static func keyExchangeFromManager(_ app: Application) async throws -> (Crypto.Symm.Key, Crypto.Symm.Key) {
         // 创建非对称公私钥
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
         // 向模块管理器请求取得服务模块信息，首先将自己的公钥发出
@@ -62,7 +62,7 @@ enum Inline {
         }
     }
     
-    struct ModuleData: Content, Sendable, ThrowableDataConvertable {
+    internal struct ModuleData: Content, Sendable, ThrowableDataConvertable {
         let name: String
         let serviceId: UUID
         let connection: String?
