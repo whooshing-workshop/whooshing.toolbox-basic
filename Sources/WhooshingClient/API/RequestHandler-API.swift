@@ -9,15 +9,15 @@ extension ReqClient where ServiceType == API {
     var apiRequestIoData: API.RequestIOData? { self.storage[API.RequestIOData.self] }
 }
 
-enum API {
-    final class RequestIOData: StorageKey, Sendable {
-        typealias Value = RequestIOData
-        let credential: String
-        let token: String
+public enum API {
+    public final class RequestIOData: StorageKey, Sendable {
+        public typealias Value = RequestIOData
+        public let credential: String
+        public let token: String
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let authenticationHeader = HTTPHeaders.Name("Whooshing-Authentication")
         
-        init(credential: String, token: String) {
+        public init(credential: String, token: String) {
             self.credential = credential
             self.token = token
         }
