@@ -63,15 +63,15 @@ extension ReqClient where ServiceType == Inline {
         var request = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
         do {
             try beforeSend(&request)
-            let (channel, promise) = try self.makeChannel(url: request.url)
+            let (channel, handler) = try self.makeChannel(url: request.url)
             request.channel = channel
-            return self._send(request: request, channel: channel, promise: promise)
+            return self._send(request: request, channel: channel, handler: handler)
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
     }
     
-    private func _send(request: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) -> EventLoopFuture<ClientResponse> {
+    private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<ClientResponse> {
         let id = ObjectIdentifier(channel)
         do {
             let procedure: Int
@@ -82,15 +82,15 @@ extension ReqClient where ServiceType == Inline {
             switch (procedure) {
                 case 0:
                     print("// 首次请求，需要交换密钥")
-                    try keyExchange(req: request, channel: channel, promise: promise)
+                    try keyExchange(req: request, channel: channel, handler: handler)
                     fallthrough
                 case 1:
                     print("// 密钥交换已完成，配合对方进行验证")
-                    try serviceValidate(req: request, channel: channel, promise: promise)
+                    try serviceValidate(req: request, channel: channel, handler: handler)
                     fallthrough
                 default:
                     print("// 已成功经过验证，开始发送请求")
-                    response = try self.send(request, channel: channel, promise: promise).wait()
+                    response = try self.send(request, channel: channel, handler: handler).wait()
             }
             return eventLoop.makeSucceededFuture(response)
         } catch let err {
@@ -102,12 +102,12 @@ extension ReqClient where ServiceType == Inline {
         let data: Data
     }
     
-    private func keyExchange(req: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) throws {
+    private func keyExchange(req: ClientRequest, channel: Channel, handler: RequestHandler) throws {
         print("// 创建公私钥对")
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
         print("// 将公钥发送于目标")
         let body = try JSONEncoder().encode(JSONData(data: keyPair.public.data()))
-        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, promise: promise).wait()
+        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).wait()
         print("Key exchange response:")
         print(response)
         print("// 检查对方的响应，对方应当发来自己的公钥")
@@ -121,10 +121,10 @@ extension ReqClient where ServiceType == Inline {
         self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
     }
     
-    private func serviceValidate(req: ClientRequest, channel: Channel, promise: EventLoopPromise<ClientResponse>) throws {
+    private func serviceValidate(req: ClientRequest, channel: Channel, handler: RequestHandler) throws {
         print("// 将自己的服务 ID 发送于目标")
         let body = try JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data()))
-        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, promise: promise).wait()
+        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).wait()
         print("// 检查对方的响应")
         guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
         print("// 设置标志位")

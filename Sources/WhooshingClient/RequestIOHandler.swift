@@ -15,11 +15,11 @@ public extension RequestIOHandler {
     func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> { context.eventLoop.makeSucceededVoidFuture() }
 }
 
-final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
-    typealias InboundIn = ByteBuffer
-    typealias InboundOut = ClientResponse
-    typealias OutboundIn = ClientRequest
-    typealias OutboundOut = ByteBuffer
+public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
+    public typealias InboundIn = ByteBuffer
+    public typealias InboundOut = ClientResponse
+    public typealias OutboundIn = ClientRequest
+    public typealias OutboundOut = ByteBuffer
     
     var promise: EventLoopPromise<ClientResponse>!
     
@@ -34,7 +34,7 @@ final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         self.logger = logger
     }
     
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let buffer = unwrapInboundIn(data)
         if let ioHandler = self.ioHandler {
             ioHandler.get(response: buffer, context: context).flatMapThrowing { response in
@@ -52,7 +52,7 @@ final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         }
     }
     
-    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let buffer = unwrapOutboundIn(data)
         if let ioHandler = self.ioHandler {
             ioHandler.send(request: buffer, context: context, allocator: byteBufferAllocator).flatMapThrowing { req in
@@ -65,13 +65,13 @@ final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         }
     }
     
-    func channelRegistered(context: ChannelHandlerContext) {
+    public func channelRegistered(context: ChannelHandlerContext) {
         ioHandler?.connectionStart(context: context).flatMapErrorThrowing { err in
             self.errorCaught(context: context, label: "连线建立", error: err)
         }.whenComplete { _ in }
     }
     
-    func channelUnregistered(context: ChannelHandlerContext) {
+    public func channelUnregistered(context: ChannelHandlerContext) {
         ioHandler?.connectionEnd(context: context).flatMapThrowing {
             context.fireChannelInactive()
         }.flatMapErrorThrowing { err in

@@ -38,35 +38,31 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         self.ioHandler = ioHandler
     }
     
-    public func makeChannel(url: URI) throws -> (Channel, EventLoopPromise<ClientResponse>) {
+    public func makeChannel(url: URI) throws -> (Channel, RequestHandler) {
         guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
         guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
         
-        let promise = eventLoop.makePromise(of: ClientResponse.self)
-        do {
-            let handler = RequestHandler(promise: promise, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
-            
-            let bootstrap = ClientBootstrap(group: eventLoop)
-                .channelInitializer { channel in
-                    channel.pipeline.addHandler(handler)
-                }
-                .channelOption(.socketOption(.tcp_nodelay), value: 1)
-                .channelOption(.socketOption(.so_reuseaddr), value: 1)
-                .channelOption(.maxMessagesPerRead, value: 1)
+        let handler = RequestHandler(promise: nil, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
         
-            let channel = try bootstrap.connect(host: host, port: port).wait()
-            return (channel, promise)
-        } catch let err {
-            promise.fail(err)
-            throw err
-        }
+        let bootstrap = ClientBootstrap(group: eventLoop)
+            .channelInitializer { channel in
+                channel.pipeline.addHandler(handler)
+            }
+            .channelOption(.socketOption(.tcp_nodelay), value: 1)
+            .channelOption(.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(.maxMessagesPerRead, value: 1)
+    
+        let channel = try bootstrap.connect(host: host, port: port).wait()
+        return (channel, handler)
     }
     
     public func send(
         _ client: ClientRequest,
         channel: Channel,
-        promise: EventLoopPromise<ClientResponse>
+        handler: RequestHandler
     ) -> EventLoopFuture<ClientResponse> {
+        let promise = eventLoop.makePromise(of: ClientResponse.self)
+        handler.promise = promise
         do {
             try channel.writeAndFlush(client).wait()
         } catch let err {
