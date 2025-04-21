@@ -62,6 +62,7 @@ extension Inline {
         
         // 连线结束，进行清理
         func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            print("连线结束")
             let id = ObjectIdentifier(context.channel)
             client.requestIoData.connectionKeys[id] = nil
             client.requestIoData.connectionValidate[id] = nil

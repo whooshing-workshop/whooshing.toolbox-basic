@@ -16,6 +16,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         get { lock.withLock { self._storage } }
         set { lock.withLock { self._storage = newValue } }
     }
+    public internal(set) var channelPool: SendableDictionary<String, Channel> = .init()
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
     
@@ -42,6 +43,10 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
         guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
         
+        if let channel = channelPool["\(host):\(port)"], channel.isActive {
+            return (channel, try channel.pipeline.handler(type: RequestHandler.self).wait())
+        }
+
         let handler = RequestHandler(promise: nil, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
         
         let bootstrap = ClientBootstrap(group: eventLoop)
@@ -53,6 +58,9 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
             .channelOption(.maxMessagesPerRead, value: 1)
     
         let channel = try bootstrap.connect(host: host, port: port).wait()
+
+        channelPool["\(host):\(port)"] = channel
+
         return (channel, handler)
     }
     
@@ -70,11 +78,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
             promise.fail(err)
             return self.eventLoop.makeFailedFuture(err)
         }
-        return promise.futureResult.map { res in
-            print("promise:")
-            print(res)
-            return res
-        }
+        return promise.futureResult
     }
     
     public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }

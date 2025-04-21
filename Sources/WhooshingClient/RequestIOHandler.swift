@@ -39,7 +39,6 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         if let ioHandler = self.ioHandler {
             ioHandler.get(response: buffer, context: context).flatMapThrowing { response in
                 var res = response
-                print(res)
                 res.channel = context.channel
                 self.promise.succeed(res)
             }.flatMapErrorThrowing { err in

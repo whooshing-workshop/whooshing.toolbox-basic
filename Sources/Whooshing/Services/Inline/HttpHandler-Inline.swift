@@ -49,15 +49,6 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             let res: Data
             do {
-                print("--------------------")
-                print(String(data: response, encoding: .utf8))
-                print("--------------------")
-                print(try ClientResponse(data: .init(data: response)))
-                print("--------------------")
-            } catch let err {
-                print("Error! \(err)")
-            }
-            do {
                 // 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密
                 if let key = app.inlineServiceData.connectionKeys[id], let _ = app.inlineServiceData.connectionValidate[id] {
                     res = try Crypto.Symm.encrypt(response, key: key)

@@ -8,37 +8,39 @@ import Cryptos
 extension API: WhooshingServiceType {}
 
 public extension ReqClient where ServiceType == API {
-    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend)
+    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+        return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend)
+    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+        return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend)
+    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend)
+    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest) throws -> () = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend)
+    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+        return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
     
-    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.post(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.post(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
     }
 
-    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.patch(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.patch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
     }
 
-    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.put(url, headers: headers, beforeSend: { try $0.content.encode(content) })
+    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.put(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
     }
+
+    static func defaultAfterSend(channel: Channel) -> EventLoopFuture<Void> { channel.eventLoop.makeSucceededFuture(()) }
 }
 
 extension ReqClient where ServiceType == API {
@@ -55,14 +57,17 @@ extension ReqClient where ServiceType == API {
         _ method: HTTPMethod,
         headers: HTTPHeaders = [:],
         to url: URI,
-        beforeSend: (inout ClientRequest) throws -> () = { _ in }
+        beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in },
+        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend
     ) -> EventLoopFuture<ClientResponse> {
         var request = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
         do {
-            try beforeSend(&request)
             let (channel, handler) = try self.makeChannel(url: request.url)
+            try beforeSend(&request, channel)
             request.channel = channel
-            return self._send(request: request, channel: channel, handler: handler)
+            return self._send(request: request, channel: channel, handler: handler).flatMap { res in
+                afterSend(channel).map { res }
+            }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }

@@ -26,10 +26,7 @@ extension Inline {
             let id = ObjectIdentifier(channel)
             if req.application.inlineServiceData.connectionValidate[id] == true {
                 // 服务模块已成功经过验证，开始处理请求
-                return next.respond(to: req).map { res in
-                    print(res)
-                    return res
-                }
+                return next.respond(to: req)
             } else {
                 if let _ = req.application.inlineServiceData.connectionKeys[id] {
                     // 密钥交换已经完成，验证服务
