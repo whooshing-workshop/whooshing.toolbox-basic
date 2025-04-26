@@ -1,6 +1,8 @@
 import Vapor
 import Fluent
 import FluentPostgresDriver
+import ErrorHandle
+import WhooshingClient
 
 public extension Application {
     enum ServiceType: String {
@@ -8,11 +10,16 @@ public extension Application {
         case https = "WHOOSHING_HTTPS_SERVICE"
         case api = "WHOOSHING_API_SERVICE"
     }
+
+    internal enum Err: String, ErrList {
+        var domain: String { "woo.sys.app.err" }
+        case paraNotValid = "所提供的参数不正确"
+    }
     
     var project: Env.Project! { self.storage[Env.Project.self] }
     
     /// 通过 Whooshing 系统自动配置数据库以及监听端口号
-    func configure(for service: ServiceType) async throws {
+    func configure(for service: ServiceType, data: Any? = nil) async throws {
         let project = try Env.get(with: service.rawValue)
         self.storage[Env.Project.self] = project
         self.http.server.configuration.port = project.port
@@ -21,7 +28,11 @@ public extension Application {
         switch service {
             case .inline: try await Inline.config(self)
             case .https: try await Https.config(self)
-            case .api: try await API.config(self)
+            case .api: 
+                guard let d = data as? ReqClient<Inline> else {
+                    throw Err.paraNotValid.d("预期为 ReqClient<Inline> 类型，却获得了 \(data == nil ? "nil" : data!.self)", 100000, (#file, #line))
+                }
+                try await API.config(self, inlineClient: d)
         }
     }
 }

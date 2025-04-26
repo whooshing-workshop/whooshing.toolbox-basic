@@ -39,12 +39,14 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         self.ioHandler = ioHandler
     }
     
-    public func makeChannel(url: URI) throws -> (Channel, RequestHandler) {
-        guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
-        guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
+    public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
+        guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
+        guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
         
         if let channel = channelPool["\(host):\(port)"], channel.isActive {
-            return (channel, try channel.pipeline.handler(type: RequestHandler.self).wait())
+            return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
+                return self.eventLoop.makeSucceededFuture((channel, handler))   
+            }
         }
 
         let handler = RequestHandler(promise: nil, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
@@ -57,11 +59,10 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
             .channelOption(.socketOption(.so_reuseaddr), value: 1)
             .channelOption(.maxMessagesPerRead, value: 1)
     
-        let channel = try bootstrap.connect(host: host, port: port).wait()
-
-        channelPool["\(host):\(port)"] = channel
-
-        return (channel, handler)
+        return bootstrap.connect(host: host, port: port).map { channel in
+            self.channelPool["\(host):\(port)"] = channel
+            return (channel, handler)
+        }
     }
     
     public func send(
@@ -71,14 +72,13 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     ) -> EventLoopFuture<ClientResponse> {
         let promise = eventLoop.makePromise(of: ClientResponse.self)
         handler.promise = promise
-        do {
-            try channel.writeAndFlush(client).wait()
-        } catch let err {
+        return channel.writeAndFlush(client).flatMapError { err in
             self.logger?.error("发送请求失败，\(err)")
             promise.fail(err)
             return self.eventLoop.makeFailedFuture(err)
+        }.flatMap {
+            promise.futureResult
         }
-        return promise.futureResult
     }
     
     public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }

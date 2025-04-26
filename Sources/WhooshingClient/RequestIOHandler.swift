@@ -58,6 +58,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                 context.writeAndFlush(self.wrapOutboundOut(req), promise: promise)
             }.flatMapErrorThrowing { err in
                 self.errorCaught(context: context, label: "Write", error: err)
+                promise?.fail(err)
             }.whenComplete { _ in }
         } else {
             context.writeAndFlush(data, promise: promise)

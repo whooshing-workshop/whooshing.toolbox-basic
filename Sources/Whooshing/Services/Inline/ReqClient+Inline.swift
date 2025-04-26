@@ -12,23 +12,23 @@ import WhooshingClient
 extension Inline: WhooshingServiceType {}
 
 public extension ReqClient where ServiceType == Inline {
-    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
         return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
         return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
         return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
         return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
 
-    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
+    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
         return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
     }
     
@@ -61,44 +61,55 @@ extension ReqClient where ServiceType == Inline {
         _ method: HTTPMethod,
         headers: HTTPHeaders = [:],
         to url: URI,
-        beforeSend: (inout ClientRequest, Channel) throws -> () = { _, _ in },
+        beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in },
         afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend
     ) -> EventLoopFuture<ClientResponse> {
-        var request = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
-        do {
-            let (channel, handler) = try self.makeChannel(url: request.url)
-            try beforeSend(&request, channel)
-            request.channel = channel
-            return self._send(request: request, channel: channel, handler: handler).flatMap { res in
-                afterSend(channel).map { res }
+        let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
+        return self.makeChannel(url: req.url).flatMap { (channel, handler) in
+            do {
+                var request = req
+                try beforeSend(&request, channel)
+                request.channel = channel
+                return self._send(request: request, channel: channel, handler: handler).flatMapError { err in
+                    return self.eventLoop.makeFailedFuture(err)
+                }.flatMap { res in
+                    afterSend(channel).map { res }
+                }
+            } catch {
+                return self.eventLoop.makeFailedFuture(error)
             }
-        } catch {
-            return self.eventLoop.makeFailedFuture(error)
+
         }
+        
     }
     
     private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<ClientResponse> {
         let id = ObjectIdentifier(channel)
-        do {
-            let procedure: Int
-            if self.requestIoData.connectionKeys[id] == nil { procedure = 0 }
-            else if self.requestIoData.connectionValidate[id] != true { procedure = 1 }
-            else { procedure = 2 }
-            switch (procedure) {
-                case 0:
+        let procedure: Int
+        if self.requestIoData.connectionKeys[id] == nil { procedure = 0 }
+        else if self.requestIoData.connectionValidate[id] != true { procedure = 1 }
+        else { procedure = 2 }
+        var r = self.eventloop.makeSucceededVoidFuture()
+        switch (procedure) {
+            case 0:
+                r = r.flatMap {
                     print("// 首次请求，需要交换密钥")
-                    try keyExchange(req: request, channel: channel, handler: handler)
-                    fallthrough
-                case 1:
+                    keyExchange(req: request, channel: channel, handler: handler)
+                }
+                fallthrough
+            case 1:
+                r = r.flatMap {
                     print("// 密钥交换已完成，配合对方进行验证")
-                    try serviceValidate(req: request, channel: channel, handler: handler)
-                    fallthrough
-                default:
-                    print("// 已成功经过验证，开始发送请求")
-                    return self.send(request, channel: channel, handler: handler)
-            }
-        } catch let err {
-            return eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
+                    serviceValidate(req: request, channel: channel, handler: handler)
+                }
+                fallthrough
+            default:
+                print("// 已成功经过验证，开始发送请求")
+                return r.flatMap {
+                    self.send(request, channel: channel, handler: handler)
+                }.flatMapError { err in
+                    return eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
+                }
         }
     }
 
@@ -106,30 +117,36 @@ extension ReqClient where ServiceType == Inline {
         let data: Data
     }
     
-    private func keyExchange(req: ClientRequest, channel: Channel, handler: RequestHandler) throws {
+    private func keyExchange(req: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<Void> {
         print("// 创建公私钥对")
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
         print("// 将公钥发送于目标")
-        let body = try JSONEncoder().encode(JSONData(data: keyPair.public.data()))
-        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).wait()
-        print("// 检查对方的响应，对方应当发来自己的公钥")
-        guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10090, (#file, #line)) }
-        guard let data = response.body?.data() else { throw InlineReqErr.targetIncorrectResponseBody.d("预期为公钥，但得到不正确回复", 10091, (#file, #line)) }
-        print("// 解包对方发来的公钥")
-        let targetPub = try Crypto.Asym.CPublicKey(data: data)
-        print("// 计算共享密钥")
-        let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: targetPub, salt: Crypto.hash("inline.shared.key"), info: "")
-        print("// 设置标志位")
-        self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
+        guard let body = try? JSONEncoder().encode(JSONData(data: keyPair.public.data())) else { return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13003, (#file, #line))) }
+        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in 
+            print("// 检查对方的响应，对方应当发来自己的公钥")
+            guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10090, (#file, #line)) }
+            guard let data = response.body?.data() else { throw InlineReqErr.targetIncorrectResponseBody.d("预期为公钥，但得到不正确回复", 10091, (#file, #line)) }
+            print("// 解包对方发来的公钥")
+            let targetPub = try Crypto.Asym.CPublicKey(data: data)
+            print("// 计算共享密钥")
+            let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: targetPub, salt: Crypto.hash("inline.shared.key"), info: "")
+            print("// 设置标志位")
+            self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
+        }.flatMapError { err in 
+            return self.eventLoop.makeFailedFuture(err)
+        }
     }
     
-    private func serviceValidate(req: ClientRequest, channel: Channel, handler: RequestHandler) throws {
+    private func serviceValidate(req: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<Void> {
         print("// 将自己的服务 ID 发送于目标")
-        let body = try JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data()))
-        let response = try self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).wait()
-        print("// 检查对方的响应")
-        guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
-        print("// 设置标志位")
-        self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
+        guard let body = try? JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data())) else { return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13004, (#file, #line))) }
+        self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in
+            print("// 检查对方的响应")
+            guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
+            print("// 设置标志位")
+            self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
+        }.flatMapError { err in
+            return self.eventLoop.makeFailedFuture(err)
+        }
     }
 }
