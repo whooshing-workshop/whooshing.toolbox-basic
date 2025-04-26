@@ -78,9 +78,7 @@ extension ReqClient where ServiceType == Inline {
             } catch {
                 return self.eventLoop.makeFailedFuture(error)
             }
-
         }
-        
     }
     
     private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<ClientResponse> {
@@ -89,26 +87,26 @@ extension ReqClient where ServiceType == Inline {
         if self.requestIoData.connectionKeys[id] == nil { procedure = 0 }
         else if self.requestIoData.connectionValidate[id] != true { procedure = 1 }
         else { procedure = 2 }
-        var r = self.eventloop.makeSucceededVoidFuture()
+        var r = self.eventLoop.makeSucceededVoidFuture()
         switch (procedure) {
             case 0:
                 r = r.flatMap {
                     print("// 首次请求，需要交换密钥")
-                    keyExchange(req: request, channel: channel, handler: handler)
+                    return self.keyExchange(req: request, channel: channel, handler: handler)
                 }
                 fallthrough
             case 1:
                 r = r.flatMap {
                     print("// 密钥交换已完成，配合对方进行验证")
-                    serviceValidate(req: request, channel: channel, handler: handler)
+                    return self.serviceValidate(req: request, channel: channel, handler: handler)
                 }
                 fallthrough
             default:
-                print("// 已成功经过验证，开始发送请求")
                 return r.flatMap {
-                    self.send(request, channel: channel, handler: handler)
+                    print("// 已成功经过验证，开始发送请求")
+                    return self.send(request, channel: channel, handler: handler)
                 }.flatMapError { err in
-                    return eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
+                    return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
                 }
         }
     }
@@ -140,7 +138,7 @@ extension ReqClient where ServiceType == Inline {
     private func serviceValidate(req: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<Void> {
         print("// 将自己的服务 ID 发送于目标")
         guard let body = try? JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data())) else { return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13004, (#file, #line))) }
-        self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in
+        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in
             print("// 检查对方的响应")
             guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
             print("// 设置标志位")

@@ -1,5 +1,5 @@
 {
-  "originHash" : "b51776c418e11e2a55421ae62ebaaa30c11f352695d7565cab4486ed49ff582c",
+  "originHash" : "ce675991692089aad7bb639e42d3996d44040aed3a631fdcfcfaf99904b1b9db",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-http-structured-headers.git",
       "state" : {
-        "revision" : "8e769facea6b7d46ea60e5e93635a384fd573480",
-        "version" : "1.2.1"
+        "revision" : "f280fc7676b9940ff2c6598642751ea333c6544f",
+        "version" : "1.2.2"
       }
     },
     {
@@ -204,8 +204,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio-extras.git",
       "state" : {
-        "revision" : "00f3f72d2f9942d0e2dc96057ab50a37ced150d4",
-        "version" : "1.25.0"
+        "revision" : "f1f6f772198bee35d99dd145f1513d8581a54f2c",
+        "version" : "1.26.0"
       }
     },
     {
@@ -287,6 +287,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "c271d6c0d738c8a10ab4fb219bea8cd449080cb0"
+      }
+    },
+    {
+      "identity" : "whooshing-vapor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SJJC-Team/whooshing-vapor.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "1d0926d384a46e2a83632b16d3cc6c3009509de8"
       }
     }
   ],
