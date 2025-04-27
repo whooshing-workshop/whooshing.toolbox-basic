@@ -140,4 +140,20 @@ struct CryptoTest {
             #expect(Bool(false), "混合加密算法测试失败: \(error)")
         }
     }
+
+    @Test("测试大数据加解密")
+    func testLargeDataEncryption() {
+        var s = ""
+        for _ in 0..<100000 {
+            s += "Hello"
+        }
+        let key = Crypto.Symm.makeKey()
+        do {
+            let cipher = try Crypto.Symm.encrypt(s, key: key)
+            let plain: String = try Crypto.Symm.decrypt(cipher, key: key)
+            #expect(s == plain)
+        } catch let err {
+            #expect(Bool(false), "大数据加解密测试失败: \(err)")
+        }
+    }
 }

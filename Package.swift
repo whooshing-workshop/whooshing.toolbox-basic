@@ -17,7 +17,7 @@ let package = Package(
         .library( name: "WhooshingClient", targets: ["WhooshingClient"] ),
     ],
     dependencies: [
-        .package(path: "/root/projects/whooshing-vapor"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "main"),
         .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", branch: "main"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
@@ -29,6 +29,7 @@ let package = Package(
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
+                .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),

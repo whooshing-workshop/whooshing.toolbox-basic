@@ -25,7 +25,7 @@ extension Inline {
             guard let channel = req.channel else { return req.eventLoop.makeFailedFuture(Err.unknowError.d("未找到 Channel", 10013, (#file, #line))) }
             let id = ObjectIdentifier(channel)
             if req.application.inlineServiceData.connectionValidate[id] == true {
-                // 服务模块已成功经过验证，开始处理请求
+                print("// 服务模块已成功经过验证，开始处理请求")
                 return next.respond(to: req)
             } else {
                 if let _ = req.application.inlineServiceData.connectionKeys[id] {
