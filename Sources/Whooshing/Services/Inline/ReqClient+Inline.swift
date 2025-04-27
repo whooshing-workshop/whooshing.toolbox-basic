@@ -71,12 +71,12 @@ extension ReqClient where ServiceType == Inline {
                 try beforeSend(&request, channel)
                 request.channel = channel
                 return self._send(request: request, channel: channel, handler: handler).flatMapError { err in
-                    return self.eventLoop.makeFailedFuture(err)
+                    return channel.eventLoop.makeFailedFuture(err)
                 }.flatMap { res in
                     afterSend(channel).map { res }
                 }
             } catch {
-                return self.eventLoop.makeFailedFuture(error)
+                return channel.eventLoop.makeFailedFuture(error)
             }
         }
     }
@@ -87,7 +87,7 @@ extension ReqClient where ServiceType == Inline {
         if self.requestIoData.connectionKeys[id] == nil { procedure = 0 }
         else if self.requestIoData.connectionValidate[id] != true { procedure = 1 }
         else { procedure = 2 }
-        var r = self.eventLoop.makeSucceededVoidFuture()
+        var r = channel.eventLoop.makeSucceededVoidFuture()
         switch (procedure) {
             case 0:
                 r = r.flatMap {
@@ -106,7 +106,7 @@ extension ReqClient where ServiceType == Inline {
                     print("// 已成功经过验证，开始发送请求")
                     return self.send(request, channel: channel, handler: handler)
                 }.flatMapError { err in
-                    return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
+                    return channel.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d(10095, (#file, #line)).subErr(err))
                 }
         }
     }
@@ -119,8 +119,8 @@ extension ReqClient where ServiceType == Inline {
         print("// 创建公私钥对")
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
         print("// 将公钥发送于目标")
-        guard let body = try? JSONEncoder().encode(JSONData(data: keyPair.public.data())) else { return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13003, (#file, #line))) }
-        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in 
+        guard let body = try? JSONEncoder().encode(JSONData(data: keyPair.public.data())) else { return channel.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13003, (#file, #line))) }
+        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in 
             print("// 检查对方的响应，对方应当发来自己的公钥")
             guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10090, (#file, #line)) }
             guard let data = response.body?.data() else { throw InlineReqErr.targetIncorrectResponseBody.d("预期为公钥，但得到不正确回复", 10091, (#file, #line)) }
@@ -131,20 +131,20 @@ extension ReqClient where ServiceType == Inline {
             print("// 设置标志位")
             self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
         }.flatMapError { err in 
-            return self.eventLoop.makeFailedFuture(err)
+            return channel.eventLoop.makeFailedFuture(err)
         }
     }
     
     private func serviceValidate(req: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<Void> {
         print("// 将自己的服务 ID 发送于目标")
-        guard let body = try? JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data())) else { return self.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13004, (#file, #line))) }
-        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in
+        guard let body = try? JSONEncoder().encode(JSONData(data: self.requestIoData.serviceID.data())) else { return channel.eventLoop.makeFailedFuture(InlineReqErr.unknowSendError.d("JSON 编码失败", 13004, (#file, #line))) }
+        return self.send(.init(method: .POST, url: req.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { response in
             print("// 检查对方的响应")
             guard response.status == .ok else { throw InlineReqErr.targetBadResponse.d("\(response.status.description)(\(response.status.code))", 10092, (#file, #line)) }
             print("// 设置标志位")
             self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
         }.flatMapError { err in
-            return self.eventLoop.makeFailedFuture(err)
+            return channel.eventLoop.makeFailedFuture(err)
         }
     }
 }

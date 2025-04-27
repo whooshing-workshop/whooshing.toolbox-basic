@@ -1,5 +1,5 @@
 {
-  "originHash" : "ce675991692089aad7bb639e42d3996d44040aed3a631fdcfcfaf99904b1b9db",
+  "originHash" : "9bfc1734f3a1e8b798593254709c795c610a25ba2b43a8c4bbaf23405858998b",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -287,15 +287,6 @@
       "state" : {
         "branch" : "main",
         "revision" : "c271d6c0d738c8a10ab4fb219bea8cd449080cb0"
-      }
-    },
-    {
-      "identity" : "whooshing-vapor",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SJJC-Team/whooshing-vapor.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "1d0926d384a46e2a83632b16d3cc6c3009509de8"
       }
     }
   ],

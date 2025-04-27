@@ -44,7 +44,10 @@ public enum API {
                     guard let credential = Data(base64Encoded: ioData.credential) else { throw Err.parseParaFailed.d("用户凭据", 12007, (#file, #line)) }
                     guard let token = Data(base64Encoded: ioData.token) else { throw Err.parseParaFailed.d("用户口令", 12008, (#file, #line)) }
                     let tokenKey = Crypto.Symm.Key(data: token)
-                    let data = try "[auth]".data() + credential + Crypto.hash(Crypto.Symm.encrypt(token, key: tokenKey))
+                    let tokenEncrypted = try Crypto.Symm.encrypt(token, key: tokenKey)
+                    print("解析前: \(tokenEncrypted.base64String())")
+                    let data = try "[auth]".data() + credential + tokenEncrypted
+                    print("解析前尝试: \(data.subdata(in: 22..<82).base64String())")
                     var buffer = allocator.buffer(capacity: 0)
                     print("// 将数据写入 buffer，准备发送")
                     buffer.writeData(data)
@@ -93,7 +96,7 @@ public enum API {
                 } else {
                     print("// 该响应应当是一个认证请求的响应")
                     print("// 向认证模块发送认证请求，最终应当得到一个使用用户口令加密的新密钥，并使用该新密钥进行后续的通讯加密")
-                    guard let token = Data(base64Encoded: ioData.credential) else { throw Err.parseParaFailed.d("用户口令", 12011, (#file, #line)) }
+                    guard let token = Data(base64Encoded: ioData.token) else { throw Err.parseParaFailed.d("用户口令", 12011, (#file, #line)) }
                     let tokenKey = Crypto.Symm.Key(data: token)
                     let newKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(Data(buffer: response), key: tokenKey)
                     print("// 注册该新密钥，确保后续将会使用该密钥加密")

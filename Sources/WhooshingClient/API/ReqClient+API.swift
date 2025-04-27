@@ -73,12 +73,12 @@ extension ReqClient where ServiceType == API {
                 try beforeSend(&request, channel)
                 request.channel = channel
                 return self._send(request: request, channel: channel, handler: handler).flatMapError { err in
-                    return self.eventLoop.makeFailedFuture(err)
+                    return channel.eventLoop.makeFailedFuture(err)
                 }.flatMap { res in
                     afterSend(channel).map { res }
                 }
             } catch {
-                return self.eventLoop.makeFailedFuture(error)
+                return channel.eventLoop.makeFailedFuture(error)
             }
         }
     }
@@ -95,22 +95,22 @@ extension ReqClient where ServiceType == API {
             print("// 需要进行认证")
             guard let body = try? JSONEncoder().encode(JSONData(data: .init([0]))) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 13002, (#file, #line))) }
             r = r.flatMap {
-                self.send(.init(method: .POST, url: request.url, headers: [ioData.authenticationHeader.description: "true", "content-type": "application/json", "content-length": "\(body.count)"], body: .init(data: body)), channel: channel, handler: handler).flatMap { res in
+                self.send(.init(method: .POST, url: request.url, headers: [ioData.authenticationHeader.description: "true", "content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMap { res in
                     print("// 认证请求发送完成")
-                    guard res.status == .ok else { return self.eventLoop.makeFailedFuture(APIReqErr.badResponse.d(12014, (#file, #line)))}
-                    guard res.headers.contains(name: ioData.authenticationHeader) else { return self.eventLoop.makeFailedFuture(APIReqErr.authenticationBadProtocol.d("目标回复的响应不包括认证头信息", 12015, (#file, #line))) }
-                    guard ioData.connectionKeys[id] != nil else { return self.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("预期应当读取到密钥，但得到空值", 12016, (#file, #line))) }
-                    return self.eventLoop.makeSucceededVoidFuture()
+                    guard res.status == .ok else { return channel.eventLoop.makeFailedFuture(APIReqErr.badResponse.d(12014, (#file, #line)))}
+                    guard res.headers.contains(name: ioData.authenticationHeader) else { return channel.eventLoop.makeFailedFuture(APIReqErr.authenticationBadProtocol.d("目标回复的响应不包括认证头信息", 12015, (#file, #line))) }
+                    guard ioData.connectionKeys[id] != nil else { return channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("预期应当读取到密钥，但得到空值", 12016, (#file, #line))) }
+                    return channel.eventLoop.makeSucceededVoidFuture()
                 }
             }
         }
         return r.flatMap{
             print("// 发送具体的请求")
             return self.send(request, channel: channel, handler: handler).flatMap { res in
-                self.eventLoop.makeSucceededFuture(res)
+                channel.eventLoop.makeSucceededFuture(res)
             }
         }.flatMapError { err in 
-            return self.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
+            return channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
         }
     }
 }

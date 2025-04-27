@@ -63,16 +63,16 @@ extension API {
         // 向认证模块请求身份认证
         func tokenAuthentication(request: Data, context: ChannelHandlerContext) -> EventLoopFuture<Void> {
             // 用户凭据有 16 字节，在 6 ～ 6+16 的字节区
-            // 用户口令 Hashed 有 64 字节，在 22 ～ 22+64 字节区
-            // 因此，认证请求总共为 86 字节
-            guard request.count == 86 else { return context.eventLoop.makeFailedFuture(Err.requestIllegal.d("请求长度不符合要求，应当为 86 字节，却收到 \(request.count)", 12000, (#file, #line))) }
+            // 用户口令 Encrypted 有 60 字节，在 22 ～ 22+60 字节区
+            // 因此，认证请求总共为 82 字节
+            guard request.count == 82 else { return context.eventLoop.makeFailedFuture(Err.requestIllegal.d("请求长度不符合要求，应当为 86 字节，却收到 \(request.count)", 12000, (#file, #line))) }
             let credential = request.subdata(in: 6..<22).base64EncodedString()
-            let tokenHashed = request.subdata(in: 22..<86)
+            let tokenEncrypted = request.subdata(in: 22..<82)
             print("// 向认证模块发送认证请求")
             return app.apiServiceData.inlineClient.post(authenticationURL.toUri(with: "/user/auth"), beforeSend: { request, _ in
-                try request.content.encode(TokenAuth(credential: credential, tokenHashed: tokenHashed), as: .json)
-            }).flatMapThrowing { res in
-                guard res.status == .ok else { throw Err.requestFailed.d("请求的状态码结果为: \(res.status)", 12001, (#file, #line)) }
+                try request.content.encode(TokenAuth(credential: credential, tokenEncrypted: tokenEncrypted), as: .json)
+            }).hop(to: context.eventLoop).flatMapThrowing { res in
+                guard res.status == .ok else { throw Err.requestFailed.d("请求的状态码结果为: \(res.status), 结果为: \(res.body != nil ? String(buffer: res.body!) : "nil")", 12001, (#file, #line)) }
                 print("// 从结果解析用户口令")
                 let token = try res.content.decode(Crypto.Symm.Key.self)
                 print("// 生成新的密钥，用做通讯加密")
@@ -86,12 +86,12 @@ extension API {
                     return context.eventLoop.makeSucceededVoidFuture()
                 }
             }.flatMapError { err in
-                context.eventLoop.makeFailedFuture(err)
+                return context.eventLoop.makeFailedFuture(err)
             }
             
             struct TokenAuth: Content {
                 let credential: String
-                let tokenHashed: Data
+                let tokenEncrypted: Data
             }
         }
         
@@ -99,7 +99,6 @@ extension API {
         func decrypt(request: Data, context: ChannelHandlerContext) -> EventLoopFuture<Data> {
             let id = ObjectIdentifier(context.channel)
             do {
-                print("guard")
                 guard let key = app.apiServiceData.clientKeys[id] else { throw Err.needAuthenticationFirst.d(12002, (#file, #line)) }
                 print("// 解密请求")
                 let req: Data = try Crypto.Symm.decrypt(request, key: key)
