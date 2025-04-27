@@ -69,7 +69,7 @@ extension API {
             let credential = request.subdata(in: 6..<22).base64EncodedString()
             let tokenEncrypted = request.subdata(in: 22..<82)
             print("// 向认证模块发送认证请求")
-            return app.apiServiceData.inlineClient.post(authenticationURL.toUri(with: "/user/auth"), beforeSend: { request, _ in
+            return app.apiServiceData.inlineClient.post(authenticationURL.toUri(with: "/user/auth"), beforeSend: { (request, _) in
                 try request.content.encode(TokenAuth(credential: credential, tokenEncrypted: tokenEncrypted), as: .json)
             }).hop(to: context.eventLoop).flatMapThrowing { res in
                 guard res.status == .ok else { throw Err.requestFailed.d("请求的状态码结果为: \(res.status), 结果为: \(res.body != nil ? String(buffer: res.body!) : "nil")", 12001, (#file, #line)) }
