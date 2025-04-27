@@ -2,6 +2,7 @@ import Crypto
 import Foundation
 import ErrorHandle
 import DataConvertable
+import Vapor
 
 /// 加解密 Crypto 模块可能出现的所有错误
 public enum CryptoErrorLists: String, ErrList {
@@ -11,6 +12,8 @@ public enum CryptoErrorLists: String, ErrList {
     case signFailed = "签名失败"
     case validateFailed = "签名验证失败"
     case keyEncapsulateFailed = "密钥协商失败"
+    case saltGenerateFailed = "盐值生成失败"
+    case keyInvalid = "密钥不合法"
 }
 
 public typealias CptErr = CryptoErrorLists
@@ -35,7 +38,7 @@ public enum Crypto {
 
         哈希算法由于其不可逆且高效的优点，常用与密码加密，完整性验证等等。
 
-        该函数使用 SHA256 进行哈希摘要。
+        该函数使用 SHA512 进行哈希摘要。
 
         - 参数
             - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
@@ -56,6 +59,27 @@ public enum Crypto {
     */
     public static func hash(_ data: any SafeDataConvertable) -> Data { try! hash(data as (any ThrowableDataConvertable)) }
     public static func hash(_ data: any ThrowableDataConvertable) throws -> Data { .init(try HashFunction.hash(data: data.data())) }
+    
+    /**
+        #### 哈希摘要算法，加盐哈希
+     
+        该函数使用 SHA512 进行哈希摘要。
+        
+        - 参数
+            - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
+            - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
+        - 返回值: 哈希摘要，只提供 Data 类型。
+    */
+    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
+        if salt == nil { salt = randomDataGenerate(length: 32) }
+        return .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
+    }
+    
+    /// 随机数据生成函数，可指定长度以生成随机数据
+    public static func randomDataGenerate(length: Int = 32) -> Data {
+        let randomBytes = SymmetricKey(size: .init(bitCount: length * 8)).withUnsafeBytes { Data($0) }
+        return randomBytes
+    }
 
     /**
         #### 对称加密算法
@@ -326,16 +350,22 @@ private extension Crypto {
 
 private extension Crypto.Symm {
     static func aesEncrypt(_ data: any ThrowableDataConvertable, key: Key) throws -> Data {
+        print("正在进行加密：\(try data.data().count)")
+        guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2001, (#file, #line)) }
         let sealedBox = try Guard({ try AES.GCM.seal(data.data(), using: key) }, throw: CptErr.encryptFailed.d("AES 加密未能成功封印明文数据", 1009, (#file, #line)))
         guard let cipher = sealedBox.combined else {
             throw CptErr.encryptFailed.d("AES 加密-未知错误，密文不存在", 1006, (#file, #line))
         }
+        print("加密得到：\(cipher.count)")
         return cipher
     }
 
     static func aesDecrypt<D>(_ cipher: Data, key: Key) throws -> D where D: ThrowableDataConvertable {
+        print("正在进行解密：\(cipher.count)")
+        guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2002, (#file, #line)) }
         let sealedBox = try Guard( { try AES.GCM.SealedBox(combined: cipher) }, throw: CptErr.decryptFailed.d("AES 解密-将密文转换为 SealedBox 时出错", 1007, (#file, #line)))
         let decryptedData = try Guard({ try AES.GCM.open(sealedBox, using: key) }, throw: CptErr.decryptFailed.d("AES 解密-解开密文时出错", 1008, (#file, #line)))
+        print("解密得到：\(decryptedData.count)")
         return try D(data: decryptedData)
     }
 

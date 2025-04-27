@@ -4,47 +4,52 @@ import ErrorHandle
 import NIOConcurrencyHelpers
 import NIO
 
-protocol WhooshingServiceType {}
+public protocol WhooshingServiceType {}
 
-final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
-    typealias Value = ReqClient<ServiceType>
-    let eventLoop: EventLoop
-    let logger: Logger?
-    let byteBufferAllocator: ByteBufferAllocator
-    var ioHandler: RequestIOHandler?
-    var storage: Storage {
+public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
+    public typealias Value = ReqClient<ServiceType>
+    public let eventLoop: EventLoop
+    public let logger: Logger?
+    public let byteBufferAllocator: ByteBufferAllocator
+    public var ioHandler: RequestIOHandler?
+    public var storage: Storage {
         get { lock.withLock { self._storage } }
         set { lock.withLock { self._storage = newValue } }
     }
+    public internal(set) var channelPool: SendableDictionary<String, Channel> = .init()
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
     
-    func delegating(to eventLoop: EventLoop) -> Client {
+    public func delegating(to eventLoop: EventLoop) -> Client {
         ReqClient<ServiceType>(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
-    func logging(to logger: Logger) -> Client {
+    public func logging(to logger: Logger) -> Client {
         ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
-    func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
+    public func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
         ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
     }
     
-    init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    public init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.eventLoop = eventLoop
         self.logger = logger
         self.byteBufferAllocator = byteBufferAllocator
         self.ioHandler = ioHandler
     }
     
-    func makeChannel(url: URI) throws -> (Channel, EventLoopPromise<ClientResponse>) {
-        guard let host = url.host else { throw Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line)) }
-        guard let port = url.port else { throw Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line)) }
-        
-        let promise = eventLoop.makePromise(of: ClientResponse.self)
-        let handler = RequestHandler(promise: promise, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
-        
+    public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
+        guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
+        guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
+        if let channel = channelPool["\(host):\(port)"], channel.isActive {
+            return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
+                return channel.eventLoop.makeSucceededFuture((channel, handler))   
+            }
+        }
+
+        let handler = RequestHandler(promise: nil, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
+
         let bootstrap = ClientBootstrap(group: eventLoop)
             .channelInitializer { channel in
                 channel.pipeline.addHandler(handler)
@@ -52,28 +57,34 @@ final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable wher
             .channelOption(.socketOption(.tcp_nodelay), value: 1)
             .channelOption(.socketOption(.so_reuseaddr), value: 1)
             .channelOption(.maxMessagesPerRead, value: 1)
-        
-        let channel = try bootstrap.connect(host: host, port: port).wait()
-        
-        return (channel, promise)
+
+        return bootstrap.connect(host: host, port: port).map { channel in
+            self.channelPool["\(host):\(port)"] = channel
+            return (channel, handler)
+        }
     }
     
-    func send(
-        _ client: ClientRequest,
+    public func send(
+        _ c: ClientRequest,
         channel: Channel,
-        promise: EventLoopPromise<ClientResponse>
+        handler: RequestHandler
     ) -> EventLoopFuture<ClientResponse> {
-        do {
-            try channel.writeAndFlush(client).wait()
-        } catch let err {
+        let promise = channel.eventLoop.makePromise(of: ClientResponse.self)
+        var client = c
+        if let body = client.body {
+            client.headers.add(name: .contentLength, value: String(body.readableBytes))
+        }
+        handler.promise = promise
+        return channel.writeAndFlush(client).flatMapError { err in
             self.logger?.error("发送请求失败，\(err)")
             promise.fail(err)
-            return self.eventLoop.makeFailedFuture(err)
+            return channel.eventLoop.makeFailedFuture(err)
+        }.flatMap {
+            promise.futureResult
         }
-        return promise.futureResult
     }
     
-    func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
+    public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
     
     enum Err: String, ErrList {
         var domain: String { "woo.sys.http.client.err" }
@@ -81,26 +92,22 @@ final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable wher
     }
 }
 
-extension ClientRequest {
+public extension ClientRequest {
     
-    enum Err: String, ErrList {
+    internal enum Err: String, ErrList {
         var domain: String { "woo.sys.client.request.err" }
         case requestToDataFailed = "将请求转为 Data 失败"
     }
     
     func data(bufferAllocator: ByteBufferAllocator) throws -> ByteBuffer {
         var buffer = bufferAllocator.buffer(capacity: 0)
-        
         // 转换 HTTP 方法和 URL
         let requestLine = "\(method.rawValue) \(url.path) HTTP/1.1\r\n"
         buffer.writeString(requestLine)
-        
         // 转换 headers
         headers.forEach { (name, value) in buffer.writeString("\(name): \(value)\r\n") }
-        
         // 添加一个空行，表示头部结束
         buffer.writeString("\r\n")
-
         // 如果有请求体 (body)，则添加请求体的内容
         if var body = body {
             buffer.writeBuffer(&body)
@@ -111,26 +118,25 @@ extension ClientRequest {
 
 extension ClientResponse {
     
-    enum Err: String, ErrList {
+     enum Err: String, ErrList {
         var domain: String { "woo.sys.client.response.err" }
         case responseParseFailed = "响应解析失败"
         case unknowErr = "解析响应时出现未知错误"
     }
     
-    init(data: ByteBuffer) throws {
+    public init(data: ByteBuffer) throws {
         var (header, body) = try Self.parseHTTPResponse(from: data)
         guard let headers = header.readString(length: header.readableBytes)?.components(separatedBy: "\r\n") else { throw Err.responseParseFailed.d("无法将请求转为 String", 10070, (#file, #line)) }
-        
         // Headers 解析
         guard headers.count >= 1 else { throw Err.responseParseFailed.d("格式不正确，无效的 Header", 10072, (#file, #line)) }
         let requestLine = headers[0].components(separatedBy: " ")
-        guard requestLine.count == 3 else { throw Err.responseParseFailed.d("第一行 Header 格式不正确", 10073, (#file, #line)) }
+        guard requestLine.count >= 3 else { throw Err.responseParseFailed.d("第一行 Header 格式不正确", 10073, (#file, #line)) }
         guard let statusCode = Int(requestLine[1]) else { throw Err.responseParseFailed.d("状态码无效", 10074, (#file, #line)) }
         let status = HTTPStatus(statusCode: statusCode, reasonPhrase: requestLine[2])
         var hs: [(String, String)] = []
         for (i, h) in headers.enumerated() {
             if i == 0 { continue }
-            let comps = h.components(separatedBy: " ")
+            let comps = h.components(separatedBy: ": ")
             guard comps.count == 2 else { throw Err.responseParseFailed.d("Header 解析失败：格式不正确", 10075, (#file, #line)) }
             hs.append((comps[0], comps[1]))
         }

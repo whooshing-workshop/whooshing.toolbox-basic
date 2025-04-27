@@ -17,6 +17,18 @@ struct DataConvertableTest {
         }
     }
     
+    @Test("Base64 字符串转换测试")
+    func testBase64StringConversion() {
+        let originalString = Base64String(Data((0..<16).map { _ in UInt8.random(in: 0...255) }).base64EncodedString())
+        do {
+            let data = try originalString.data()
+            let convertedString = Base64String(data: data)
+            #expect(convertedString == originalString)
+        } catch {
+            #expect(Bool(false), "Base64 字符串转换抛出错误: \(error)")
+        }
+    }
+    
     @Test("整数转换测试")
     func testIntConversion() {
         let originalInt: Int = 42

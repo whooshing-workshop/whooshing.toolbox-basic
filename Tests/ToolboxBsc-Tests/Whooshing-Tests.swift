@@ -101,4 +101,16 @@ struct WhooshingTests {
             #expect(Bool(true))
         }
     }
+
+    @Test("测试 ClientResponse 与 Data 互转") func testClientResponseToData() async throws {
+        var origin = "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=utf-8\r\ncontent-length: 13\r\n\r\nHello, world!"
+        do {
+            let res = try ClientResponse(data: .init(data: origin.data(using: .utf8)!))
+            origin = origin.replacingOccurrences(of: "\r\n", with: "\n")
+            #expect(res.description == origin)
+        } catch let err {
+            print(err)
+            #expect(Bool(false))
+        }
+    }
 }

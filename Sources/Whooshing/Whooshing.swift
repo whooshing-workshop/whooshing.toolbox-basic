@@ -1,21 +1,39 @@
 import Vapor
 import Fluent
 import FluentPostgresDriver
+import ErrorHandle
+import WhooshingClient
 
 public extension Application {
-    
-    enum TemplateType: String, Sendable { case api = "api", https = "https", inline = "inline" }
+    enum ServiceType: String {
+        case inline = "WHOOSHING_INLINE_SERVICE"
+        case https = "WHOOSHING_HTTPS_SERVICE"
+        case api = "WHOOSHING_API_SERVICE"
+    }
 
+    internal enum Err: String, ErrList {
+        var domain: String { "woo.sys.app.err" }
+        case paraNotValid = "所提供的参数不正确"
+    }
+    
     var project: Env.Project! { self.storage[Env.Project.self] }
     
     /// 通过 Whooshing 系统自动配置数据库以及监听端口号
-    static func configure(_ app: Application, template: TemplateType) async throws {
-        let project = try Env.get(template: template)
-        app.storage[Env.Project.self] = project
-        app.http.server.configuration.port = project.port
-        for db in project.databases { app.databases.use(db.config, as: db.id) }
-        // 初始化 Inline 扩展
-        try await Inline.config(app)
+    func configure(for service: ServiceType, data: Any? = nil) async throws {
+        let project = try Env.get(with: service.rawValue)
+        self.storage[Env.Project.self] = project
+        self.http.server.configuration.port = project.port
+        for db in project.databases { self.databases.use(db.config, as: db.id) }
+        // 初始化对应的服务扩展
+        switch service {
+            case .inline: try await Inline.config(self)
+            case .https: try await Https.config(self)
+            case .api: 
+                guard let d = data as? ReqClient<Inline> else {
+                    throw Err.paraNotValid.d("预期为 ReqClient<Inline> 类型，却获得了 \(data == nil ? "nil" : data!.self)", 100000, (#file, #line))
+                }
+                try await API.config(self, inlineClient: d)
+        }
     }
 }
 

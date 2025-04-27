@@ -68,6 +68,23 @@ struct CryptoTest {
         #expect(!hash.isEmpty, "哈希生成失败")
     }
     
+    @Test("测试加盐哈希")
+    func testSaltyHash() {
+        let data = "Hello, Hash!".data(using: .utf8)!
+        do {
+            var salt: Data? = Crypto.randomDataGenerate()
+            let hash = try Crypto.saltyHash(data, salt: &salt)
+            #expect(!hash.isEmpty, "加盐哈希生成失败")
+            var salt2: Data? = Crypto.randomDataGenerate()
+            let hash2 = try Crypto.saltyHash(data, salt: &salt2)
+            #expect(!hash2.isEmpty, "加盐哈希 2 生成失败")
+            #expect(salt != salt2, "加盐哈希验证失败，生成了相同的盐值")
+            #expect(hash != hash2, "加盐哈希验证失败，不同盐值却生成了相同的哈希值")
+        } catch {
+            #expect(Bool(false), "加盐哈希测试失败: \(error)")
+        }
+    }
+    
     @Test("测试对对称加密密钥进行加解密")
     func testSymmKeyCrypto() {
         let key = Crypto.Symm.makeKey()
@@ -121,6 +138,22 @@ struct CryptoTest {
             #expect(encapsulatedKey.bitCount == SymmetricKeySize.bits256.bitCount, "密钥封装失败")
         } catch {
             #expect(Bool(false), "混合加密算法测试失败: \(error)")
+        }
+    }
+
+    @Test("测试大数据加解密")
+    func testLargeDataEncryption() {
+        var s = ""
+        for _ in 0..<100000 {
+            s += "Hello"
+        }
+        let key = Crypto.Symm.makeKey()
+        do {
+            let cipher = try Crypto.Symm.encrypt(s, key: key)
+            let plain: String = try Crypto.Symm.decrypt(cipher, key: key)
+            #expect(s == plain)
+        } catch let err {
+            #expect(Bool(false), "大数据加解密测试失败: \(err)")
         }
     }
 }

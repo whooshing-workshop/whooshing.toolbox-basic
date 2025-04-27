@@ -1,5 +1,8 @@
 import Foundation
 
+/// INLINE 模块初始化时将会从环境变量中读取为自己分配的服务 ID
+/// 因为它的加密机制依赖于该参数
+
 extension Inline {
     struct ServicePara {
         let serviceID: UUID
