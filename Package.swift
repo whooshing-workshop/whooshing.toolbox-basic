@@ -21,6 +21,7 @@ let package = Package(
         .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", branch: "main"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
     ],
     targets: [
         .target( name: "ErrorHandle" ),
@@ -52,6 +53,7 @@ let package = Package(
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
+                .product(name: "NIOExtras", package: "swift-nio-extras"),
                 .product(name: "Vapor", package: "whooshing-vapor")
             ]
         ),

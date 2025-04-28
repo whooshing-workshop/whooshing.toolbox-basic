@@ -33,6 +33,7 @@ extension Inline {
         
         /// 发送请求时，进行编码并加密
         func send(request: ClientRequest, context: ChannelHandlerContext, allocator: ByteBufferAllocator) -> EventLoopFuture<ByteBuffer> {
+            print("// 发送请求时，进行编码并加密")
             do {
                 var plain = try request.data(bufferAllocator: allocator)
                 let cipher: Data
@@ -49,6 +50,7 @@ extension Inline {
         
         /// 收到响应时，进行解密并解码
         func get(response: ByteBuffer, context: ChannelHandlerContext) -> EventLoopFuture<ClientResponse> {
+            print("// 收到响应时，进行解密并解码")
             do {
                 let id = ObjectIdentifier(context.channel)
                 let plain: ByteBuffer

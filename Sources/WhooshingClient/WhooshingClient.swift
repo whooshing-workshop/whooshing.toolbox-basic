@@ -3,6 +3,7 @@ import Cryptos
 import ErrorHandle
 import NIOConcurrencyHelpers
 import NIO
+import NIOExtras
 
 public protocol WhooshingServiceType {}
 
@@ -44,7 +45,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
         if let channel = channelPool["\(host):\(port)"], channel.isActive {
             return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
-                return channel.eventLoop.makeSucceededFuture((channel, handler))   
+                return channel.eventLoop.makeSucceededFuture((channel, handler))
             }
         }
 
@@ -52,7 +53,11 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
 
         let bootstrap = ClientBootstrap(group: eventLoop)
             .channelInitializer { channel in
-                channel.pipeline.addHandler(handler)
+                channel.pipeline.addHandlers([
+                    LengthFieldPrepender(lengthFieldLength: .eight, lengthFieldEndianness: .big),
+                    ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight, lengthFieldEndianness: .big)),
+                    handler
+                ])
             }
             .channelOption(.socketOption(.tcp_nodelay), value: 1)
             .channelOption(.socketOption(.so_reuseaddr), value: 1)
@@ -73,6 +78,11 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         var client = c
         if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
+            guard ChunkTool.isProperSize(bytes: body.readableBytes) else {  
+                let err = Err.requestBodyTooLarge.d("应当小于 \(ChunkTool.maxChunkStr)，实际上为 \(ChunkTool.formatByteSize(body.readableBytes))", 13010, (#file, #line))
+                promise.fail(err)
+                return channel.eventLoop.makeFailedFuture(err)
+            }
         }
         handler.promise = promise
         return channel.writeAndFlush(client).flatMapError { err in
@@ -89,6 +99,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     enum Err: String, ErrList {
         var domain: String { "woo.sys.http.client.err" }
         case requestFormatError = "请求格式有误"
+        case requestBodyTooLarge = "请求的内容过大"
     }
 }
 
