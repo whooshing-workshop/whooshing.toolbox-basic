@@ -4,8 +4,8 @@ import ErrorHandle
 import NIOCore
 
 public protocol RequestIOHandler: Sendable {
-    func send(request: ClientRequest, context: ChannelHandlerContext, allocator: ByteBufferAllocator) -> EventLoopFuture<ByteBuffer>
-    func get(response: ByteBuffer, context: ChannelHandlerContext) -> EventLoopFuture<ClientResponse>
+    func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer>
+    func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<ClientResponse?>
     func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void>
     func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void>
 }
@@ -35,33 +35,62 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     }
     
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let buffer = unwrapInboundIn(data)
-        if let ioHandler = self.ioHandler {
-            ioHandler.get(response: buffer, context: context).flatMapThrowing { response in
-                var res = response
-                res.channel = context.channel
-                self.promise.succeed(res)
-            }.flatMapErrorThrowing { err in
+        var buffer = unwrapInboundIn(data)
+
+        guard let ioHandler = self.ioHandler else {  let res = try! ClientResponse(data: buffer); promise.succeed(res); return }
+        
+        let streaming: Bool
+        if let bufferSuffix = buffer.readSlice(length: ChunkTool.eof.readableBytes) { streaming = bufferSuffix != ChunkTool.eof } 
+        else { streaming = true }
+        print("Streaming2: \(streaming)")
+        if streaming { buffer.moveReaderIndex(to: 0) }
+
+        ioHandler.get(response: buffer, context: context, streaming: streaming).whenComplete { result in
+            switch result {
+            case .success(let response):
+                if !streaming {
+                    guard var res = response else { fatalError("这里 response 不应为空") }
+                    res.channel = context.channel
+                    self.promise.succeed(res)
+                }
+            case .failure(let err):
                 self.errorCaught(context: context, label: "Read", error: err)
                 self.promise.fail(err)
-            }.whenComplete { _ in }
-        } else {
-            let res = try! ClientResponse(data: buffer)
-            promise.succeed(res)
+            }
         }
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let buffer = unwrapOutboundIn(data)
-        if let ioHandler = self.ioHandler {
-            ioHandler.send(request: buffer, context: context, allocator: byteBufferAllocator).flatMapThrowing { req in
-                context.writeAndFlush(self.wrapOutboundOut(req), promise: promise)
-            }.flatMapErrorThrowing { err in
-                self.errorCaught(context: context, label: "Write", error: err)
-                promise?.fail(err)
-            }.whenComplete { _ in }
-        } else {
-            context.writeAndFlush(data, promise: promise)
+        guard let ioHandler = self.ioHandler else { context.writeAndFlush(data, promise: promise); return }
+        let request = unwrapOutboundIn(data)
+        var buffer: ByteBuffer
+        do { buffer = try request.data(bufferAllocator: .init()) } catch let err { promise?.fail(err); return }
+        var r = context.eventLoop.makeSucceededVoidFuture()
+        while buffer.readableBytes > 0 {
+            guard let chunk = buffer.readSlice(length: min(ChunkTool.maxChunk, buffer.readableBytes)) else { break }
+            let eof = buffer.readableBytes == 0
+            r = r.flatMap {
+                return send(chunk: chunk, streaming: !eof)
+            }
+        }
+
+        r.whenFailure { err in
+            self.errorCaught(context: context, label: "Write", error: err)
+            promise?.fail(err)
+        }
+
+        if let p = promise { r.cascade(to: p) }
+
+        @Sendable
+        func send(chunk: ByteBuffer, streaming: Bool) -> EventLoopFuture<Void> {
+            return ioHandler.send(request: request, dataChunk: chunk, context: context, allocator: byteBufferAllocator, streaming: streaming).flatMap { req in
+                if !streaming {
+                    var r = req
+                    var eof = ChunkTool.eof
+                    return context.writeAndFlush(self.wrapOutboundOut(ChunkTool.concatenateBuffers(&eof, &r))) 
+                }
+                return context.writeAndFlush(self.wrapOutboundOut(req)) 
+            }
         }
     }
     

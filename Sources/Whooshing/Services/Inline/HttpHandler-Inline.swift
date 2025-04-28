@@ -21,6 +21,8 @@ extension Inline {
         let moduleDatas: [ModuleData]
         let connectionValidate: SendableDictionary<ObjectIdentifier, Bool> = .init()
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
+        let readingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
+        let writingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
         
         init(rootKey: Crypto.Symm.Key, moduleDatas: [ModuleData]) {
             self.rootKey = rootKey
@@ -32,21 +34,26 @@ extension Inline {
     struct HttpIOCrypto: HTTPIOHandler, Sendable {
         let app: Application
         /// 有客户端请求进入
-        func input(request: Data, context: ChannelHandlerContext) -> EventLoopFuture<Data?> {
+        func input(request: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data?> {
             let id = ObjectIdentifier(context.channel)
             let req: Data
             do {
                 print("有客户端请求进入")
                 if let key = app.inlineServiceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
                 else { req = try Crypto.Symm.decrypt(request, key: app.inlineServiceData.rootKey) }
-                return context.eventLoop.makeSucceededFuture(req)
+                return streamingHandle(
+                    chunkData: req,
+                    context: context,
+                    dic: app.inlineServiceData.readingBufferDatas,
+                    streaming: streaming
+                )
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)
             }
         }
         
         /// 有服务器响应请求发出
-        func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Data?> {
+        func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo, streaming: Bool) -> EventLoopFuture<Data> {
             let id = ObjectIdentifier(context.channel)
             let res: Data
             do {
@@ -65,6 +72,8 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             app.inlineServiceData.connectionKeys[id] = nil
             app.inlineServiceData.connectionValidate[id] = nil
+            app.inlineServiceData.readingBufferDatas[id] = nil
+            app.inlineServiceData.writingBufferDatas[id] = nil
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }

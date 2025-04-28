@@ -1,6 +1,7 @@
 import Vapor
 import DataConvertable
 import Cryptos
+import NIO
 
 extension Data: @retroactive AsyncResponseEncodable {}
 extension Data: @retroactive AsyncRequestDecodable {}
@@ -78,4 +79,48 @@ public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key
 
 public extension URL {
     func toUri(with path: String) -> URI { .init(string: self.absoluteString + path) }
+}
+
+public func streamingHandle(
+    chunkData: Data,
+    context: ChannelHandlerContext,
+    dic: SendableDictionary<ObjectIdentifier, Data>, 
+    streaming: Bool) -> EventLoopFuture<Data?> 
+{
+    let id = ObjectIdentifier(context.channel)
+    if streaming {
+        if let data = dic[id] {
+            dic[id] = data + chunkData
+        } else {
+            dic[id] = chunkData
+        }
+        return context.eventLoop.makeSucceededFuture(nil)
+    } else {
+        let data = dic[id]
+        dic[id] = nil
+        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : (data! + chunkData))
+    }
+}
+
+public func streamingHandle(
+    chunkData: inout ByteBuffer,
+    context: ChannelHandlerContext,
+    dic: SendableDictionary<ObjectIdentifier, ByteBuffer>, 
+    streaming: Bool) -> EventLoopFuture<ByteBuffer?> 
+{
+    let id = ObjectIdentifier(context.channel)
+    if streaming {
+        if var data = dic[id] {
+            data.writeBuffer(&chunkData)
+            dic[id] = data
+        } else {
+            dic[id] = chunkData
+        }
+        return context.eventLoop.makeSucceededFuture(nil)
+    } else {
+        var data = dic[id]
+        dic[id] = nil
+        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : { data!.writeBuffer(&chunkData); return data! }())
+    }
+
 }
