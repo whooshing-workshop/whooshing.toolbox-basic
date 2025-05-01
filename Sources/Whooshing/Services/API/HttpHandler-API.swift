@@ -15,20 +15,11 @@ extension Application {
 
 extension API {
     
-    enum Err: String, ErrList {
-        var domain: String { "woo.api.sys.httpcrypto.err" }
-        case requestIllegal = "客户端 API 请求不合法"
-        case requestFailed = "向认证模块请求失败"
-        case needAuthenticationFirst = "请求未认证，需要先进行认证"
-        case protocolIncorrect = "加密机制协议错误"
-    }
-    
     final class ServiceData: StorageKey, Sendable {
         typealias Value = ServiceData
         let inlineClient: ReqClient<Inline>
         let clientKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let clientTokens: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
-        let readingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
 
         init(inlineClient: ReqClient<Inline>) {
             self.inlineClient = inlineClient
@@ -52,12 +43,7 @@ extension API {
                     // 这里对方将发送明文，因为用户凭据可明文发送，而用户口令会加密处理
                     req = request
                 }
-                return streamingHandle(
-                    chunkData: req,
-                    context: context,
-                    dic: app.apiServiceData.readingBufferDatas,
-                    streaming: streaming
-                )
+                return context.eventLoop.makeSucceededFuture(req)
             } catch let err {
                 print(err)
                 return context.eventLoop.makeFailedFuture(err)
@@ -73,11 +59,10 @@ extension API {
                 // 使用 clientTokens 加密，是临时的，仅仅是作为服务器第一次响应时的加密密钥
                 if let key = app.apiServiceData.clientTokens[id] {
                     res = try Crypto.Symm.encrypt(response, key: key)
-                    app.apiServiceData.clientTokens[id] = nil
+                    if !streaming { app.apiServiceData.clientTokens[id] = nil }
                 } else if let key = app.apiServiceData.clientKeys[id] {
                     res = try Crypto.Symm.encrypt(response, key: key)
                 } else { 
-                    // 用明文发出
                     res = response
                 }
                 return context.eventLoop.makeSucceededFuture(res)
@@ -92,7 +77,6 @@ extension API {
             let id = ObjectIdentifier(context.channel)
             app.apiServiceData.clientKeys[id] = nil
             app.apiServiceData.clientTokens[id] = nil
-            app.apiServiceData.readingBufferDatas[id] = nil
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }

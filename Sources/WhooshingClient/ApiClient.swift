@@ -22,8 +22,9 @@ extension ApiClient: CustomClient {
         headers: HTTPHeaders,
         to url: URI,
         beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> (),
-        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void>
+        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void>,
+        progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }
     ) -> EventLoopFuture<ClientResponse> {
-        client.send(method, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+        client.send(method, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
 }

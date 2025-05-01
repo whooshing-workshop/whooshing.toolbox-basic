@@ -8,36 +8,36 @@ import Cryptos
 extension API: WhooshingServiceType {}
 
 public extension ReqClient where ServiceType == API {
-    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
-        return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.GET, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
 
-    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
-        return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.POST, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
 
-    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PATCH, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
 
-    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.PUT, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
 
-    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> {
-        return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend)
+    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
+        return self.send(.DELETE, headers: headers, to: url, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
     
-    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.post(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
+    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.post(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 
-    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.patch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
+    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.patch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 
-    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.put(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend)
+    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.put(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 
     static func defaultAfterSend(channel: Channel) -> EventLoopFuture<Void> { channel.eventLoop.makeSucceededFuture(()) }
@@ -65,7 +65,8 @@ extension ReqClient where ServiceType == API {
         headers: HTTPHeaders = [:],
         to url: URI,
         beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in },
-        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend
+        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend,
+        progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }
     ) -> EventLoopFuture<ClientResponse> {
         let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
         return self.makeChannel(url: req.url).flatMap { (channel, handler) in
@@ -73,7 +74,7 @@ extension ReqClient where ServiceType == API {
                 var request = req
                 try beforeSend(&request, channel)
                 request.channel = channel
-                return self._send(request: request, channel: channel, handler: handler).flatMapError { err in
+                return self._send(request: request, channel: channel, handler: handler, progress: progress).flatMapError { err in
                     return channel.eventLoop.makeFailedFuture(err)
                 }.flatMap { res in
                     afterSend(channel).map { res }
@@ -88,7 +89,7 @@ extension ReqClient where ServiceType == API {
         let data: Data
     }
     
-    private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler) -> EventLoopFuture<ClientResponse> {
+    private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void) -> EventLoopFuture<ClientResponse> {
         let id = ObjectIdentifier(channel)
         var r = eventLoop.makeSucceededVoidFuture()
         guard let ioData = self.apiRequestIoData else { return eventLoop.makeFailedFuture(APIReqErr.requestParaMissing.d("apiRequestIoData", 12013, (#file, #line))) }
@@ -100,7 +101,7 @@ extension ReqClient where ServiceType == API {
         }
         return r.flatMap{
             print("// 发送具体的请求")
-            return self.send(request, channel: channel, handler: handler)
+            return self.send(request, channel: channel, handler: handler, progress: progress)
         }.flatMapError { err in 
             channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
         }
@@ -124,7 +125,7 @@ extension ReqClient where ServiceType == API {
             print("// 将凭据和加密后的用户口令进行 json 编码")
             guard let body = try? JSONEncoder().encode(AuthExchangeJSON(credential: credential, tokenEncrypted: tokenEncrypted)) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 14001, (#file, #line))) }
             print("// 发送用户凭据以及用户口令")
-            return self.send(.init(method: .POST, url: request.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { res in
+            return self.send(.init(method: .POST, url: request.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler, progress: { _ in }).flatMapThrowing { res in
                 print("// 认证请求发送完成")
                 guard res.status == .ok else { throw APIReqErr.badResponse.d(14002, (#file, #line))}
                 print("// 向认证模块发送认证请求，最终应当得到一个使用用户口令加密的新密钥，并使用该新密钥进行后续的通讯加密")

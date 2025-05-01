@@ -48,21 +48,22 @@ extension Inline {
         }
         
         /// 收到响应时，进行解密并解码
-        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<ClientResponse?> {
+        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
             print("// 收到响应时，进行解密并解码")
             do {
                 let id = ObjectIdentifier(context.channel)
                 var plain: ByteBuffer
                 if let key = client.requestIoData.connectionKeys[id] { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key) }
                 else { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: client.requestIoData.rootKey) }
+                let plainStable = plain
                 return streamingHandle(
                     chunkData: &plain, 
                     context: context, 
                     dic: client.requestIoData.readingBufferDatas,
                     streaming: streaming
                 ).flatMapThrowing { data in
-                    if let d = data { return try ClientResponse(data: d) } 
-                    else { return nil }
+                    if let d = data { return (try ClientResponse(data: d), plainStable) } 
+                    else { return (nil, plainStable) }
                 }
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)

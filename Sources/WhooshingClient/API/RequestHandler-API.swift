@@ -16,6 +16,7 @@ public enum API {
         public let token: String
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let readingBufferDatas: SendableDictionary<ObjectIdentifier, ByteBuffer> = .init()
+        let errorTemps: SendableDictionary<ObjectIdentifier, HTTPStatus> = .init()
         
         public init(credential: String, token: String) {
             self.credential = credential
@@ -27,9 +28,8 @@ public enum API {
         var domain: String { "woo.sys.api.reqclient.err" }
         case requestParaMissing = "请求参数缺失"
         case parseParaFailed = "解析请求参数时失败"
-        case userTokenMissing = "用户口令缺失"
         case internalError = "目标服务器发生错误"
-        case protocolIncorrect = "加密机制协议错误"
+        case protocolInvalid = "交接机制发生错误"
     }
     
     struct RequestIOCrypto: RequestIOHandler, Sendable {
@@ -56,14 +56,23 @@ public enum API {
         }
 
         /// 收到响应时，进行解密并解码
-        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<ClientResponse?> {
-            print("/// 收到响应时，进行解密并解码")
-
-            // 检查对方回复的是不是一个未加密的 http 回复，如果是，则表示对方出错
-            if let err = checkResponse(res: response) { return context.eventLoop.makeFailedFuture(err) }
-
+        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
             guard let ioData = client.apiRequestIoData else { return context.eventLoop.makeFailedFuture(Err.requestParaMissing.d("apiRequestIoData", 12010, (#file, #line))) }
             let id = ObjectIdentifier(context.channel)
+
+            print("// 检查对方回复的是不是一个未加密的 http 回复，如果是，则表示对方出错")
+
+            if let _ = ioData.errorTemps[id] {
+                let err = parseError(body: response)
+                ioData.errorTemps[id] = nil
+                return context.eventLoop.makeFailedFuture(err)
+            } else {
+                if let status = checkHeader(res: response) {
+                    ioData.errorTemps[id] = status
+                    return context.eventLoop.makeSucceededFuture((nil, response))
+                }
+            }
+
             do {
                 var plain: ByteBuffer
                 if let key = ioData.connectionKeys[id] {
@@ -73,37 +82,50 @@ public enum API {
                     let tokenKey = Crypto.Symm.Key(data: token)
                     plain = try Crypto.Symm.decrypt(.init(buffer: response), key: tokenKey)
                 }
+                let plainStable = plain
                 return streamingHandle(
                     chunkData: &plain, 
                     context: context, 
                     dic: ioData.readingBufferDatas,
                     streaming: streaming
                 ).flatMapThrowing { data in
-                    if let d = data { return try ClientResponse(data: d) } 
-                    else { return nil }
+                    if let d = data { return (try ClientResponse(data: d), plainStable) } 
+                    else { return (nil, plainStable) }
                 }
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)
             }
         }
 
+        // 检查 response 是否为 HTTP 格式的头，如果是，则返回其状态码
+        func checkHeader(res: ByteBuffer) -> HTTPStatus? {
+            do {
+                let res = try String(data: res.data())
+                let lines = res.split(separator: "\r\n")
+                let fields = lines[0].split(separator: " ")
+                if fields.count >= 3, let code = Int(fields[1]) {
+                    return .init(statusCode: code)
+                }
+            } catch { }
+            return nil
+        }
+
         // 检查 response 是否为 HTTP 格式且包括错误状态码
-        func checkResponse(res: ByteBuffer) -> Error? {
+        func parseError(body: ByteBuffer) -> Error {
             struct BodyReply: Content {
                 let error: Bool
                 let reason: String
             }
             do {
-                let res = try String(data: res.data())
-                let parts = res.split(separator: "\r\n\r\n")
-                if parts.count == 2, let body = parts[1].data(using: .utf8) {
-                    let reply = try JSONDecoder().decode(BodyReply.self, from: body)
-                    if reply.error {
-                        return Err.internalError.d(reply.reason, 13001, (#file, #line))
-                    }
+                let reply = try Guard({ try JSONDecoder().decode(BodyReply.self, from: Data(buffer: body)) }, throw: Err.protocolInvalid.d("应当解析出 Error 信息，但失败", 14012, (#file, #line)))
+                if reply.error {
+                    return Err.internalError.d(reply.reason, 13001, (#file, #line))
+                } else {
+                    throw Err.protocolInvalid.d("应当解析出 Error 信息，但失败", 14011, (#file, #line))
                 }
-            } catch { }
-            return nil
+            } catch let err {
+                return err
+            }
         }
 
         // 连线结束，进行清理

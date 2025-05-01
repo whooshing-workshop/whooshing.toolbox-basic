@@ -7,6 +7,19 @@ import NIOExtras
 
 public protocol WhooshingServiceType {}
 
+public enum BufferStrategy { case streaming, collect }
+
+public struct ProgressContext<Value>: CustomStringConvertible {
+    public let data: ByteBuffer
+    public let done: Bool
+    public let channel: Channel
+    public let response: Value
+
+    public var description: String {
+        "Progress(data: \(data.readableBytes), done: \(done), response: \(response))"
+    }
+}
+
 public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
     public typealias Value = ReqClient<ServiceType>
     public let eventLoop: EventLoop
@@ -18,6 +31,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         set { lock.withLock { self._storage = newValue } }
     }
     public internal(set) var channelPool: SendableDictionary<String, Channel> = .init()
+    private let headerPool: SendableDictionary<ObjectIdentifier, ClientResponse> = .init()
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
     
@@ -43,6 +57,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
         guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
         guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
+        print("\(host):\(port) -- \(channelPool["\(host):\(port)"] != nil ? ObjectIdentifier(channelPool["\(host):\(port)"]!) : nil)")
         if let channel = channelPool["\(host):\(port)"], channel.isActive {
             return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
                 return channel.eventLoop.makeSucceededFuture((channel, handler))
@@ -72,14 +87,29 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     public func send(
         _ c: ClientRequest,
         channel: Channel,
-        handler: RequestHandler
+        handler: RequestHandler,
+        bufferStrategy: BufferStrategy = .collect,
+        progress: @escaping (ProgressContext<ClientResponse?>) throws -> Void
     ) -> EventLoopFuture<ClientResponse> {
         let promise = channel.eventLoop.makePromise(of: ClientResponse.self)
+        let id = ObjectIdentifier(channel)
         var client = c
         if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
         }
         handler.promise = promise
+        handler.progress = { prog in
+            if prog.response {
+                if self.headerPool[id] == nil {
+                    self.headerPool[id] = try Guard( { try .init(data: prog.data) }, throw: Err.requestParseFailed.d(14010, #file, #line))
+                }
+                let header = self.headerPool[id]!
+                try progress(.init(data: prog.data, done: prog.done, channel: prog.channel, response: header))
+                return
+            }
+            try progress(.init(data: prog.data, done: prog.done, channel: prog.channel, response: nil))
+            if prog.done { self.headerPool[id] = nil }
+        }
         return channel.writeAndFlush(client).flatMapError { err in
             self.logger?.error("发送请求失败，\(err)")
             promise.fail(err)
@@ -95,6 +125,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         var domain: String { "woo.sys.client.err" }
         case requestFormatError = "请求格式有误"
         case requestBodyTooLarge = "请求的内容过大"
+        case requestParseFailed = "服务器响应头解包时出错"
     }
 }
 
@@ -105,7 +136,7 @@ public extension ClientRequest {
         case requestToDataFailed = "将请求转为 Data 失败"
     }
     
-    func data(bufferAllocator: ByteBufferAllocator) throws -> ByteBuffer {
+    func data(bufferAllocator: ByteBufferAllocator) throws -> (ByteBuffer, ByteBuffer?) {
         var buffer = bufferAllocator.buffer(capacity: 0)
         // 转换 HTTP 方法和 URL
         let requestLine = "\(method.rawValue) \(url.path) HTTP/1.1\r\n"
@@ -115,10 +146,7 @@ public extension ClientRequest {
         // 添加一个空行，表示头部结束
         buffer.writeString("\r\n")
         // 如果有请求体 (body)，则添加请求体的内容
-        if var body = body {
-            buffer.writeBuffer(&body)
-        }
-        return buffer
+        return (buffer, body)
     }
 }
 

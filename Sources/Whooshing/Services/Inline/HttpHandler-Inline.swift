@@ -21,7 +21,6 @@ extension Inline {
         let moduleDatas: [ModuleData]
         let connectionValidate: SendableDictionary<ObjectIdentifier, Bool> = .init()
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
-        let readingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
         
         init(rootKey: Crypto.Symm.Key, moduleDatas: [ModuleData]) {
             self.rootKey = rootKey
@@ -40,12 +39,7 @@ extension Inline {
                 print("有客户端请求进入")
                 if let key = app.inlineServiceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
                 else { req = try Crypto.Symm.decrypt(request, key: app.inlineServiceData.rootKey) }
-                return streamingHandle(
-                    chunkData: req,
-                    context: context,
-                    dic: app.inlineServiceData.readingBufferDatas,
-                    streaming: streaming
-                )
+                return context.eventLoop.makeSucceededFuture(req)
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)
             }
@@ -71,7 +65,6 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             app.inlineServiceData.connectionKeys[id] = nil
             app.inlineServiceData.connectionValidate[id] = nil
-            app.inlineServiceData.readingBufferDatas[id] = nil
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }
