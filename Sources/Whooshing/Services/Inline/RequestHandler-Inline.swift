@@ -48,7 +48,7 @@ extension Inline {
         }
         
         /// 收到响应时，进行解密并解码
-        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
+        func get(response: ByteBuffer, bufferStrategy: BufferStrategy, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
             print("// 收到响应时，进行解密并解码")
             do {
                 let id = ObjectIdentifier(context.channel)
@@ -59,6 +59,7 @@ extension Inline {
                 return streamingHandle(
                     chunkData: &plain, 
                     context: context, 
+                    bufferStrategy: bufferStrategy,
                     dic: client.requestIoData.readingBufferDatas,
                     streaming: streaming
                 ).flatMapThrowing { data in

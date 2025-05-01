@@ -82,45 +82,28 @@ public extension URL {
 }
 
 public func streamingHandle(
-    chunkData: Data,
-    context: ChannelHandlerContext,
-    dic: SendableDictionary<ObjectIdentifier, Data>, 
-    streaming: Bool) -> EventLoopFuture<Data?> 
-{
-    let id = ObjectIdentifier(context.channel)
-    if streaming {
-        if let data = dic[id] {
-            dic[id] = data + chunkData
-        } else {
-            dic[id] = chunkData
-        }
-        return context.eventLoop.makeSucceededFuture(nil)
-    } else {
-        let data = dic[id]
-        dic[id] = nil
-        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : (data! + chunkData))
-    }
-}
-
-public func streamingHandle(
     chunkData: inout ByteBuffer,
     context: ChannelHandlerContext,
+    bufferStrategy: BufferStrategy,
     dic: SendableDictionary<ObjectIdentifier, ByteBuffer>, 
     streaming: Bool) -> EventLoopFuture<ByteBuffer?> 
 {
-    let id = ObjectIdentifier(context.channel)
-    if streaming {
-        if var data = dic[id] {
-            data.writeBuffer(&chunkData)
-            dic[id] = data
+    if bufferStrategy == .collect {
+        let id = ObjectIdentifier(context.channel)
+        if streaming {
+            if var data = dic[id] {
+                data.writeBuffer(&chunkData)
+                dic[id] = data
+            } else {
+                dic[id] = chunkData
+            }
+            return context.eventLoop.makeSucceededFuture(nil)
         } else {
-            dic[id] = chunkData
+            var data = dic[id]
+            dic[id] = nil
+            return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : { data!.writeBuffer(&chunkData); return data! }())
         }
-        return context.eventLoop.makeSucceededFuture(nil)
     } else {
-        var data = dic[id]
-        dic[id] = nil
-        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : { data!.writeBuffer(&chunkData); return data! }())
+        return context.eventLoop.makeSucceededFuture(nil)
     }
-
 }

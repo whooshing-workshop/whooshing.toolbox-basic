@@ -56,7 +56,7 @@ public enum API {
         }
 
         /// 收到响应时，进行解密并解码
-        func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
+        func get(response: ByteBuffer, bufferStrategy: BufferStrategy, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
             guard let ioData = client.apiRequestIoData else { return context.eventLoop.makeFailedFuture(Err.requestParaMissing.d("apiRequestIoData", 12010, (#file, #line))) }
             let id = ObjectIdentifier(context.channel)
 
@@ -86,6 +86,7 @@ public enum API {
                 return streamingHandle(
                     chunkData: &plain, 
                     context: context, 
+                    bufferStrategy: bufferStrategy,
                     dic: ioData.readingBufferDatas,
                     streaming: streaming
                 ).flatMapThrowing { data in

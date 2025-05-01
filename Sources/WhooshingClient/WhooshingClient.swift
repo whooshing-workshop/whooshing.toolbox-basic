@@ -7,7 +7,7 @@ import NIOExtras
 
 public protocol WhooshingServiceType {}
 
-public enum BufferStrategy { case streaming, collect }
+public enum BufferStrategy: Sendable { case streaming, collect }
 
 public struct ProgressContext<Value>: CustomStringConvertible {
     public let data: ByteBuffer
@@ -88,16 +88,17 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         _ c: ClientRequest,
         channel: Channel,
         handler: RequestHandler,
-        bufferStrategy: BufferStrategy = .collect,
+        bufferStrategy: BufferStrategy,
         progress: @escaping (ProgressContext<ClientResponse?>) throws -> Void
-    ) -> EventLoopFuture<ClientResponse> {
-        let promise = channel.eventLoop.makePromise(of: ClientResponse.self)
+    ) -> EventLoopFuture<ClientResponse?> {
+        let promise = channel.eventLoop.makePromise(of: ClientResponse?.self)
         let id = ObjectIdentifier(channel)
         var client = c
         if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
         }
         handler.promise = promise
+        handler.bufferStrategy = bufferStrategy
         handler.progress = { prog in
             if prog.response {
                 if self.headerPool[id] == nil {

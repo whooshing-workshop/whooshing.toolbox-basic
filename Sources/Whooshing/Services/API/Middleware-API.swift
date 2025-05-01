@@ -49,7 +49,7 @@ extension API {
             let id = ObjectIdentifier(channel)
             print("// 向认证模块发送认证请求")
             return req.application.apiServiceData.inlineClient.post(
-                authenticationURL.toUri(with: "/user/auth"), 
+                authenticationURL.toUri(with: "/user/auth"),
                 beforeSend: { req, _ in try req.content.encode(authData, as: .json) }, 
                 afterSend: ReqClient<Inline>.defaultAfterSend
             )

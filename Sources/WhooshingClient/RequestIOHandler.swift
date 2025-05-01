@@ -5,7 +5,7 @@ import NIOCore
 
 public protocol RequestIOHandler: Sendable {
     func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer>
-    func get(response: ByteBuffer, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)>
+    func get(response: ByteBuffer, bufferStrategy: BufferStrategy, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)>
     func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void>
     func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void>
 }
@@ -21,14 +21,15 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     public typealias OutboundIn = ClientRequest
     public typealias OutboundOut = ByteBuffer
     
-    var promise: EventLoopPromise<ClientResponse>!
+    var promise: EventLoopPromise<ClientResponse?>!
     var progress: (ProgressContext<Bool>) throws -> Void = { _ in }
-    
+    var bufferStrategy: BufferStrategy = .collect
+
     private let logger: Logger?
     private let byteBufferAllocator: ByteBufferAllocator
     private let ioHandler: RequestIOHandler?
     
-    init(promise: EventLoopPromise<ClientResponse>?, logger: Logger?, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    init(promise: EventLoopPromise<ClientResponse?>?, logger: Logger?, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.promise = promise
         self.ioHandler = ioHandler
         self.byteBufferAllocator = byteBufferAllocator
@@ -46,7 +47,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         print("Streaming2: \(streaming)")
         if streaming { buffer.moveReaderIndex(to: 0) }
 
-        ioHandler.get(response: buffer, context: context, streaming: streaming).whenComplete { result in
+        ioHandler.get(response: buffer, bufferStrategy: bufferStrategy, context: context, streaming: streaming).whenComplete { result in
             switch result {
             case .success(let response):
                 do {
@@ -56,9 +57,13 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                     self.promise.fail(err)
                 }
                 if !streaming {
-                    guard var res = response.0 else { fatalError("这里 response 不应为空") }
-                    res.channel = context.channel
-                    self.promise.succeed(res)
+                    if self.bufferStrategy == .collect {
+                        guard var res = response.0 else { fatalError("这里 response 不应为空") }
+                        res.channel = context.channel
+                        self.promise.succeed(res)
+                    } else {
+                        self.promise.succeed(nil)
+                    }
                 }
             case .failure(let err):
                 self.errorCaught(context: context, label: "Read", error: err)
