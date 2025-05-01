@@ -21,7 +21,6 @@ extension Inline {
         let connectionValidate: SendableDictionary<ObjectIdentifier, Bool> = .init()
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let readingBufferDatas: SendableDictionary<ObjectIdentifier, ByteBuffer> = .init()
-        let writingBufferDatas: SendableDictionary<ObjectIdentifier, ByteBuffer> = .init()
         
         init(rootKey: Crypto.Symm.Key, serviceID: UUID) {
             self.rootKey = rootKey
@@ -76,7 +75,6 @@ extension Inline {
             client.requestIoData.connectionKeys[id] = nil
             client.requestIoData.connectionValidate[id] = nil
             client.requestIoData.readingBufferDatas[id] = nil
-            client.requestIoData.writingBufferDatas[id] = nil
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }

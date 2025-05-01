@@ -51,6 +51,7 @@ extension ReqClient where ServiceType == API {
         case requestParaMissing = "请求参数缺失"
         case badResponse = "响应状态码表示请求未成功"
         case authenticationBadProtocol = "认证时协议协商错误"
+        case parseParaFailed = "解析请求参数时失败"
     }
 
     public static func new(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator) -> Self {
@@ -93,24 +94,51 @@ extension ReqClient where ServiceType == API {
         guard let ioData = self.apiRequestIoData else { return eventLoop.makeFailedFuture(APIReqErr.requestParaMissing.d("apiRequestIoData", 12013, (#file, #line))) }
         if ioData.connectionKeys[id] == nil {
             print("// 需要进行认证")
-            guard let body = try? JSONEncoder().encode(JSONData(data: .init([0]))) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 13002, (#file, #line))) }
-            r = r.flatMap {
-                self.send(.init(method: .POST, url: request.url, headers: [ioData.authenticationHeader.description: "true", "content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMap { res in
-                    print("// 认证请求发送完成")
-                    guard res.status == .ok else { return channel.eventLoop.makeFailedFuture(APIReqErr.badResponse.d(12014, (#file, #line)))}
-                    guard res.headers.contains(name: ioData.authenticationHeader) else { return channel.eventLoop.makeFailedFuture(APIReqErr.authenticationBadProtocol.d("目标回复的响应不包括认证头信息", 12015, (#file, #line))) }
-                    guard ioData.connectionKeys[id] != nil else { return channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("预期应当读取到密钥，但得到空值", 12016, (#file, #line))) }
-                    return channel.eventLoop.makeSucceededVoidFuture()
-                }
+            r = r.flatMap { 
+                self.authExchange(request: request, handler: handler, channel: channel)
             }
         }
         return r.flatMap{
             print("// 发送具体的请求")
-            return self.send(request, channel: channel, handler: handler).flatMap { res in
-                channel.eventLoop.makeSucceededFuture(res)
-            }
+            return self.send(request, channel: channel, handler: handler)
         }.flatMapError { err in 
-            return channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
+            channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
+        }
+    }
+
+    struct AuthExchangeJSON: Content {
+        let credential: Data
+        let tokenEncrypted: Data
+    }
+
+    /// 发送用户凭据以及用户口令，其中用户凭据明文发送，口令则进行加密并哈希
+    func authExchange(request: ClientRequest, handler: RequestHandler, channel: Channel) -> EventLoopFuture<Void> {
+        do {
+            let ioData = self.apiRequestIoData!
+            let id = ObjectIdentifier(channel)
+            guard let credential = Data(base64Encoded: ioData.credential) else { throw APIReqErr.parseParaFailed.d("用户凭据", 12007, (#file, #line)) }
+            print("// 使用用户口令加密用户口令本身")
+            guard let token = Data(base64Encoded: ioData.token) else { throw APIReqErr.parseParaFailed.d("用户口令", 12008, (#file, #line)) }
+            let tokenKey = Crypto.Symm.Key(data: token)
+            let tokenEncrypted = try Crypto.Symm.encrypt(token, key: tokenKey)
+            print("// 将凭据和加密后的用户口令进行 json 编码")
+            guard let body = try? JSONEncoder().encode(AuthExchangeJSON(credential: credential, tokenEncrypted: tokenEncrypted)) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 14001, (#file, #line))) }
+            print("// 发送用户凭据以及用户口令")
+            return self.send(.init(method: .POST, url: request.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler).flatMapThrowing { res in
+                print("// 认证请求发送完成")
+                guard res.status == .ok else { throw APIReqErr.badResponse.d(14002, (#file, #line))}
+                print("// 向认证模块发送认证请求，最终应当得到一个使用用户口令加密的新密钥，并使用该新密钥进行后续的通讯加密")
+                guard let token = Data(base64Encoded: ioData.token) else { throw APIReqErr.parseParaFailed.d("用户口令", 14003, (#file, #line)) }
+                let tokenKey = Crypto.Symm.Key(data: token)
+                print("// 获取对方发来的加密新密钥")
+                let keyEncrypted = try res.content.decode(JSONData.self).data
+                print("// 使用用户口令解密新密钥")
+                let newKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(keyEncrypted, key: tokenKey)
+                print("// 注册该新密钥，用于将来的连线加密")
+                ioData.connectionKeys[id] = newKey
+            }
+        } catch let err {
+            return channel.eventLoop.makeFailedFuture(err)
         }
     }
 }

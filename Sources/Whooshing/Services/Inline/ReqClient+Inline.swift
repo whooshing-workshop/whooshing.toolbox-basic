@@ -128,7 +128,6 @@ extension ReqClient where ServiceType == Inline {
             let targetPub = try Crypto.Asym.CPublicKey(data: data)
             print("// 计算共享密钥")
             let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: targetPub, salt: Crypto.hash("inline.shared.key"), info: "")
-            print("Key2: \(sharedKey.data().base64String())")
             print("// 设置标志位")
             self.requestIoData.connectionKeys[ObjectIdentifier(channel)] = sharedKey
         }.flatMapError { err in 

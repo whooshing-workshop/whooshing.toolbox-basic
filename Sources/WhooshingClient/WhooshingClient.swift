@@ -78,11 +78,6 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         var client = c
         if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
-            // guard ChunkTool.isProperSize(bytes: body.readableBytes) else {  
-            //     let err = Err.requestBodyTooLarge.d("应当小于 \(ChunkTool.maxChunkStr)，实际上为 \(ChunkTool.formatByteSize(body.readableBytes))", 13010, (#file, #line))
-            //     promise.fail(err)
-            //     return channel.eventLoop.makeFailedFuture(err)
-            // }
         }
         handler.promise = promise
         return channel.writeAndFlush(client).flatMapError { err in

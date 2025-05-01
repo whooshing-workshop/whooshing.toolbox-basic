@@ -25,10 +25,10 @@ extension API {
     
     final class ServiceData: StorageKey, Sendable {
         typealias Value = ServiceData
-        let clientKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let inlineClient: ReqClient<Inline>
+        let clientKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
+        let clientTokens: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let readingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
-        let writingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
 
         init(inlineClient: ReqClient<Inline>) {
             self.inlineClient = inlineClient
@@ -41,76 +41,17 @@ extension API {
         
         /// 有客户端请求进入
         func input(request: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data?> {
-            let header = request.count >= 6 ? String(data: request.subdata(in: 0..<6), encoding: .utf8) : nil
-            if let h = header, h == "[auth]" {
-                print("// 为该客户端发来的第一个请求，需要进行身份认证")
-                guard !streaming else { return context.eventLoop.makeFailedFuture(Err.protocolIncorrect.d("第一个身份认证请求过长", 13011, (#file, #line))) }
-                return tokenAuthentication(request: request, context: context).map { nil }
-            } else {
-                print("// 该客户端发来了加密请求，应当已经经过了身份认证，进行数据解密")
-                return decrypt(request: request, context: context, streaming: streaming).map { $0 }
-            }
-        }
-        
-        /// 有服务器响应请求发出
-        func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo, streaming: Bool) -> EventLoopFuture<Data> {
-            print("/// 有服务器响应请求发出")
-            return encrypt(response: response, context: context, streaming: streaming)
-        }
-        
-        /// 连线结束
-        func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Void> {
             let id = ObjectIdentifier(context.channel)
-            app.apiServiceData.clientKeys[id] = nil
-            app.apiServiceData.readingBufferDatas[id] = nil
-            app.apiServiceData.writingBufferDatas[id] = nil
-            return context.eventLoop.makeSucceededVoidFuture()
-        }
-        
-        // 向认证模块请求身份认证
-        func tokenAuthentication(request: Data, context: ChannelHandlerContext) -> EventLoopFuture<Void> {
-            // 用户凭据有 16 字节，在 6 ～ 6+16 的字节区
-            // 用户口令 Encrypted 有 60 字节，在 22 ～ 22+60 字节区
-            // 因此，认证请求总共为 82 字节
-            guard request.count == 82 else { return context.eventLoop.makeFailedFuture(Err.requestIllegal.d("请求长度不符合要求，应当为 86 字节，却收到 \(request.count)", 12000, (#file, #line))) }
-            let credential = request.subdata(in: 6..<22).base64EncodedString()
-            let tokenEncrypted = request.subdata(in: 22..<82)
-            print("// 向认证模块发送认证请求")
-            return app.apiServiceData.inlineClient.post(authenticationURL.toUri(with: "/user/auth"), beforeSend: { (request, _) in
-                try request.content.encode(TokenAuth(credential: credential, tokenEncrypted: tokenEncrypted), as: .json)
-            }).hop(to: context.eventLoop).flatMapThrowing { res in
-                guard res.status == .ok else { throw Err.requestFailed.d("请求的状态码结果为: \(res.status), 结果为: \(res.body != nil ? String(buffer: res.body!) : "nil")", 12001, (#file, #line)) }
-                print("// 从结果解析用户口令")
-                let token = try res.content.decode(Crypto.Symm.Key.self)
-                print("// 生成新的密钥，用做通讯加密")
-                let newKey = Crypto.Symm.makeKey()
-                print("// 将新密钥使用用户口令加密，作为响应直接返回给客户端")
-                return (newKey, try Crypto.Symm.encrypt(newKey, key: token))
-            }.flatMap { (newKey, keyData) in
-                var buf = ByteBuffer(data: keyData)
-                var eof = ChunkTool.eof
-                return context.writeAndFlush(.init(ChunkTool.concatenateBuffers(&eof, &buf))).flatMap {
-                    print("// 将密钥注册，以用于将来的通讯加密")
-                    app.apiServiceData.clientKeys[ObjectIdentifier(context.channel)] = newKey
-                    return context.eventLoop.makeSucceededVoidFuture()
-                }
-            }.flatMapError { err in
-                return context.eventLoop.makeFailedFuture(err)
-            }
-            
-            struct TokenAuth: Content {
-                let credential: String
-                let tokenEncrypted: Data
-            }
-        }
-        
-        // 解密请求数据
-        func decrypt(request: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data?> {
-            let id = ObjectIdentifier(context.channel)
+            print("/// 有客户端请求进入")
             do {
-                guard let key = app.apiServiceData.clientKeys[id] else { throw Err.needAuthenticationFirst.d(12002, (#file, #line)) }
-                print("// 解密请求")
-                let req: Data = try Crypto.Symm.decrypt(request, key: key)
+                let req: Data
+                if let key = app.apiServiceData.clientKeys[id] {
+                    req = try Crypto.Symm.decrypt(request, key: key)
+                } else {
+                    // 客户端第一次连线的认证请求
+                    // 这里对方将发送明文，因为用户凭据可明文发送，而用户口令会加密处理
+                    req = request
+                }
                 return streamingHandle(
                     chunkData: req,
                     context: context,
@@ -123,17 +64,36 @@ extension API {
             }
         }
         
-        // 加密响应数据
-        func encrypt(response: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data> {
+        /// 有服务器响应请求发出
+        func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo, streaming: Bool) -> EventLoopFuture<Data> {
+            print("/// 有服务器响应请求发出")
             let id = ObjectIdentifier(context.channel)
             do {
-                guard let key = app.apiServiceData.clientKeys[id] else { throw Err.needAuthenticationFirst.d(12003, (#file, #line)) }
-                print("// 加密响应")
-                let res: Data = try Crypto.Symm.encrypt(response, key: key)
+                let res: Data
+                // 使用 clientTokens 加密，是临时的，仅仅是作为服务器第一次响应时的加密密钥
+                if let key = app.apiServiceData.clientTokens[id] {
+                    res = try Crypto.Symm.encrypt(response, key: key)
+                    app.apiServiceData.clientTokens[id] = nil
+                } else if let key = app.apiServiceData.clientKeys[id] {
+                    res = try Crypto.Symm.encrypt(response, key: key)
+                } else { 
+                    // 用明文发出
+                    res = response
+                }
                 return context.eventLoop.makeSucceededFuture(res)
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)
             }
+        }
+        
+
+        /// 连线结束
+        func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Void> {
+            let id = ObjectIdentifier(context.channel)
+            app.apiServiceData.clientKeys[id] = nil
+            app.apiServiceData.clientTokens[id] = nil
+            app.apiServiceData.readingBufferDatas[id] = nil
+            return context.eventLoop.makeSucceededVoidFuture()
         }
     }
 }
