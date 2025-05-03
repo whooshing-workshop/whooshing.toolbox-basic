@@ -5,9 +5,10 @@ import NIOConcurrencyHelpers
 import NIO
 import NIOExtras
 
-public protocol WhooshingServiceType {}
-
-public enum BufferStrategy: Sendable { case streaming, collect }
+public enum BufferStrategy: Sendable { 
+    case collect
+    case streaming(AsyncStreamingDataAction)
+}
 
 public struct ProgressContext<Value>: CustomStringConvertible {
     public let data: ByteBuffer
@@ -20,8 +21,7 @@ public struct ProgressContext<Value>: CustomStringConvertible {
     }
 }
 
-public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
-    public typealias Value = ReqClient<ServiceType>
+open class ReqClient: Client, @unchecked Sendable {
     public let eventLoop: EventLoop
     public let logger: Logger?
     public let byteBufferAllocator: ByteBufferAllocator
@@ -36,18 +36,18 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     private var lock: NIOLock = .init()
     
     public func delegating(to eventLoop: EventLoop) -> Client {
-        ReqClient<ServiceType>(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+        Self(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
     public func logging(to logger: Logger) -> Client {
-        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
+        Self(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
     public func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
-        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
+        Self(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
     }
     
-    public init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    public required init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.eventLoop = eventLoop
         self.logger = logger
         self.byteBufferAllocator = byteBufferAllocator
@@ -89,12 +89,15 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         channel: Channel,
         handler: RequestHandler,
         bufferStrategy: BufferStrategy,
-        progress: @escaping (ProgressContext<ClientResponse?>) throws -> Void
+        progress: @escaping ProgressAction
     ) -> EventLoopFuture<ClientResponse?> {
         let promise = channel.eventLoop.makePromise(of: ClientResponse?.self)
         let id = ObjectIdentifier(channel)
         var client = c
-        if let body = client.body {
+        if case .streaming(_) = bufferStrategy {
+            client.body = nil
+            client.headers.add(name: .contentLength, value: "-1")
+        } else if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
         }
         handler.promise = promise

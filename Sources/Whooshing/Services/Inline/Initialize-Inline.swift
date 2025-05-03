@@ -7,7 +7,7 @@ import NIO
 import Logging
 
 public extension Application {
-    var inlineClient: ReqClient<Inline> { self.storage[ReqClient<Inline>.self]! }
+    var inlineClient: InlineReqClient { self.storage[InlineReqClient.self]! }
 }
 
 public enum Inline {
@@ -27,11 +27,11 @@ public enum Inline {
         // 与模块管理器交互，取得可信服务列表并交换密钥
         let (rootKey, _) = try await self.keyExchangeFromManager(app)
         // 创建请求 API 提供者
-        let client = ReqClient<Inline>(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator:.init() )
+        let client = InlineReqClient(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator:.init() )
         let ioHandler = RequestIOCrypto(client: client)
         client.ioHandler = ioHandler
         client.storage[Inline.RequestIOData.self] = .init(rootKey: rootKey, serviceID: env.serviceID)
-        app.storage[ReqClient<Inline>.self] = client
+        app.storage[InlineReqClient.self] = client
     }
     
     /// 与模块管理器交互，取得可信服务列表并交换密钥

@@ -51,7 +51,7 @@ extension API {
             return req.application.apiServiceData.inlineClient.post(
                 authenticationURL.toUri(with: "/user/auth"),
                 beforeSend: { req, _ in try req.content.encode(authData, as: .json) }, 
-                afterSend: ReqClient<Inline>.defaultAfterSend
+                afterSend: InlineReqClient.defaultAfterSend
             )
             .hop(to: channel.eventLoop)
             .flatMapThrowing { res in

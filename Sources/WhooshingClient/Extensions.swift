@@ -88,7 +88,7 @@ public func streamingHandle(
     dic: SendableDictionary<ObjectIdentifier, ByteBuffer>, 
     streaming: Bool) -> EventLoopFuture<ByteBuffer?> 
 {
-    if bufferStrategy == .collect {
+    if case .collect = bufferStrategy {
         let id = ObjectIdentifier(context.channel)
         if streaming {
             if var data = dic[id] {

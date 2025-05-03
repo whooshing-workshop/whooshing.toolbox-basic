@@ -17,11 +17,11 @@ extension API {
     
     final class ServiceData: StorageKey, Sendable {
         typealias Value = ServiceData
-        let inlineClient: ReqClient<Inline>
+        let inlineClient: InlineReqClient
         let clientKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let clientTokens: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
 
-        init(inlineClient: ReqClient<Inline>) {
+        init(inlineClient: InlineReqClient) {
             self.inlineClient = inlineClient
         }
     }

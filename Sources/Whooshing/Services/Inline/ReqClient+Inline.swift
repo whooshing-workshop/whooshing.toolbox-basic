@@ -9,10 +9,10 @@ import WhooshingClient
 /// 该文件实现了发送加密请求的功能。由于目标模块的加密算法并非传统的 HTTPS，
 /// 而是自定的加密算法，因此向其请求时需要使用特定的加密逻辑。
 
-extension Inline: WhooshingServiceType {}
-
-extension ReqClient where ServiceType == Inline {
+public final class InlineReqClient: ReqClient, WSMClient, StorageKey, @unchecked Sendable {
     
+    public typealias Value = InlineReqClient
+
     enum InlineReqErr: String, ErrList {
         var domain: String { "woo.sys.inline.reqclient.err" }
         case targetBadResponse = "目标返回了不正常的响应"
@@ -21,14 +21,14 @@ extension ReqClient where ServiceType == Inline {
     }
     
     @Sendable 
-    func send(
+    public func send(
         _ method: HTTPMethod,
-        headers: HTTPHeaders = [:],
+        headers: HTTPHeaders,
         to url: URI,
         bufferStrategy: BufferStrategy,
-        beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in },
-        afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend,
-        progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }
+        beforeSend: @escaping BeforeSendAction,
+        afterSend: @escaping AsyncAfterSendAction,
+        progress: @escaping ProgressAction
     ) -> EventLoopFuture<ClientResponse?> {
         let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
         return self.makeChannel(url: req.url).flatMap { (channel, handler) in
@@ -116,78 +116,5 @@ extension ReqClient where ServiceType == Inline {
         }.flatMapError { err in
             return channel.eventLoop.makeFailedFuture(err)
         }
-    }
-}
-
-
-public extension ReqClient where ServiceType == Inline {
-    static func defaultAfterSend(channel: Channel) -> EventLoopFuture<Void> { channel.eventLoop.makeSucceededFuture(()) }
-}
-
-public extension ReqClient where ServiceType == Inline {
-    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.GET, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
-    }
-
-    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.POST, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
-    }
-
-    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PATCH, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
-    }
-
-    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.PUT, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
-    }
-
-    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> {
-        return self.send(.DELETE, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
-    }
-    
-    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.post(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
-    }
-
-    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.patch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
-    }
-
-    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.put(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
-    }
-}
-
-public extension ReqClient where ServiceType == Inline {
-    func streamGet(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.GET, headers: headers, to: url, bufferStrategy: .streaming, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
-    }
-
-    func streamPost(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.POST, headers: headers, to: url, bufferStrategy: .streaming, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
-    }
-
-    func streamPatch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.PATCH, headers: headers, to: url, bufferStrategy: .streaming, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
-    }
-
-    func streamPut(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.PUT, headers: headers, to: url, bufferStrategy: .streaming, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
-    }
-
-    func streamDelete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping @Sendable (inout ClientRequest, Channel) throws -> () = { _, _ in }, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.DELETE, headers: headers, to: url, bufferStrategy: .streaming, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
-    }
-    
-    func streamPost<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> where T: Content {
-        return self.streamPost(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
-    }
-
-    func streamPatch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> where T: Content {
-        return self.streamPatch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
-    }
-
-    func streamPut<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping @Sendable (Channel) -> EventLoopFuture<Void> = defaultAfterSend, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void = { _ in }) -> EventLoopFuture<Void> where T: Content {
-        return self.streamPut(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 }

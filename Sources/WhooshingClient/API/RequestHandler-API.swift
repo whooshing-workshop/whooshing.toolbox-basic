@@ -5,7 +5,7 @@ import DataConvertable
 import NIO
 import Logging
 
-extension ReqClient where ServiceType == API {
+extension APIReqClient {
     var apiRequestIoData: API.RequestIOData? { self.storage[API.RequestIOData.self] }
 }
 
@@ -33,7 +33,7 @@ public enum API {
     }
     
     struct RequestIOCrypto: RequestIOHandler, Sendable {
-        let client: ReqClient<API>
+        let client: APIReqClient
         
         /// 发送请求时，进行编码并加密
         func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer> {

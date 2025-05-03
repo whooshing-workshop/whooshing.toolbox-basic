@@ -57,7 +57,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                     self.promise.fail(err)
                 }
                 if !streaming {
-                    if self.bufferStrategy == .collect {
+                    if case .collect = self.bufferStrategy {
                         guard var res = response.0 else { fatalError("这里 response 不应为空") }
                         res.channel = context.channel
                         self.promise.succeed(res)
@@ -92,7 +92,24 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         }
 
         // 处理请求体，分片发出
-        if var body = bodyBuffer {
+        if case let .streaming(action) = bufferStrategy {
+            // stream 发送，需要从调用者不断读取块数据
+            r = r.flatMap { sendData() }
+
+            @Sendable func sendData() -> EventLoopFuture<Void> {
+                action(request, context.channel, ChunkTool.maxChunk).flatMap { data in
+                    if let d = data {
+                        guard ChunkTool.isProperSize(bytes: d.readableBytes) else {
+                            return context.eventLoop.makeFailedFuture(Err.chunkSizeExceed.d("不应当超过 \(ChunkTool.maxChunkStr), 但得到大小 \(ChunkTool.formatByteSize(d.readableBytes))", 13030, (#file, #line)))
+                        }
+                        return send(chunk: d, streaming: true).flatMap { sendData() }
+                    } else {
+                        return context.eventLoop.makeSucceededVoidFuture()
+                    }
+                }
+            }
+        } else if var body = bodyBuffer {
+            // 直接发送 Request 的数据，但仍然分块发送
             while body.readableBytes > 0 {
                 guard let chunk = body.readSlice(length: min(ChunkTool.maxChunk, body.readableBytes)) else { break }
                 let eof = body.readableBytes == 0
@@ -146,5 +163,10 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
             logger.debug("HTTP 流 \(label) 时加解密失败: \(String(reflecting: error))")
         }
         context.fireErrorCaught(error)
+    }
+
+    enum Err: String, ErrList {
+        var domain: String { "woo.sys.client.err" }
+        case chunkSizeExceed = "流式传输块大小不正确"
     }
 }

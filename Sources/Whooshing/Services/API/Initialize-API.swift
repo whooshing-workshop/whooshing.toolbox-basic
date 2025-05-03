@@ -8,7 +8,7 @@ import WhooshingClient
 
 enum API {
     /// 配置 API 服务模块
-    static func config(_ app: Application, inlineClient: ReqClient<Inline>) async throws {
+    static func config(_ app: Application, inlineClient: InlineReqClient) async throws {
         // 从环境变量中取得该服务模块的参数
         let env = try ServicePara.parse(prefix: "WHOOSHING_API_SERVICE_PRIVATE")
         // 注册 HTTP IO 加密模块

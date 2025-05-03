@@ -5,7 +5,7 @@ import NIOConcurrencyHelpers
 import NIO
 
 public final class ApiClient {
-    private let client: ReqClient<API>
+    private let client: APIReqClient
     public init(credential: String, token: String, app: Application) {
         self.client = .new(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator: .init())
         client.storage[API.RequestIOData.self] = .init(credential: credential, token: token)
@@ -16,7 +16,7 @@ public final class ApiClient {
     }
 }
 
-extension ApiClient: CustomClient {
+extension ApiClient: WSMClient {
     public func send(
         _ method: HTTPMethod,
         headers: HTTPHeaders,
