@@ -6,12 +6,15 @@ import NIO
 
 public final class ApiClient: Sendable {
     private let client: APIReqClient
+    private let allocator = ByteBufferAllocator()
+
     public init(credential: String, token: String, app: Application) {
-        self.client = .new(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator: .init())
+        self.client = .new(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator: allocator)
         client.storage[API.RequestIOData.self] = .init(credential: credential, token: token)
     }
+
     public init(credential: String, token: String, eventLoop: EventLoop, logger: Logger? = nil) {
-        self.client = .new(eventLoop: eventLoop, logger: logger, byteBufferAllocator: .init())
+        self.client = .new(eventLoop: eventLoop, logger: logger, byteBufferAllocator: allocator)
         client.storage[API.RequestIOData.self] = .init(credential: credential, token: token)
     }
 }
@@ -28,4 +31,6 @@ extension ApiClient: WSMClient {
     ) -> EventLoopFuture<ClientResponse?> {
         client.send(method, headers: headers, to: url, bufferStrategy: bufferStrategy, beforeSend: beforeSend, afterSend: afterSend, progress: progress)
     }
+
+    public var fileEventLoop: any EventLoop { client.fileEventLoop }
 }

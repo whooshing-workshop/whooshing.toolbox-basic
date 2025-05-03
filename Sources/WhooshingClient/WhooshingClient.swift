@@ -11,18 +11,41 @@ public enum BufferStrategy: Sendable {
 }
 
 public struct ProgressContext<Value>: CustomStringConvertible {
+    public let index: Int
     public let data: ByteBuffer
     public let done: Bool
+
+    public let curBytes: Int
+    public let totalBytes: Int?
+
+    public let startDate: Date
+
     public let channel: Channel
     public let response: Value
 
+    public var bytesPersentage: Double? { if let tb = totalBytes, tb > 0 { return Double(curBytes) / Double(tb) }; return nil }
+    public var bytesPersentageStr: String { (bytesPersentage == nil ? "~" : String(Float(Int(bytesPersentage! * 100 * 100) / 100))) + "%" }
+    public var totalBytesStr: String { totalBytes == nil ? "~B" : ChunkTool.formatByteSize(totalBytes!) }
+    public var curBytesStr: String { ChunkTool.formatByteSize(curBytes) }
+    public var totalSize: String { totalBytes == nil ? "~B" : ChunkTool.formatByteSize(totalBytes!) }
+    public var speed: Double? { 
+        return Int(timeCost) <= 0 ? nil : (Double(curBytes) / Double(timeCost))
+    }
+    public var speedStr: String { speed == nil ? "~B/s" : (ChunkTool.formatByteSize(.init(speed!)) + "/s") }
+    public var timeCost: TimeInterval { Date.now.timeIntervalSince(startDate) }
+
     public var description: String {
-        "Progress(data: \(data.readableBytes), done: \(done), response: \(response))"
+        return "Progress(\(index), 字节进度: \(bytesPersentageStr) [\(curBytesStr)(\(curBytes))-\(totalBytesStr)(\(totalBytes == nil ? "~" : String(totalBytes!)))], 数据块: \(data.readableBytes), 完成: \(done), 耗时: \(timeCost)s, 速度: \(speedStr), 值: \(response.self))"
+    }
+
+    public func copy<T>(value: T) -> ProgressContext<T> {
+        .init(index: index, data: data, done: done, curBytes: curBytes, totalBytes: totalBytes, startDate: startDate, channel: channel, response: value)
     }
 }
 
 open class ReqClient: Client, @unchecked Sendable {
     public let eventLoop: EventLoop
+    public let fileEventLoop: EventLoop
     public let logger: Logger?
     public let byteBufferAllocator: ByteBufferAllocator
     public var ioHandler: RequestIOHandler?
@@ -31,6 +54,7 @@ open class ReqClient: Client, @unchecked Sendable {
         set { lock.withLock { self._storage = newValue } }
     }
     public internal(set) var channelPool: SendableDictionary<String, Channel> = .init()
+
     private let headerPool: SendableDictionary<ObjectIdentifier, ClientResponse> = .init()
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
@@ -49,15 +73,15 @@ open class ReqClient: Client, @unchecked Sendable {
     
     public required init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.eventLoop = eventLoop
+        self.fileEventLoop = eventLoop.next()
         self.logger = logger
         self.byteBufferAllocator = byteBufferAllocator
         self.ioHandler = ioHandler
     }
-    
+
     public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
         guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
         guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
-        print("\(host):\(port) -- \(channelPool["\(host):\(port)"] != nil ? ObjectIdentifier(channelPool["\(host):\(port)"]!) : nil)")
         if let channel = channelPool["\(host):\(port)"], channel.isActive {
             return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
                 return channel.eventLoop.makeSucceededFuture((channel, handler))
@@ -109,10 +133,10 @@ open class ReqClient: Client, @unchecked Sendable {
                     self.headerPool[id] = try Guard( { try .init(data: prog.data) }, throw: Err.requestParseFailed.d(14010, #file, #line))
                 }
                 let header = self.headerPool[id]!
-                try progress(.init(data: prog.data, done: prog.done, channel: prog.channel, response: header))
+                try progress(prog.copy(value: header))
                 return
             }
-            try progress(.init(data: prog.data, done: prog.done, channel: prog.channel, response: nil))
+            try progress(prog.copy(value: nil))
             if prog.done { self.headerPool[id] = nil }
         }
         return channel.writeAndFlush(client).flatMapError { err in
