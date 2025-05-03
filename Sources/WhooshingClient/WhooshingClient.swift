@@ -7,7 +7,7 @@ import NIOExtras
 
 public enum BufferStrategy: Sendable { 
     case collect
-    case streaming(AsyncStreamingDataAction)
+    case streaming(totalSize: Int, stream: AsyncStreamingDataAction)
 }
 
 public struct ProgressContext<Value>: CustomStringConvertible {
@@ -94,12 +94,13 @@ open class ReqClient: Client, @unchecked Sendable {
         let promise = channel.eventLoop.makePromise(of: ClientResponse?.self)
         let id = ObjectIdentifier(channel)
         var client = c
-        if case .streaming(_) = bufferStrategy {
+        if case let .streaming(totalSize, _) = bufferStrategy {
             client.body = nil
-            client.headers.add(name: .contentLength, value: "-1")
+            client.headers.add(name: .contentLength, value: String(totalSize))
         } else if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
         }
+        print(client)
         handler.promise = promise
         handler.bufferStrategy = bufferStrategy
         handler.progress = { prog in
@@ -115,7 +116,7 @@ open class ReqClient: Client, @unchecked Sendable {
             if prog.done { self.headerPool[id] = nil }
         }
         return channel.writeAndFlush(client).flatMapError { err in
-            self.logger?.error("发送请求失败，\(err)")
+            self.logger?.report(error: err)
             promise.fail(err)
             return channel.eventLoop.makeFailedFuture(err)
         }.flatMap {

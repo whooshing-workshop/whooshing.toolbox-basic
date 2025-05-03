@@ -86,35 +86,48 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         let (headerBuffer, bodyBuffer) = buffers
         var r = context.eventLoop.makeSucceededVoidFuture()
 
-        // 将请求头单独先发出
-        r = r.flatMap {
-            send(chunk: headerBuffer, streaming: bodyBuffer != nil)
-        }
-
         // 处理请求体，分片发出
-        if case let .streaming(action) = bufferStrategy {
-            // stream 发送，需要从调用者不断读取块数据
-            r = r.flatMap { sendData() }
+        if case let .streaming(totalSize, action) = bufferStrategy {
+            // 将请求头单独先发出
+            r = r.flatMap {
+                send(chunk: headerBuffer, streaming: totalSize > 0)
+            }
 
-            @Sendable func sendData() -> EventLoopFuture<Void> {
-                action(request, context.channel, ChunkTool.maxChunk).flatMap { data in
-                    if let d = data {
-                        guard ChunkTool.isProperSize(bytes: d.readableBytes) else {
-                            return context.eventLoop.makeFailedFuture(Err.chunkSizeExceed.d("不应当超过 \(ChunkTool.maxChunkStr), 但得到大小 \(ChunkTool.formatByteSize(d.readableBytes))", 13030, (#file, #line)))
-                        }
-                        return send(chunk: d, streaming: true).flatMap { sendData() }
-                    } else {
-                        return context.eventLoop.makeSucceededVoidFuture()
+            print("// stream 发送，需要从调用者不断读取块数据")
+            r = r.flatMap { sendData(streamIndex: 0, currentSize: 0) }
+
+            @Sendable func sendData(streamIndex: Int, currentSize: Int) -> EventLoopFuture<Void> {
+                action(request, context.channel, ChunkTool.maxChunk, streamIndex).flatMap { data in
+                    print(streamIndex)
+                    guard ChunkTool.isProperSize(bytes: data.readableBytes) else {
+                        return context.eventLoop.makeFailedFuture(Err.chunkSizeExceed.d("不应当超过 \(ChunkTool.maxChunkStr), 但得到大小 \(ChunkTool.formatByteSize(data.readableBytes))", 13030, (#file, #line)))
                     }
+                    let nextSize = currentSize + data.readableBytes
+                    let isLast = nextSize >= totalSize
+                    if isLast {
+                        let lastSize = currentSize + data.readableBytes 
+                        guard lastSize == totalSize else {
+                            return context.eventLoop.makeFailedFuture(Err.chunkSizeExceed.d("预期数据流的总大小应为 \(ChunkTool.formatByteSize(totalSize)), 但得到大小 \(ChunkTool.formatByteSize(lastSize))", 13031, (#file, #line)))
+                        }
+                        return send(chunk: data, streaming: false)
+                    }
+                    return send(chunk: data, streaming: true).flatMap { sendData(streamIndex: streamIndex + 1, currentSize: nextSize) }
                 }
             }
-        } else if var body = bodyBuffer {
-            // 直接发送 Request 的数据，但仍然分块发送
-            while body.readableBytes > 0 {
-                guard let chunk = body.readSlice(length: min(ChunkTool.maxChunk, body.readableBytes)) else { break }
-                let eof = body.readableBytes == 0
-                r = r.flatMap {
-                    return send(chunk: chunk, streaming: !eof)
+        } else {
+            // 将请求头单独先发出
+            r = r.flatMap {
+                send(chunk: headerBuffer, streaming: bodyBuffer != nil)
+            }
+
+            if var body = bodyBuffer {
+                // 直接发送 Request 的数据，但仍然分块发送
+                while body.readableBytes > 0 {
+                    guard let chunk = body.readSlice(length: min(ChunkTool.maxChunk, body.readableBytes)) else { break }
+                    let eof = body.readableBytes == 0
+                    r = r.flatMap {
+                        return send(chunk: chunk, streaming: !eof)
+                    }
                 }
             }
         }
@@ -128,12 +141,14 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
 
         @Sendable
         func send(chunk: ByteBuffer, streaming: Bool) -> EventLoopFuture<Void> {
+            print("Sending streaming: \(streaming)")
             return ioHandler.send(request: request, dataChunk: chunk, context: context, allocator: byteBufferAllocator, streaming: streaming).flatMap { req in
                 do {
                     try self.progress(.init(data: req, done: !streaming, channel: context.channel, response: false))
                 } catch let err {
                     return context.eventLoop.makeFailedFuture(err)
                 }
+                print("Sending")
                 if !streaming {
                     var r = req
                     var eof = ChunkTool.eof
@@ -151,6 +166,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     }
     
     public func channelUnregistered(context: ChannelHandlerContext) {
+        print("yes")
         ioHandler?.connectionEnd(context: context).flatMapThrowing {
             context.fireChannelInactive()
         }.flatMapErrorThrowing { err in

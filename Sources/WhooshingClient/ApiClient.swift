@@ -4,7 +4,7 @@ import ErrorHandle
 import NIOConcurrencyHelpers
 import NIO
 
-public final class ApiClient {
+public final class ApiClient: Sendable {
     private let client: APIReqClient
     public init(credential: String, token: String, app: Application) {
         self.client = .new(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator: .init())

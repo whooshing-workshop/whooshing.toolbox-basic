@@ -7,9 +7,9 @@ import NIO
 public typealias BeforeSendAction = @Sendable (_ request: inout ClientRequest, _ channel: Channel) throws -> ()
 public typealias AfterSendAction =  @Sendable (_ channel: Channel) async throws -> ()
 public typealias ProgressAction = @Sendable (_ progress: ProgressContext<ClientResponse?>) throws -> Void
-public typealias StreamingDataAction = @Sendable (_ request: ClientRequest, _ channel: Channel, _ maxChunk: Int) async throws -> ByteBuffer?
+public typealias StreamingDataAction = @Sendable (_ request: ClientRequest, _ channel: Channel, _ maxChunk: Int, _ currentIndex: Int) async throws -> ByteBuffer
 public typealias AsyncAfterSendAction =  @Sendable (_ channel: Channel) -> EventLoopFuture<Void>
-public typealias AsyncStreamingDataAction = @Sendable (_ request: ClientRequest, _ channel: Channel, _ maxChunk: Int) -> EventLoopFuture<ByteBuffer?>
+public typealias AsyncStreamingDataAction = @Sendable (_ request: ClientRequest, _ channel: Channel, _ maxChunk: Int, _ currentIndex: Int) -> EventLoopFuture<ByteBuffer>
 
 public protocol WSMClient {
 
@@ -22,27 +22,27 @@ public protocol WSMClient {
     func patch<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws -> ClientResponse where T: Content
     func put<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws -> ClientResponse where T: Content
 
-    func streamGet(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
-    func streamPost(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
-    func streamPatch(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
-    func streamPut(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
-    func streamDelete(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
+    func streamGet(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
+    func streamPost(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
+    func streamPatch(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
+    func streamPut(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
+    func streamDelete(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AfterSendAction, progress: @escaping ProgressAction) async throws
 
 
-    func get(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
-    func post(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
-    func patch(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
-    func put(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
-    func delete(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
-    func post<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
-    func patch<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
-    func put<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
+    func asyncGet(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
+    func asyncPost(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
+    func asyncPatch(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
+    func asyncPut(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
+    func asyncDelete(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse>
+    func asyncPost<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
+    func asyncPatch<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
+    func asyncPut<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<ClientResponse> where T: Content
     
-    func streamGet(_ url: URI, headers: HTTPHeaders, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
-    func streamPost(_ url: URI, headers: HTTPHeaders, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
-    func streamPatch(_ url: URI, headers: HTTPHeaders, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
-    func streamPut(_ url: URI, headers: HTTPHeaders, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
-    func streamDelete(_ url: URI, headers: HTTPHeaders, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
+    func asyncStreamGet(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
+    func asyncStreamPost(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
+    func asyncStreamPatch(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
+    func asyncStreamPut(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
+    func asyncStreamDelete(_ url: URI, headers: HTTPHeaders, bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction, afterSend: @escaping AsyncAfterSendAction, progress: @escaping ProgressAction) -> EventLoopFuture<Void>
 
     static func defaultAfterSend(channel: Channel) -> EventLoopFuture<Void>
 
@@ -59,36 +59,36 @@ public protocol WSMClient {
 }
 
 public extension WSMClient {
-    func get(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
-        try await reflect(url, headers, beforeSend, afterSend, progress, to: get)
+    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
+        try await reflect(url, headers, beforeSend, afterSend, progress, to: asyncGet)
     }
 
-    func post(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
-        try await reflect(url, headers, beforeSend, afterSend, progress, to: post)
+    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
+        try await reflect(url, headers, beforeSend, afterSend, progress, to: asyncPost)
     }
 
-    func patch(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
-        try await reflect(url, headers, beforeSend, afterSend, progress, to: patch)
+    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
+        try await reflect(url, headers, beforeSend, afterSend, progress, to: asyncPatch)
     }
 
-    func put(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
-        try await reflect(url, headers, beforeSend, afterSend, progress, to: put)
+    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
+        try await reflect(url, headers, beforeSend, afterSend, progress, to: asyncPut)
     }
 
-    func delete(_ url: URI, headers: HTTPHeaders, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
-        try await reflect(url, headers, beforeSend, afterSend, progress, to: delete)
+    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse {
+        try await reflect(url, headers, beforeSend, afterSend, progress, to: asyncDelete)
     }
 
-    func post<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
-        try await reflect2(url, headers, content, afterSend, progress, to: post)
+    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
+        try await reflect2(url, headers, content, afterSend, progress, to: asyncPost)
     }
 
-    func patch<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
-        try await reflect2(url, headers, content, afterSend, progress, to: patch)
+    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
+        try await reflect2(url, headers, content, afterSend, progress, to: asyncPatch)
     }
 
-    func put<T>(_ url: URI, headers: HTTPHeaders, content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
-        try await reflect2(url, headers, content, afterSend, progress, to: put)
+    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws -> ClientResponse where T: Content {
+        try await reflect2(url, headers, content, afterSend, progress, to: asyncPut)
     }
 
     private func reflect(
@@ -119,34 +119,35 @@ public extension WSMClient {
 }
 
 public extension WSMClient {
-    func streamGet(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
-        try await reflect(url, headers, stream, beforeSend, afterSend, progress, to: streamGet)
+    func streamGet(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
+        try await reflect(url, headers, bodySize, stream, beforeSend, afterSend, progress, to: asyncStreamGet)
     }
 
-    func streamPost(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
-        try await reflect(url, headers, stream, beforeSend, afterSend, progress, to: streamPost)
+    func streamPost(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
+        try await reflect(url, headers, bodySize, stream, beforeSend, afterSend, progress, to: asyncStreamPost)
     }
 
-    func streamPatch(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
-        try await reflect(url, headers, stream, beforeSend, afterSend, progress, to: streamPatch)
+    func streamPatch(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
+        try await reflect(url, headers, bodySize, stream, beforeSend, afterSend, progress, to: asyncStreamPatch)
     }
 
-    func streamPut(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
-        try await reflect(url, headers, stream, beforeSend, afterSend, progress, to: streamPut)
+    func streamPut(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
+        try await reflect(url, headers, bodySize, stream, beforeSend, afterSend, progress, to: asyncStreamPut)
     }
 
-    func streamDelete(_ url: URI, headers: HTTPHeaders, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
-        try await reflect(url, headers, stream, beforeSend, afterSend, progress, to: streamDelete)
+    func streamDelete(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping StreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AfterSendAction = { _ in }, progress: @escaping ProgressAction = { _ in }) async throws {
+        try await reflect(url, headers, bodySize, stream, beforeSend, afterSend, progress, to: asyncStreamDelete)
     }
 
     private func reflect(
-        _ url: URI, _ headers: HTTPHeaders, _ stream: @escaping StreamingDataAction, _ beforeSend: @escaping BeforeSendAction, _ afterSend: @escaping AfterSendAction, _ progress: @escaping ProgressAction,
-        to: (URI, HTTPHeaders, @escaping AsyncStreamingDataAction, @escaping BeforeSendAction, @escaping AsyncAfterSendAction, @escaping ProgressAction) -> EventLoopFuture<Void>
+        _ url: URI, _ headers: HTTPHeaders, _ bodySize: Int, _ stream: @escaping StreamingDataAction, _ beforeSend: @escaping BeforeSendAction, _ afterSend: @escaping AfterSendAction, _ progress: @escaping ProgressAction,
+        to: (URI, HTTPHeaders, Int, @escaping AsyncStreamingDataAction, @escaping BeforeSendAction, @escaping AsyncAfterSendAction, @escaping ProgressAction) -> EventLoopFuture<Void>
     ) async throws {
         try await to(
             url, 
             headers, 
-            { a, b, c in b.eventLoop.makeFutureWithTask { return try await stream(a, b, c) } }, 
+            bodySize,
+            { a, b, c, d in b.eventLoop.makeFutureWithTask { return try await stream(a, b, c, d) } }, 
             beforeSend, 
             { b in b.eventLoop.makeFutureWithTask { return try await afterSend(b) } }, 
             progress
@@ -161,57 +162,57 @@ public extension WSMClient {
 }
 
 public extension WSMClient {
-    func get(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
+    func asyncGet(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
         return self.send(.GET, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
     }
 
-    func post(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
+    func asyncPost(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
         return self.send(.POST, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
     }
 
-    func patch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
+    func asyncPatch(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
         return self.send(.PATCH, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
     }
 
-    func put(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
+    func asyncPut(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
         return self.send(.PUT, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
     }
 
-    func delete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
+    func asyncDelete(_ url: URI, headers: HTTPHeaders = [:], beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> {
         return self.send(.DELETE, headers: headers, to: url, bufferStrategy: .collect, beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { $0! }
     }
     
-    func post<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.post(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
+    func asyncPost<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.asyncPost(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 
-    func patch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.patch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
+    func asyncPatch<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.asyncPatch(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 
-    func put<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
-        return self.put(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
+    func asyncPut<T>(_ url: URI, headers: HTTPHeaders = [:], content: T, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<ClientResponse> where T: Content {
+        return self.asyncPut(url, headers: headers, beforeSend: { req, _ in try req.content.encode(content) }, afterSend: afterSend, progress: progress)
     }
 }
 
 public extension WSMClient {
-    func streamGet(_ url: URI, headers: HTTPHeaders = [:], stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.GET, headers: headers, to: url, bufferStrategy: .streaming(stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
+    func asyncStreamGet(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
+        return self.send(.GET, headers: headers, to: url, bufferStrategy: .streaming(totalSize: bodySize, stream: stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
     }
 
-    func streamPost(_ url: URI, headers: HTTPHeaders = [:], stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.POST, headers: headers, to: url, bufferStrategy: .streaming(stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
+    func asyncStreamPost(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
+        return self.send(.POST, headers: headers, to: url, bufferStrategy: .streaming(totalSize: bodySize, stream: stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
     }
 
-    func streamPatch(_ url: URI, headers: HTTPHeaders = [:], stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.PATCH, headers: headers, to: url, bufferStrategy: .streaming(stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
+    func asyncStreamPatch(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
+        return self.send(.PATCH, headers: headers, to: url, bufferStrategy: .streaming(totalSize: bodySize, stream: stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
     }
 
-    func streamPut(_ url: URI, headers: HTTPHeaders = [:], stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.PUT, headers: headers, to: url, bufferStrategy: .streaming(stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
+    func asyncStreamPut(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
+        return self.send(.PUT, headers: headers, to: url, bufferStrategy: .streaming(totalSize: bodySize, stream: stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
     }
 
-    func streamDelete(_ url: URI, headers: HTTPHeaders = [:], stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
-        return self.send(.DELETE, headers: headers, to: url, bufferStrategy: .streaming(stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
+    func asyncStreamDelete(_ url: URI, headers: HTTPHeaders = [:], bodySize: Int, stream: @escaping AsyncStreamingDataAction, beforeSend: @escaping BeforeSendAction = { _, _ in }, afterSend: @escaping AsyncAfterSendAction = defaultAfterSend, progress: @escaping ProgressAction = { _ in }) -> EventLoopFuture<Void> {
+        return self.send(.DELETE, headers: headers, to: url, bufferStrategy: .streaming(totalSize: bodySize, stream: stream), beforeSend: beforeSend, afterSend: afterSend, progress: progress).map { _ in }
     }
 }
