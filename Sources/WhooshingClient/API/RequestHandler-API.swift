@@ -10,15 +10,15 @@ extension APIReqClient {
 }
 
 public enum API {
-    public final class RequestIOData: StorageKey, Sendable {
-        public typealias Value = RequestIOData
-        public let credential: String
-        public let token: String
+    final class RequestIOData: StorageKey, Sendable {
+        typealias Value = RequestIOData
+        let credential: String
+        let token: String
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
         let readingBufferDatas: SendableDictionary<ObjectIdentifier, ByteBuffer> = .init()
         let errorTemps: SendableDictionary<ObjectIdentifier, HTTPStatus> = .init()
         
-        public init(credential: String, token: String) {
+        init(credential: String, token: String) {
             self.credential = credential
             self.token = token
         }

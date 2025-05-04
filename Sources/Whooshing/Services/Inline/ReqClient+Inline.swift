@@ -9,9 +9,9 @@ import WhooshingClient
 /// 该文件实现了发送加密请求的功能。由于目标模块的加密算法并非传统的 HTTPS，
 /// 而是自定的加密算法，因此向其请求时需要使用特定的加密逻辑。
 
-public final class InlineReqClient: ReqClient, WSMClient, StorageKey, @unchecked Sendable {
+final class InlineReqClient: ReqClient, WhooshingClient, StorageKey, @unchecked Sendable {
     
-    public typealias Value = InlineReqClient
+    typealias Value = InlineReqClient
 
     enum InlineReqErr: String, ErrList {
         var domain: String { "woo.sys.inline.reqclient.err" }
@@ -21,7 +21,7 @@ public final class InlineReqClient: ReqClient, WSMClient, StorageKey, @unchecked
     }
     
     @Sendable 
-    public func send(
+    func send(
         _ method: HTTPMethod,
         headers: HTTPHeaders,
         to url: URI,
@@ -82,7 +82,7 @@ public final class InlineReqClient: ReqClient, WSMClient, StorageKey, @unchecked
         }
     }
 
-    struct JSONData: Content {
+    private struct JSONData: Content {
         let data: Data
     }
     

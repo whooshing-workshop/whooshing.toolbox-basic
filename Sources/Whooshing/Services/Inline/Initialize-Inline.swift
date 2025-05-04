@@ -7,7 +7,7 @@ import NIO
 import Logging
 
 public extension Application {
-    var inlineClient: InlineReqClient { self.storage[InlineReqClient.self]! }
+    var inlineClient: WhooshingClient { self.storage[InlineReqClient.self]! }
 }
 
 public enum Inline {

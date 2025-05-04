@@ -4,6 +4,8 @@ import ErrorHandle
 import NIOCore
 import NIOConcurrencyHelpers
 
+// 用于处理请求客户端与服务器之间的加密机制
+
 public protocol RequestIOHandler: Sendable {
     func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer>
     func get(response: ByteBuffer, bufferStrategy: BufferStrategy, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)>
@@ -14,6 +16,31 @@ public protocol RequestIOHandler: Sendable {
 public extension RequestIOHandler {
     func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> { context.eventLoop.makeSucceededVoidFuture() }
     func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> { context.eventLoop.makeSucceededVoidFuture() }
+}
+
+fileprivate final class TempProgress: @unchecked Sendable {
+    var index: Int {
+        get { lock.withLock { _index } }
+        set { lock.withLock { _index = newValue } }
+    }
+    var curBytes: Int {
+        get { lock.withLock { _curBytes } }
+        set { lock.withLock { _curBytes = newValue } }
+    }
+    var totalBytes: Int? {
+        get { lock.withLock { _totalBytes } }
+        set { lock.withLock { _totalBytes = newValue } }
+    }
+    var startDate: Date {
+        get { lock.withLock { _startDate } }
+        set { lock.withLock { _startDate = newValue } }
+    }
+
+    private var _index: Int = 0
+    private var _curBytes: Int = 0
+    private var _totalBytes: Int? = nil
+    private var _startDate = Date.now
+    let lock = NIOLock()
 }
 
 public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
@@ -30,31 +57,6 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     private let byteBufferAllocator: ByteBufferAllocator
     private let ioHandler: RequestIOHandler?
     private let progressPool: SendableDictionary<ObjectIdentifier, TempProgress> = .init()
-    
-    final class TempProgress: @unchecked Sendable {
-        var index: Int {
-            get { lock.withLock { _index } }
-            set { lock.withLock { _index = newValue } }
-        }
-        var curBytes: Int {
-            get { lock.withLock { _curBytes } }
-            set { lock.withLock { _curBytes = newValue } }
-        }
-        var totalBytes: Int? {
-            get { lock.withLock { _totalBytes } }
-            set { lock.withLock { _totalBytes = newValue } }
-        }
-        var startDate: Date {
-            get { lock.withLock { _startDate } }
-            set { lock.withLock { _startDate = newValue } }
-        }
-
-        private var _index: Int = 0
-        private var _curBytes: Int = 0
-        private var _totalBytes: Int? = nil
-        private var _startDate = Date.now
-        let lock = NIOLock()
-    }
 
     init(promise: EventLoopPromise<ClientResponse?>?, logger: Logger?, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.promise = promise

@@ -5,8 +5,8 @@ import NIOCore
 import Logging
 import Cryptos
 
-public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Sendable {
-    public typealias Value = APIReqClient
+final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sendable {
+    typealias Value = APIReqClient
     enum APIReqErr: String, ErrList {
         var domain: String { "woo.sys.api.reqclient.err" }
         case unknowSendError = "请求时发生未知的错误"
@@ -16,13 +16,13 @@ public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Se
         case parseParaFailed = "解析请求参数时失败"
     }
 
-    public static func new(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator) -> Self {
+    static func new(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator) -> Self {
         let res = Self(eventLoop: eventLoop, logger: logger, byteBufferAllocator: byteBufferAllocator)
         res.ioHandler = API.RequestIOCrypto(client: res, logger: logger)
         return res
     }
     
-    public func send(
+    func send(
         _ method: HTTPMethod,
         headers: HTTPHeaders,
         to url: URI,
