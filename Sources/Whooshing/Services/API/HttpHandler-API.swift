@@ -33,7 +33,6 @@ extension API {
         /// 有客户端请求进入
         func input(request: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data?> {
             let id = ObjectIdentifier(context.channel)
-            print("/// 有客户端请求进入")
             do {
                 let req: Data
                 if let key = app.apiServiceData.clientKeys[id] {
@@ -45,14 +44,12 @@ extension API {
                 }
                 return context.eventLoop.makeSucceededFuture(req)
             } catch let err {
-                print(err)
                 return context.eventLoop.makeFailedFuture(err)
             }
         }
         
         /// 有服务器响应请求发出
         func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo, streaming: Bool) -> EventLoopFuture<Data> {
-            print("/// 有服务器响应请求发出")
             let id = ObjectIdentifier(context.channel)
             do {
                 let res: Data
@@ -71,9 +68,14 @@ extension API {
             }
         }
         
+        func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            app.logger.debug("API.Server-连线建立: \(context.channel.serverAddrInfo)")
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
 
         /// 连线结束
         func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Void> {
+            app.logger.debug("API.Server-连线结束: \(context.channel.serverAddrInfo)")
             let id = ObjectIdentifier(context.channel)
             app.apiServiceData.clientKeys[id] = nil
             app.apiServiceData.clientTokens[id] = nil

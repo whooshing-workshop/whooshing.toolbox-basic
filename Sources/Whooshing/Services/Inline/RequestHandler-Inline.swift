@@ -31,10 +31,10 @@ extension Inline {
     /// 实现 HTTP Request 的加解密
     struct RequestIOCrypto: RequestIOHandler, Sendable {
         let client: InlineReqClient
+        let logger: Logger
         
         /// 发送请求时，进行编码并加密
         func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer> {
-            print("// 发送请求时，进行编码并加密")
             do {
                 let cipher: Data
                 let id = ObjectIdentifier(context.channel)
@@ -49,7 +49,6 @@ extension Inline {
         
         /// 收到响应时，进行解密并解码
         func get(response: ByteBuffer, bufferStrategy: BufferStrategy, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<(ClientResponse?, ByteBuffer)> {
-            print("// 收到响应时，进行解密并解码")
             do {
                 let id = ObjectIdentifier(context.channel)
                 var plain: ByteBuffer
@@ -70,9 +69,16 @@ extension Inline {
                 return context.eventLoop.makeFailedFuture(err)
             }
         }
+
+        // 连线建立
+        func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            logger.debug("Inline.Client-连线建立: \(context.channel.clientAddrInfo)")
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
         
         // 连线结束，进行清理
         func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            logger.debug("Inline.Client-连线结束: \(context.channel.clientAddrInfo)")
             let id = ObjectIdentifier(context.channel)
             client.requestIoData.connectionKeys[id] = nil
             client.requestIoData.connectionValidate[id] = nil

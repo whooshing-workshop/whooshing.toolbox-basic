@@ -18,7 +18,7 @@ public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Se
 
     public static func new(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator) -> Self {
         let res = Self(eventLoop: eventLoop, logger: logger, byteBufferAllocator: byteBufferAllocator)
-        res.ioHandler = API.RequestIOCrypto(client: res)
+        res.ioHandler = API.RequestIOCrypto(client: res, logger: logger)
         return res
     }
     
@@ -37,6 +37,11 @@ public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Se
                 var request = req
                 try beforeSend(&request, channel)
                 request.channel = channel
+                if case .collect = bufferStrategy {
+                    self.logger?.info("API.Client-发送请求: \(channel.clientAddrInfo)")
+                } else {
+                    self.logger?.info("API.Client-发送流式请求: \(channel.clientAddrInfo)")
+                }
                 return self._send(request: request, channel: channel, handler: handler, bufferStrategy: bufferStrategy, progress: progress).flatMapError { err in
                     return channel.eventLoop.makeFailedFuture(err)
                 }.flatMap { res in
@@ -57,13 +62,13 @@ public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Se
         var r = eventLoop.makeSucceededVoidFuture()
         guard let ioData = self.apiRequestIoData else { return eventLoop.makeFailedFuture(APIReqErr.requestParaMissing.d("apiRequestIoData", 12013, (#file, #line))) }
         if ioData.connectionKeys[id] == nil {
-            print("// 需要进行认证")
+            self.logger?.debug("正在与服务器进行认证: \(channel.clientAddrInfo)")
             r = r.flatMap { 
                 self.authExchange(request: request, handler: handler, channel: channel)
             }
         }
         return r.flatMap{
-            print("// 发送具体的请求")
+            self.logger?.debug("正在与服务器发送具体的请求: \(channel.clientAddrInfo)")
             return self.send(request, channel: channel, handler: handler, bufferStrategy: bufferStrategy, progress: progress)
         }.flatMapError { err in 
             channel.eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d(12012, (#file, #line)).subErr(err))
@@ -81,26 +86,27 @@ public final class APIReqClient: ReqClient, StorageKey, WSMClient, @unchecked Se
             let ioData = self.apiRequestIoData!
             let id = ObjectIdentifier(channel)
             guard let credential = Data(base64Encoded: ioData.credential) else { throw APIReqErr.parseParaFailed.d("用户凭据", 12007, (#file, #line)) }
-            print("// 使用用户口令加密用户口令本身")
+            self.logger?.trace("API.Client-认证中: 使用用户口令加密用户口令本身")
             guard let token = Data(base64Encoded: ioData.token) else { throw APIReqErr.parseParaFailed.d("用户口令", 12008, (#file, #line)) }
             let tokenKey = Crypto.Symm.Key(data: token)
             let tokenEncrypted = try Crypto.Symm.encrypt(token, key: tokenKey)
-            print("// 将凭据和加密后的用户口令进行 json 编码")
+            self.logger?.trace("API.Client-认证中: 将凭据和加密后的用户口令进行 json 编码")
             guard let body = try? JSONEncoder().encode(AuthExchangeJSON(credential: credential, tokenEncrypted: tokenEncrypted)) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 14001, (#file, #line))) }
-            print("// 发送用户凭据以及用户口令")
+            self.logger?.trace("API.Client-认证中: 发送用户凭据以及用户口令")
             return self.send(.init(method: .POST, url: request.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler, bufferStrategy: .collect, progress: { _ in }).flatMapThrowing { res in
                 // 此处一定有响应，因为 bufferStrategy 是 .collect
                 let res = res!
-                print("// 认证请求发送完成")
+                self.logger?.trace("API.Client-正在完成认证: 认证请求发送完成")
                 guard res.status == .ok else { throw APIReqErr.badResponse.d(14002, (#file, #line)) }
-                print("// 向认证模块发送认证请求，最终应当得到一个使用用户口令加密的新密钥，并使用该新密钥进行后续的通讯加密")
+                // 当向认证模块发送认证请求之后，应当得到一个使用用户口令加密的新密钥，并使用该新密钥进行后续的通讯加密
+                self.logger?.trace("API.Client-正在完成认证: 解析服务器的新密钥")
                 guard let token = Data(base64Encoded: ioData.token) else { throw APIReqErr.parseParaFailed.d("用户口令", 14003, (#file, #line)) }
                 let tokenKey = Crypto.Symm.Key(data: token)
-                print("// 获取对方发来的加密新密钥")
+                self.logger?.trace("API.Client-正在完成认证: 获取对方发来的加密新密钥")
                 let keyEncrypted = try res.content.decode(JSONData.self).data
-                print("// 使用用户口令解密新密钥")
+                self.logger?.trace("API.Client-正在完成认证: 使用用户口令解密新密钥")
                 let newKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(keyEncrypted, key: tokenKey)
-                print("// 注册该新密钥，用于将来的连线加密")
+                self.logger?.trace("API.Client-正在完成认证: 注册该新密钥，用于将来的连线加密")
                 ioData.connectionKeys[id] = newKey
             }
         } catch let err {

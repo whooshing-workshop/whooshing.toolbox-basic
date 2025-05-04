@@ -27,11 +27,11 @@ let package = Package(
     targets: [
         .target( name: "ErrorHandle" ),
         .target(
-            name:  "Cryptos",
+            name: "Cryptos",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
-                .product(name: "Vapor", package: "whooshing-vapor"),
+                // .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),

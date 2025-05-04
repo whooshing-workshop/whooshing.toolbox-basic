@@ -34,6 +34,7 @@ public enum API {
     
     struct RequestIOCrypto: RequestIOHandler, Sendable {
         let client: APIReqClient
+        let logger: Logger?
         
         /// 发送请求时，进行编码并加密
         func send(request: ClientRequest, dataChunk: ByteBuffer, context: ChannelHandlerContext, allocator: ByteBufferAllocator, streaming: Bool) -> EventLoopFuture<ByteBuffer> {
@@ -60,7 +61,7 @@ public enum API {
             guard let ioData = client.apiRequestIoData else { return context.eventLoop.makeFailedFuture(Err.requestParaMissing.d("apiRequestIoData", 12010, (#file, #line))) }
             let id = ObjectIdentifier(context.channel)
 
-            print("// 检查对方回复的是不是一个未加密的 http 回复，如果是，则表示对方出错")
+            // 检查对方回复的是不是一个未加密的 http 回复，如果是，则表示对方出错
 
             if let _ = ioData.errorTemps[id] {
                 let err = parseError(body: response)
@@ -129,8 +130,15 @@ public enum API {
             }
         }
 
+        // 连线建立
+        func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            logger?.debug("API.Client-连线建立: \(context.channel.clientAddrInfo)")
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
+
         // 连线结束，进行清理
         func connectionEnd(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            logger?.debug("API.Client-连线结束: \(context.channel.clientAddrInfo)")
             let id = ObjectIdentifier(context.channel)
             client.apiRequestIoData?.connectionKeys[id] = nil
             client.apiRequestIoData?.readingBufferDatas[id] = nil

@@ -71,7 +71,6 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         let streaming: Bool
         if let bufferSuffix = buffer.readSlice(length: ChunkTool.eof.readableBytes) { streaming = bufferSuffix != ChunkTool.eof } 
         else { streaming = true }
-        print("Streaming2: \(streaming)")
         if streaming { buffer.moveReaderIndex(to: 0) }
 
         let id = ObjectIdentifier(context.channel)
@@ -79,20 +78,27 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         ioHandler.get(response: buffer, bufferStrategy: bufferStrategy, context: context, streaming: streaming).whenComplete { result in
             switch result {
             case .success(let response):
+                var isHeaders = false
                 if self.progressPool[id] == nil { 
                     self.progressPool[id] = .init()
                     if let res = try? ClientResponse(data: response.1) {
                         if let sizeStr = res.headers.first(name: .contentLength), let size = Int(sizeStr) {
                             self.progressPool[id]!.totalBytes = size
                         }
+                        isHeaders = true
                     }
                 }
                 let tempProgress = self.progressPool[id]!
+                if isHeaders {
+                    self.logger?.trace("ReqIOHandler.Read-正在从服务器流接收 流数据头: \(context.channel.clientAddrInfo), 数据体总大小: \(tempProgress.totalBytes ?? -1)")
+                } else {
+                    self.logger?.trace("ReqIOHandler.Read-正在从服务器流接收 流数据: \(context.channel.clientAddrInfo), 当前大小: \(tempProgress.curBytes), 总大小: \(tempProgress.totalBytes ?? -1)")
+                }
                 do {
                     try self.progress(.init(index: tempProgress.index, data: response.1, done: !streaming, curBytes: tempProgress.curBytes, totalBytes: tempProgress.totalBytes, startDate: tempProgress.startDate, channel: context.channel, response: true))
                     tempProgress.curBytes += response.1.readableBytes
                 } catch let err {
-                    self.errorCaught(context: context, label: "Read", error: err)
+                    self.errorHappend(context: context, error: err)
                     self.promise.fail(err)
                 }
                 if !streaming {
@@ -106,7 +112,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                     }
                 }
             case .failure(let err):
-                self.errorCaught(context: context, label: "Read", error: err)
+                self.errorHappend(context: context, error: err)
                 self.promise.fail(err)
             }
         }
@@ -132,7 +138,8 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         if case let .streaming(totalSize, action) = bufferStrategy {
             // 将请求头单独先发出
             r = r.flatMap {
-                send(chunk: headerBuffer, streaming: totalSize > 0, index: 0, curBytes: 0, totalSize: totalSize)
+                self.logger?.trace("ReqIOHandler.Write-正在向服务器流传输 流请求头: \(context.channel.clientAddrInfo), 总大小: \(totalSize)")
+                return send(chunk: headerBuffer, streaming: totalSize > 0, index: 0, curBytes: 0, totalSize: totalSize)
             }
 
             // stream 发送，需要从调用者不断读取块数据
@@ -145,7 +152,9 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                     }
                     let nextSize = currentSize + data.readableBytes
                     let isLast = nextSize >= totalSize
-                    print("CurSize: \(nextSize), total: \(totalSize)")
+
+                    self.logger?.trace("ReqIOHandler.Write-正在向服务器流传输 流数据: \(context.channel.clientAddrInfo), 当前大小: \(currentSize), 下一次大小: \(nextSize), 总大小: \(totalSize)")
+
                     if isLast {
                         let lastSize = currentSize + data.readableBytes 
                         guard lastSize == totalSize else {
@@ -159,7 +168,8 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         } else {
             // 将请求头单独先发出
             r = r.flatMap {
-                send(chunk: headerBuffer, streaming: bodyBuffer != nil, index: 0, curBytes: 0, totalSize: bodyBuffer == nil ? 0 : bodyBuffer!.readableBytes )
+                self.logger?.trace("ReqIOHandler.Write-正在向服务器流传输 块请求头: \(context.channel.clientAddrInfo), 总大小: \(bodyBuffer == nil ? -1 : bodyBuffer!.readableBytes)")
+                return send(chunk: headerBuffer, streaming: bodyBuffer != nil, index: 0, curBytes: 0, totalSize: bodyBuffer == nil ? 0 : bodyBuffer!.readableBytes )
             }
 
             if var body = bodyBuffer {
@@ -171,7 +181,9 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
                     guard let chunk = body.readSlice(length: min(ChunkTool.maxChunk, body.readableBytes)) else { break }
                     let eof = body.readableBytes == 0
                     r = r.flatMap {
-                        return send(chunk: chunk, streaming: !eof, index: index, curBytes: (index - 1) * ChunkTool.maxChunk, totalSize: tSize)
+                        let curSize = (index - 1) * ChunkTool.maxChunk
+                        self.logger?.trace("ReqIOHandler.Write-正在向服务器流传输 块数据: \(context.channel.clientAddrInfo), 当前大小: \(curSize), 总大小: \(tSize)")
+                        return send(chunk: chunk, streaming: !eof, index: index, curBytes: curSize, totalSize: tSize)
                     }
                     i += 1
                 }
@@ -179,7 +191,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         }
         
         r.whenFailure { err in
-            self.errorCaught(context: context, label: "Write", error: err)
+            self.errorHappend(context: context, error: err)
             promise?.fail(err)
         }
 
@@ -205,7 +217,7 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
     
     public func channelRegistered(context: ChannelHandlerContext) {
         ioHandler?.connectionStart(context: context).flatMapErrorThrowing { err in
-            self.errorCaught(context: context, label: "连线建立", error: err)
+            self.errorHappend(context: context, error: err)
         }.whenComplete { _ in }
     }
     
@@ -214,14 +226,12 @@ public final class RequestHandler: ChannelDuplexHandler, @unchecked Sendable {
         ioHandler?.connectionEnd(context: context).flatMapThrowing {
             context.fireChannelInactive()
         }.flatMapErrorThrowing { err in
-            self.errorCaught(context: context, label: "连线终止", error: err)
+            self.errorHappend(context: context, error: err)
         }.whenComplete { _ in }
     }
     
-    func errorCaught(context: ChannelHandlerContext, label: String, error: Error) {
-        if let logger = self.logger {
-            logger.debug("HTTP 流 \(label) 时加解密失败: \(String(reflecting: error))")
-        }
+    func errorHappend(context: ChannelHandlerContext, error: Error) {
+        logger?.report(error: error)
         context.fireErrorCaught(error)
     }
 

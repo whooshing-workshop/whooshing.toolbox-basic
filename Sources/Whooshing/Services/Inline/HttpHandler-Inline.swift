@@ -36,7 +36,6 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             let req: Data
             do {
-                print("有客户端请求进入")
                 if let key = app.inlineServiceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
                 else { req = try Crypto.Symm.decrypt(request, key: app.inlineServiceData.rootKey) }
                 return context.eventLoop.makeSucceededFuture(req)
@@ -50,7 +49,7 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             let res: Data
             do {
-                print("// 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密")
+                // 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密
                 if let key = app.inlineServiceData.connectionKeys[id], let _ = app.inlineServiceData.connectionValidate[id] {
                     res = try Crypto.Symm.encrypt(response, key: key)
                 } else { res = try Crypto.Symm.encrypt(response, key: app.inlineServiceData.rootKey) }
@@ -60,8 +59,15 @@ extension Inline {
             }
         }
         
+        /// 连线建立
+        func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            app.logger.debug("Inline.Server-连线建立: \(context.channel.serverAddrInfo)")
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
+        
         /// 连线结束
         func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Void> {
+            app.logger.debug("Inline.Server-连线结束: \(context.channel.serverAddrInfo)")
             let id = ObjectIdentifier(context.channel)
             app.inlineServiceData.connectionKeys[id] = nil
             app.inlineServiceData.connectionValidate[id] = nil

@@ -124,7 +124,6 @@ open class ReqClient: Client, @unchecked Sendable {
         } else if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
         }
-        print(client)
         handler.promise = promise
         handler.bufferStrategy = bufferStrategy
         handler.progress = { prog in
