@@ -1,14 +1,19 @@
 import Crypto
 import Foundation
+import ErrorHandle
+import DataConvertable
+// import Vapor
 
 /// 加解密 Crypto 模块可能出现的所有错误
 public enum CryptoErrorLists: String, ErrList {
-    public var domain: String { "Crypto.Error" }
+    public var domain: String { "ToolboxBsc.Crypto" }
     case encryptFailed = "加密失败"
     case decryptFailed = "解密失败"
     case signFailed = "签名失败"
     case validateFailed = "签名验证失败"
     case keyEncapsulateFailed = "密钥协商失败"
+    case saltGenerateFailed = "盐值生成失败"
+    case keyInvalid = "密钥不合法"
 }
 
 public typealias CptErr = CryptoErrorLists
@@ -33,7 +38,7 @@ public enum Crypto {
 
         哈希算法由于其不可逆且高效的优点，常用与密码加密，完整性验证等等。
 
-        该函数使用 SHA256 进行哈希摘要。
+        该函数使用 SHA512 进行哈希摘要。
 
         - 参数
             - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
@@ -52,8 +57,29 @@ public enum Crypto {
         }
         ```
     */
-    public static func hash(_ data: SafeDataConvertable) -> Data { try! hash(data as ThrowableDataConvertable) }
-    public static func hash(_ data: ThrowableDataConvertable) throws -> Data { .init(try HashFunction.hash(data: data.data())) }
+    public static func hash(_ data: any SafeDataConvertable) -> Data { try! hash(data as (any ThrowableDataConvertable)) }
+    public static func hash(_ data: any ThrowableDataConvertable) throws -> Data { .init(try HashFunction.hash(data: data.data())) }
+    
+    /**
+        #### 哈希摘要算法，加盐哈希
+     
+        该函数使用 SHA512 进行哈希摘要。
+        
+        - 参数
+            - data: 需要进行加密的数据，该数据必须为 Safe/Throwable DataConvertable 的实例，详见 DataConvertable.swift
+            - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
+        - 返回值: 哈希摘要，只提供 Data 类型。
+    */
+    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
+        if salt == nil { salt = randomDataGenerate(length: 32) }
+        return .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
+    }
+    
+    /// 随机数据生成函数，可指定长度以生成随机数据
+    public static func randomDataGenerate(length: Int = 32) -> Data {
+        let randomBytes = SymmetricKey(size: .init(bitCount: length * 8)).withUnsafeBytes { Data($0) }
+        return randomBytes
+    }
 
     /**
         #### 对称加密算法
@@ -123,7 +149,7 @@ public enum Crypto {
         ///     - data：待加密的数据
         ///     - key：用于加密的密钥，可以由 `makeKey()` 函数生成
         /// - 返回值：加密过后的密文，只提供 Data 形式。
-        public static func encrypt(_ data: ThrowableDataConvertable, key: Key) throws -> Data { try aesEncrypt(data, key: key) }
+        public static func encrypt(_ data: any ThrowableDataConvertable, key: Key) throws -> Data { try aesEncrypt(data, key: key) }
 
         /// 对数据进行解密
         /// 
@@ -149,8 +175,8 @@ public enum Crypto {
             /// ``` swift
             /// let mac = try Crypto.Symm.Sign.make(data, key)
             /// ```
-            public static func make(_ data: SafeDataConvertable, key: Key) -> Data { try! make(data as ThrowableDataConvertable, key: key) }
-            public static func make(_ data: ThrowableDataConvertable, key: Key) throws -> Data { .init(try HMAC<HashFunction>.authenticationCode(for: data.data(), using: key)) }
+            public static func make(_ data: any SafeDataConvertable, key: Key) -> Data { try! make(data as (any ThrowableDataConvertable), key: key) }
+            public static func make(_ data: any ThrowableDataConvertable, key: Key) throws -> Data { .init(try HMAC<HashFunction>.authenticationCode(for: data.data(), using: key)) }
             
             /// 验证签名
             /// 
@@ -159,8 +185,8 @@ public enum Crypto {
             ///     - authCode：MAC 消息验证码，由 ```Crypto.Symm.Sign.make(..., key)``` 生成
             ///     - key：用于解密的密钥，需与加密密钥一致方可进行验证
             /// - 返回：验证是否匹配，是 则返回 true，否 则返回 false
-            public static func validate(_ data: SafeDataConvertable, authCode: Data, key: Key) -> Bool { try! validate(data as ThrowableDataConvertable, authCode: authCode, key: key) }
-            public static func validate(_ data: ThrowableDataConvertable, authCode: Data, key: Key) throws -> Bool { try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.data(), using: key) }
+            public static func validate(_ data: any SafeDataConvertable, authCode: Data, key: Key) -> Bool { try! validate(data as (any ThrowableDataConvertable), authCode: authCode, key: key) }
+            public static func validate(_ data: any ThrowableDataConvertable, authCode: Data, key: Key) throws -> Bool { try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.data(), using: key) }
         }
     }
 
@@ -253,7 +279,7 @@ public enum Crypto {
         ///     - salt：盐值，双方需要保持一致
         ///     - info：上下文信息，双方需要保持一致。该参数可以自定设置为任意值，只是需要双方一致
         /// - 返回：协商完成的对称密钥
-        public static func keyEncapsulate(key: CPrivateKey, partyPublic: CPublicKey, salt: ThrowableDataConvertable, info: ThrowableDataConvertable) throws -> Symm.Key { 
+        public static func keyEncapsulate(key: CPrivateKey, partyPublic: CPublicKey, salt: any ThrowableDataConvertable, info: any ThrowableDataConvertable) throws -> Symm.Key { 
             let sharedKey = try Guard({ try key.sharedSecretFromKeyAgreement(with: partyPublic) }, throw: CptErr.keyEncapsulateFailed.d(1012, (#file, #line)))
             return try sharedKey.hkdfDerivedSymmetricKey(using: HashFunction.self, salt: salt.data(), sharedInfo: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
         }
@@ -267,7 +293,7 @@ public enum Crypto {
             ///     - data：要签名的数据
             ///     - key：己方的私钥
             /// - 返回：该数据的签名
-            public static func make(_ data: ThrowableDataConvertable, key: SPrivateKey) throws -> Data { try key.signature(for: data.data()) }
+            public static func make(_ data: any ThrowableDataConvertable, key: SPrivateKey) throws -> Data { try key.signature(for: data.data()) }
 
             /// 使用公钥验证签名
             /// 
@@ -275,10 +301,44 @@ public enum Crypto {
             ///     - data：数据本体，需要被验证是否完整的数据
             ///     - key：己方的公钥
             /// - 返回：验证是否匹配，是 则返回 true，否 则返回 false
-            public static func validate(_ data: SafeDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try! validate(data as ThrowableDataConvertable, sign: sign, key: key) }
-            public static func validate(_ data: ThrowableDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try key.isValidSignature(sign, for: data.data()) }
+            public static func validate(_ data: any SafeDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try! validate(data as (any ThrowableDataConvertable), sign: sign, key: key) }
+            public static func validate(_ data: any ThrowableDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try key.isValidSignature(sign, for: data.data()) }
         }
     }
+}
+
+extension Crypto.Symm.Key: @retroactive Codable {}
+extension Crypto.Symm.Key: @retroactive Hashable {}
+extension Crypto.Symm.Key: SafeDataConvertable {
+    public func data() -> Data { self.withUnsafeBytes { Data($0) } }
+}
+
+extension Crypto.Asym.CPrivateKey: @retroactive Codable {}
+extension Crypto.Asym.CPrivateKey: @retroactive Hashable {}
+extension Crypto.Asym.CPrivateKey: ThrowableDataConvertable {
+    public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
+    public func data() -> Data { self.rawRepresentation }
+}
+
+extension Crypto.Asym.CPublicKey: @retroactive Codable {}
+extension Crypto.Asym.CPublicKey: @retroactive Hashable {}
+extension Crypto.Asym.CPublicKey: ThrowableDataConvertable {
+    public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
+    public func data() -> Data { self.rawRepresentation }
+}
+
+extension Crypto.Asym.SPrivateKey: @retroactive Codable {}
+extension Crypto.Asym.SPrivateKey: @retroactive Hashable {}
+extension Crypto.Asym.SPrivateKey: ThrowableDataConvertable {
+    public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
+    public func data() -> Data { self.rawRepresentation }
+}
+
+extension Crypto.Asym.SPublicKey: @retroactive Codable {}
+extension Crypto.Asym.SPublicKey: @retroactive Hashable {}
+extension Crypto.Asym.SPublicKey: ThrowableDataConvertable {
+    public init(data: Data) throws { try self = Self.init(rawRepresentation: data) }
+    public func data() -> Data { self.rawRepresentation }
 }
 
 // MARK: - 以下为私有实现
@@ -289,17 +349,23 @@ private extension Crypto {
 }
 
 private extension Crypto.Symm {
-    static func aesEncrypt(_ data: ThrowableDataConvertable, key: Key) throws -> Data {
+    static func aesEncrypt(_ data: any ThrowableDataConvertable, key: Key) throws -> Data {
+        // print("正在进行加密：\(try data.data().count)")
+        guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2001, (#file, #line)) }
         let sealedBox = try Guard({ try AES.GCM.seal(data.data(), using: key) }, throw: CptErr.encryptFailed.d("AES 加密未能成功封印明文数据", 1009, (#file, #line)))
         guard let cipher = sealedBox.combined else {
             throw CptErr.encryptFailed.d("AES 加密-未知错误，密文不存在", 1006, (#file, #line))
         }
+        // print("加密得到：\(cipher.count)")
         return cipher
     }
 
     static func aesDecrypt<D>(_ cipher: Data, key: Key) throws -> D where D: ThrowableDataConvertable {
+        // print("正在进行解密：\(cipher.count)")
+        guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2002, (#file, #line)) }
         let sealedBox = try Guard( { try AES.GCM.SealedBox(combined: cipher) }, throw: CptErr.decryptFailed.d("AES 解密-将密文转换为 SealedBox 时出错", 1007, (#file, #line)))
         let decryptedData = try Guard({ try AES.GCM.open(sealedBox, using: key) }, throw: CptErr.decryptFailed.d("AES 解密-解开密文时出错", 1008, (#file, #line)))
+        // print("解密得到：\(decryptedData.count)")
         return try D(data: decryptedData)
     }
 
