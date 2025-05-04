@@ -21,8 +21,6 @@ extension Inline {
         let moduleDatas: [ModuleData]
         let connectionValidate: SendableDictionary<ObjectIdentifier, Bool> = .init()
         let connectionKeys: SendableDictionary<ObjectIdentifier, Crypto.Symm.Key> = .init()
-        let readingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
-        let writingBufferDatas: SendableDictionary<ObjectIdentifier, Data> = .init()
         
         init(rootKey: Crypto.Symm.Key, moduleDatas: [ModuleData]) {
             self.rootKey = rootKey
@@ -38,15 +36,9 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             let req: Data
             do {
-                print("有客户端请求进入")
                 if let key = app.inlineServiceData.connectionKeys[id] { req = try Crypto.Symm.decrypt(request, key: key) }
                 else { req = try Crypto.Symm.decrypt(request, key: app.inlineServiceData.rootKey) }
-                return streamingHandle(
-                    chunkData: req,
-                    context: context,
-                    dic: app.inlineServiceData.readingBufferDatas,
-                    streaming: streaming
-                )
+                return context.eventLoop.makeSucceededFuture(req)
             } catch let err {
                 return context.eventLoop.makeFailedFuture(err)
             }
@@ -57,7 +49,7 @@ extension Inline {
             let id = ObjectIdentifier(context.channel)
             let res: Data
             do {
-                print("// 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密")
+                // 若 key 存在，但 validate 不存在，则仍然使用 rootKey 加密
                 if let key = app.inlineServiceData.connectionKeys[id], let _ = app.inlineServiceData.connectionValidate[id] {
                     res = try Crypto.Symm.encrypt(response, key: key)
                 } else { res = try Crypto.Symm.encrypt(response, key: app.inlineServiceData.rootKey) }
@@ -67,13 +59,18 @@ extension Inline {
             }
         }
         
+        /// 连线建立
+        func connectionStart(context: ChannelHandlerContext) -> EventLoopFuture<Void> {
+            app.logger.debug("Inline.Server-连线建立: \(context.channel.serverAddrInfo)")
+            return context.eventLoop.makeSucceededVoidFuture()
+        }
+        
         /// 连线结束
         func connectionEnd(context: ChannelHandlerContext, info: ChannelInfo) -> EventLoopFuture<Void> {
+            app.logger.debug("Inline.Server-连线结束: \(context.channel.serverAddrInfo)")
             let id = ObjectIdentifier(context.channel)
             app.inlineServiceData.connectionKeys[id] = nil
             app.inlineServiceData.connectionValidate[id] = nil
-            app.inlineServiceData.readingBufferDatas[id] = nil
-            app.inlineServiceData.writingBufferDatas[id] = nil
             return context.eventLoop.makeSucceededVoidFuture()
         }
     }

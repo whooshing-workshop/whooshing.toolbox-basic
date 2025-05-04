@@ -29,8 +29,8 @@ public extension Application {
             case .inline: try await Inline.config(self)
             case .https: try await Https.config(self)
             case .api: 
-                guard let d = data as? ReqClient<Inline> else {
-                    throw Err.paraNotValid.d("预期为 ReqClient<Inline> 类型，却获得了 \(data == nil ? "nil" : data!.self)", 100000, (#file, #line))
+                guard let d = data as? InlineReqClient else {
+                    throw Err.paraNotValid.d("预期为 InlineReqClient 类型，却获得了 \(data == nil ? "nil" : data!.self)", 100000, (#file, #line))
                 }
                 try await API.config(self, inlineClient: d)
         }

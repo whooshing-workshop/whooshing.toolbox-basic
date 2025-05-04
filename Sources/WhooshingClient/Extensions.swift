@@ -77,50 +77,52 @@ public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key
     }
 }
 
+public extension Channel {
+    var remoteAddrInfo: String {
+        if let addr = self.remoteAddress {
+            return "\(addr.ipAddress ?? "unknow"):\(addr.port ?? -1)"
+        }
+        return "unknow"
+    }
+
+    var localAddrInfo: String {
+        if let addr = self.localAddress {
+            return "\(addr.ipAddress ?? "unknow"):\(addr.port ?? -1)"
+        }
+        return "unknow"
+    }
+
+    var clientAddrInfo: String { "\(localAddrInfo) to \(remoteAddrInfo)" }
+    var serverAddrInfo: String { "\(localAddrInfo) from \(remoteAddrInfo)" }
+}
+
 public extension URL {
     func toUri(with path: String) -> URI { .init(string: self.absoluteString + path) }
 }
 
 public func streamingHandle(
-    chunkData: Data,
-    context: ChannelHandlerContext,
-    dic: SendableDictionary<ObjectIdentifier, Data>, 
-    streaming: Bool) -> EventLoopFuture<Data?> 
-{
-    let id = ObjectIdentifier(context.channel)
-    if streaming {
-        if let data = dic[id] {
-            dic[id] = data + chunkData
-        } else {
-            dic[id] = chunkData
-        }
-        return context.eventLoop.makeSucceededFuture(nil)
-    } else {
-        let data = dic[id]
-        dic[id] = nil
-        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : (data! + chunkData))
-    }
-}
-
-public func streamingHandle(
     chunkData: inout ByteBuffer,
     context: ChannelHandlerContext,
+    bufferStrategy: BufferStrategy,
     dic: SendableDictionary<ObjectIdentifier, ByteBuffer>, 
     streaming: Bool) -> EventLoopFuture<ByteBuffer?> 
 {
-    let id = ObjectIdentifier(context.channel)
-    if streaming {
-        if var data = dic[id] {
-            data.writeBuffer(&chunkData)
-            dic[id] = data
+    if case .collect = bufferStrategy {
+        let id = ObjectIdentifier(context.channel)
+        if streaming {
+            if var data = dic[id] {
+                data.writeBuffer(&chunkData)
+                dic[id] = data
+            } else {
+                dic[id] = chunkData
+            }
+            return context.eventLoop.makeSucceededFuture(nil)
         } else {
-            dic[id] = chunkData
+            var data = dic[id]
+            dic[id] = nil
+            return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : { data!.writeBuffer(&chunkData); return data! }())
         }
-        return context.eventLoop.makeSucceededFuture(nil)
     } else {
-        var data = dic[id]
-        dic[id] = nil
-        return context.eventLoop.makeSucceededFuture(data == nil ? chunkData : { data!.writeBuffer(&chunkData); return data! }())
+        return context.eventLoop.makeSucceededFuture(nil)
     }
-
 }

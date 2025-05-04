@@ -7,7 +7,7 @@ import NIO
 import Logging
 
 public extension Application {
-    var inlineClient: ReqClient<Inline> { self.storage[ReqClient<Inline>.self]! }
+    var inlineClient: InlineReqClient { self.storage[InlineReqClient.self]! }
 }
 
 public enum Inline {
@@ -18,37 +18,38 @@ public enum Inline {
     
     /// 配置 Inline 服务模块
     internal static func config(_ app: Application) async throws {
-        // 从环境变量中取得该服务模块的参数
+        app.http.server.configuration.serviceName = "INLINE"
+        app.logger.debug("从环境变量中取得该服务模块的参数")
         let env = try ServicePara.parse(prefix: "WHOOSHING_INLINE_SERVICE_PRIVATE")
-        // 注册 HTTP IO 加密模块
+        app.logger.debug("注册 HTTP IO 加密模块")
         app.use(httpIOHandler: HttpIOCrypto(app: app))
-        // 注册服务来源验证中间件
+        app.logger.debug("注册服务来源验证中间件")
         app.middleware.use(GuardMiddleware())
-        // 与模块管理器交互，取得可信服务列表并交换密钥
+        app.logger.debug("与模块管理器交互，取得可信服务列表并交换密钥")
         let (rootKey, _) = try await self.keyExchangeFromManager(app)
-        // 创建请求 API 提供者
-        let client = ReqClient<Inline>(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator:.init() )
-        let ioHandler = RequestIOCrypto(client: client)
+        app.logger.debug("创建请求 API 提供者")
+        let client = InlineReqClient(eventLoop: app.eventLoopGroup.next(), logger: app.logger, byteBufferAllocator:.init() )
+        let ioHandler = RequestIOCrypto(client: client, logger: app.logger)
         client.ioHandler = ioHandler
         client.storage[Inline.RequestIOData.self] = .init(rootKey: rootKey, serviceID: env.serviceID)
-        app.storage[ReqClient<Inline>.self] = client
+        app.storage[InlineReqClient.self] = client
     }
     
     /// 与模块管理器交互，取得可信服务列表并交换密钥
     internal static func keyExchangeFromManager(_ app: Application) async throws -> (Crypto.Symm.Key, Crypto.Symm.Key) {
-        // 创建非对称公私钥
+        app.logger.trace("与模块管理器交互: 创建非对称公私钥")
         let keyPair = Crypto.Asym.makeCryptoKeyPair()
-        // 向模块管理器请求取得服务模块信息，首先将自己的公钥发出
+        app.logger.trace("与模块管理器交互: 向模块管理器请求取得服务模块信息，首先将自己的公钥发出")
         let res = try await app.client.post(app.project.managerUrl.toUri(with: "/params/init")) { postRequest in
             try postRequest.content.encode(keyPair.public, as: .json)
         }
         guard res.status == .ok else { throw Err.initializeFailed.d("请求模块管理器的结果为: \(res.status)", 10010, (#file, #line)) }
-        // 解包服务器回复
+        app.logger.trace("与模块管理器交互: 解包服务器回复")
         let paras = try res.content.decode(InitParaRes.self)
-        // 生成共享密钥
+        app.logger.trace("与模块管理器交互: 生成共享密钥")
         let sharedKey = try Crypto.Asym.keyEncapsulate(key: keyPair.private, partyPublic: paras.pub, salt: Crypto.hash("manager.shared.key"), info: "")
         let rootKey: Crypto.Symm.Key = try Crypto.Symm.decrypt(paras.root, key: sharedKey)
-        // 保存到上下文
+        app.logger.trace("与模块管理器交互: 保存到上下文")
         app.storage[ServiceData.self] = try ServiceData(
             rootKey: rootKey,
             moduleDatas: paras.modules.map { try Crypto.Symm.decrypt($0, key: sharedKey) }

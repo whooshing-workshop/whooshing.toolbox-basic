@@ -17,20 +17,21 @@ let package = Package(
         .library( name: "WhooshingClient", targets: ["WhooshingClient"] ),
     ],
     dependencies: [
-        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "main"),
-        .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", branch: "main"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", from: "1.0.0"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", from: "1.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.82.1"),
     ],
     targets: [
         .target( name: "ErrorHandle" ),
         .target(
-            name:  "Cryptos",
+            name: "Cryptos",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
-                .product(name: "Vapor", package: "whooshing-vapor"),
+                // .product(name: "Vapor", package: "whooshing-vapor"),
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),
@@ -54,6 +55,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
+                .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Vapor", package: "whooshing-vapor")
             ]
         ),

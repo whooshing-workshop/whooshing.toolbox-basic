@@ -5,11 +5,47 @@ import NIOConcurrencyHelpers
 import NIO
 import NIOExtras
 
-public protocol WhooshingServiceType {}
+public enum BufferStrategy: Sendable { 
+    case collect
+    case streaming(totalSize: Int, stream: AsyncStreamingDataAction)
+}
 
-public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendable where ServiceType: WhooshingServiceType {
-    public typealias Value = ReqClient<ServiceType>
+public struct ProgressContext<Value>: CustomStringConvertible {
+    public let index: Int
+    public let data: ByteBuffer
+    public let done: Bool
+
+    public let curBytes: Int
+    public let totalBytes: Int?
+
+    public let startDate: Date
+
+    public let channel: Channel
+    public let response: Value
+
+    public var bytesPersentage: Double? { if let tb = totalBytes, tb > 0 { return Double(curBytes) / Double(tb) }; return nil }
+    public var bytesPersentageStr: String { (bytesPersentage == nil ? "~" : String(Float(Int(bytesPersentage! * 100 * 100) / 100))) + "%" }
+    public var totalBytesStr: String { totalBytes == nil ? "~B" : ChunkTool.formatByteSize(totalBytes!) }
+    public var curBytesStr: String { ChunkTool.formatByteSize(curBytes) }
+    public var totalSize: String { totalBytes == nil ? "~B" : ChunkTool.formatByteSize(totalBytes!) }
+    public var speed: Double? { 
+        return Int(timeCost) <= 0 ? nil : (Double(curBytes) / Double(timeCost))
+    }
+    public var speedStr: String { speed == nil ? "~B/s" : (ChunkTool.formatByteSize(.init(speed!)) + "/s") }
+    public var timeCost: TimeInterval { Date.now.timeIntervalSince(startDate) }
+
+    public var description: String {
+        return "Progress(\(index), 字节进度: \(bytesPersentageStr) [\(curBytesStr)(\(curBytes))-\(totalBytesStr)(\(totalBytes == nil ? "~" : String(totalBytes!)))], 数据块: \(data.readableBytes), 完成: \(done), 耗时: \(timeCost)s, 速度: \(speedStr), 值: \(response.self))"
+    }
+
+    public func copy<T>(value: T) -> ProgressContext<T> {
+        .init(index: index, data: data, done: done, curBytes: curBytes, totalBytes: totalBytes, startDate: startDate, channel: channel, response: value)
+    }
+}
+
+open class ReqClient: Client, @unchecked Sendable {
     public let eventLoop: EventLoop
+    public let fileEventLoop: EventLoop
     public let logger: Logger?
     public let byteBufferAllocator: ByteBufferAllocator
     public var ioHandler: RequestIOHandler?
@@ -18,28 +54,31 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         set { lock.withLock { self._storage = newValue } }
     }
     public internal(set) var channelPool: SendableDictionary<String, Channel> = .init()
+
+    private let headerPool: SendableDictionary<ObjectIdentifier, ClientResponse> = .init()
     lazy private var _storage: Storage = .init(logger: self.logger ?? .init(label: "ReqClient"))
     private var lock: NIOLock = .init()
     
     public func delegating(to eventLoop: EventLoop) -> Client {
-        ReqClient<ServiceType>(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
+        Self(eventLoop: eventLoop, logger: self.logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
     public func logging(to logger: Logger) -> Client {
-        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
+        Self(eventLoop: self.eventLoop, logger: logger, byteBufferAllocator: self.byteBufferAllocator)
     }
 
     public func allocating(to byteBufferAllocator: ByteBufferAllocator) -> Client {
-        ReqClient<ServiceType>(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
+        Self(eventLoop: self.eventLoop, logger: self.logger, byteBufferAllocator: byteBufferAllocator)
     }
     
-    public init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
+    public required init(eventLoop: EventLoop, logger: Logger? = nil, byteBufferAllocator: ByteBufferAllocator, ioHandler: RequestIOHandler? = nil) {
         self.eventLoop = eventLoop
+        self.fileEventLoop = eventLoop.next()
         self.logger = logger
         self.byteBufferAllocator = byteBufferAllocator
         self.ioHandler = ioHandler
     }
-    
+
     public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
         guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
         guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
@@ -72,21 +111,35 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
     public func send(
         _ c: ClientRequest,
         channel: Channel,
-        handler: RequestHandler
-    ) -> EventLoopFuture<ClientResponse> {
-        let promise = channel.eventLoop.makePromise(of: ClientResponse.self)
+        handler: RequestHandler,
+        bufferStrategy: BufferStrategy,
+        progress: @escaping ProgressAction
+    ) -> EventLoopFuture<ClientResponse?> {
+        let promise = channel.eventLoop.makePromise(of: ClientResponse?.self)
+        let id = ObjectIdentifier(channel)
         var client = c
-        if let body = client.body {
+        if case let .streaming(totalSize, _) = bufferStrategy {
+            client.body = nil
+            client.headers.add(name: .contentLength, value: String(totalSize))
+        } else if let body = client.body {
             client.headers.add(name: .contentLength, value: String(body.readableBytes))
-            // guard ChunkTool.isProperSize(bytes: body.readableBytes) else {  
-            //     let err = Err.requestBodyTooLarge.d("应当小于 \(ChunkTool.maxChunkStr)，实际上为 \(ChunkTool.formatByteSize(body.readableBytes))", 13010, (#file, #line))
-            //     promise.fail(err)
-            //     return channel.eventLoop.makeFailedFuture(err)
-            // }
         }
         handler.promise = promise
+        handler.bufferStrategy = bufferStrategy
+        handler.progress = { prog in
+            if prog.response {
+                if self.headerPool[id] == nil {
+                    self.headerPool[id] = try Guard( { try .init(data: prog.data) }, throw: Err.requestParseFailed.d(14010, #file, #line))
+                }
+                let header = self.headerPool[id]!
+                try progress(prog.copy(value: header))
+                return
+            }
+            try progress(prog.copy(value: nil))
+            if prog.done { self.headerPool[id] = nil }
+        }
         return channel.writeAndFlush(client).flatMapError { err in
-            self.logger?.error("发送请求失败，\(err)")
+            self.logger?.report(error: err)
             promise.fail(err)
             return channel.eventLoop.makeFailedFuture(err)
         }.flatMap {
@@ -100,6 +153,7 @@ public final class ReqClient<ServiceType>: Client, StorageKey, @unchecked Sendab
         var domain: String { "woo.sys.client.err" }
         case requestFormatError = "请求格式有误"
         case requestBodyTooLarge = "请求的内容过大"
+        case requestParseFailed = "服务器响应头解包时出错"
     }
 }
 
@@ -110,7 +164,7 @@ public extension ClientRequest {
         case requestToDataFailed = "将请求转为 Data 失败"
     }
     
-    func data(bufferAllocator: ByteBufferAllocator) throws -> ByteBuffer {
+    func data(bufferAllocator: ByteBufferAllocator) throws -> (ByteBuffer, ByteBuffer?) {
         var buffer = bufferAllocator.buffer(capacity: 0)
         // 转换 HTTP 方法和 URL
         let requestLine = "\(method.rawValue) \(url.path) HTTP/1.1\r\n"
@@ -120,10 +174,7 @@ public extension ClientRequest {
         // 添加一个空行，表示头部结束
         buffer.writeString("\r\n")
         // 如果有请求体 (body)，则添加请求体的内容
-        if var body = body {
-            buffer.writeBuffer(&body)
-        }
-        return buffer
+        return (buffer, body)
     }
 }
 
