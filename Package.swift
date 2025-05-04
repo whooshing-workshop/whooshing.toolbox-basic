@@ -17,8 +17,8 @@ let package = Package(
         .library( name: "WhooshingClient", targets: ["WhooshingClient"] ),
     ],
     dependencies: [
-        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", branch: "main"),
-        .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", branch: "main"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-vapor.git", from: "1.0.0"),
+        .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", from: "1.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
