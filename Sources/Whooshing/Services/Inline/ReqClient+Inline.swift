@@ -31,7 +31,7 @@ final class InlineReqClient: ReqClient, WhooshingClient, StorageKey, @unchecked 
         progress: @escaping ProgressAction
     ) -> EventLoopFuture<ClientResponse?> {
         let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
-        return self.makeChannel(url: req.url).flatMap { (channel, handler) in
+        return self.makeChannel(url: req.url).flatMap { (channel, handler, _) in
             do {
                 var request = req
                 try beforeSend(&request, channel)
