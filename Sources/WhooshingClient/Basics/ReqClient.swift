@@ -59,7 +59,7 @@ open class ReqClient: Client, @unchecked Sendable {
             }
             port = p
         } else {
-            port = url.port ?? (proto == "https" ? 443 : 80)
+            port = url.port ?? (proto == "https" ? 443 : 20002)
         }
 
         let id = "\(host):\(port)"
