@@ -77,7 +77,8 @@ open class ReqClient: Client, @unchecked Sendable {
                 channel.pipeline.addHandlers([
                     LengthFieldPrepender(lengthFieldLength: .eight, lengthFieldEndianness: .big),
                     ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight, lengthFieldEndianness: .big)),
-                    handler
+                    handler,
+                    NIOCloseOnErrorHandler()
                 ])
             }
             .channelOption(.socketOption(.tcp_nodelay), value: 1)

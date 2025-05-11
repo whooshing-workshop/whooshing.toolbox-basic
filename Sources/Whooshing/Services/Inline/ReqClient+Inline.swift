@@ -13,6 +13,13 @@ final class InlineReqClient: ReqClient, WhooshingClient, StorageKey, @unchecked 
     
     typealias Value = InlineReqClient
 
+    deinit {
+        logger?.debug("Inline.Client-主动关闭连接")
+        for channel in channelPool.allValue {
+            channel.close(promise: nil)
+        }
+    }
+
     enum InlineReqErr: String, ErrList {
         var domain: String { "woo.sys.inline.reqclient.err" }
         case targetBadResponse = "目标返回了不正常的响应"
