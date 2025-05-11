@@ -30,7 +30,7 @@ extension Inline {
     
     /// 实现 HTTP Request 的加解密
     struct RequestIOCrypto: RequestIOHandler, Sendable {
-        let client: InlineReqClient
+        weak var client: InlineReqClient!
         let logger: Logger
         
         /// 发送请求时，进行编码并加密
