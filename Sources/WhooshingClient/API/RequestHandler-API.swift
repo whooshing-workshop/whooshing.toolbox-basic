@@ -33,7 +33,7 @@ public enum API {
     }
     
     struct RequestIOCrypto: RequestIOHandler, Sendable {
-        weak private(set) var client: APIReqClient!
+        unowned private(set) var client: APIReqClient
         let logger: Logger?
         
         /// 发送请求时，进行编码并加密

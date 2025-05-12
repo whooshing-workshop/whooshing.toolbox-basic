@@ -143,7 +143,15 @@ open class ReqClient: Client, @unchecked Sendable {
     }
     
     public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
-    
+
+    public func closeAll() async {
+        for (_, channel) in channelPool {
+            try? await channel.close(mode: .all)
+            print("连接关闭")
+        }
+        channelPool.removeAll()
+    }
+
     enum Err: String, ErrList {
         var domain: String { "woo.sys.client.err" }
         case requestFormatError = "请求格式有误"

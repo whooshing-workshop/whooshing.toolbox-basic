@@ -8,13 +8,6 @@ import Cryptos
 final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sendable {
     typealias Value = APIReqClient
 
-    deinit {
-        logger?.debug("API.Client-主动关闭连接")
-        for channel in channelPool.allValue {
-            channel.close(promise: nil)
-        }
-    }
-
     enum APIReqErr: String, ErrList {
         var domain: String { "woo.sys.api.reqclient.err" }
         case unknowSendError = "请求时发生未知的错误"
@@ -123,6 +116,12 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
             }
         } catch let err {
             return channel.eventLoop.makeFailedFuture(err)
+        }
+    }
+
+    deinit {
+        Task { [weak self] in
+            await self?.closeAll()
         }
     }
 }
