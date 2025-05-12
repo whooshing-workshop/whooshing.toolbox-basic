@@ -56,7 +56,7 @@ let package = Package(
                 .target(name: "Cryptos"),
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
                 .product(name: "_NIOFileSystem", package: "swift-nio"),
-                .product(name: "Vapor", package: "whooshing-vapor")
+                .product(name: "Vapor", package: "whooshing-vapor"),
             ]
         ),
         .target(

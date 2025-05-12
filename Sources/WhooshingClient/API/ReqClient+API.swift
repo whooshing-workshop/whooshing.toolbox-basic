@@ -7,6 +7,7 @@ import Cryptos
 
 final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sendable {
     typealias Value = APIReqClient
+
     enum APIReqErr: String, ErrList {
         var domain: String { "woo.sys.api.reqclient.err" }
         case unknowSendError = "请求时发生未知的错误"
@@ -32,7 +33,7 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
         progress: @escaping ProgressAction
     ) -> EventLoopFuture<ClientResponse?> {
         let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
-        return self.makeChannel(url: req.url).flatMap { (channel, handler) in
+        return self.makeChannel(url: req.url).flatMap { (channel, handler, domain) in
             do {
                 var request = req
                 try beforeSend(&request, channel)
@@ -42,7 +43,7 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
                 } else {
                     self.logger?.info("API.Client-发送流式请求: \(channel.clientAddrInfo)")
                 }
-                return self._send(request: request, channel: channel, handler: handler, bufferStrategy: bufferStrategy, progress: progress).flatMapError { err in
+                return self._send(request: request, channel: channel, handler: handler, domain: domain, bufferStrategy: bufferStrategy, progress: progress).flatMapError { err in
                     return channel.eventLoop.makeFailedFuture(err)
                 }.flatMap { res in
                     afterSend(channel).map { res }
@@ -57,14 +58,14 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
         let data: Data
     }
     
-    private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler, bufferStrategy: BufferStrategy, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void) -> EventLoopFuture<ClientResponse?> {
+    private func _send(request: ClientRequest, channel: Channel, handler: RequestHandler, domain: String?, bufferStrategy: BufferStrategy, progress: @escaping @Sendable (ProgressContext<ClientResponse?>) throws -> Void) -> EventLoopFuture<ClientResponse?> {
         let id = ObjectIdentifier(channel)
         var r = eventLoop.makeSucceededVoidFuture()
         guard let ioData = self.apiRequestIoData else { return eventLoop.makeFailedFuture(APIReqErr.requestParaMissing.d("apiRequestIoData", 12013, (#file, #line))) }
         if ioData.connectionKeys[id] == nil {
             self.logger?.debug("正在与服务器进行认证: \(channel.clientAddrInfo)")
             r = r.flatMap { 
-                self.authExchange(request: request, handler: handler, channel: channel)
+                self.authExchange(request: request, handler: handler, domain: domain, channel: channel)
             }
         }
         return r.flatMap{
@@ -81,7 +82,7 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
     }
 
     /// 发送用户凭据以及用户口令，其中用户凭据明文发送，口令则进行加密并哈希
-    func authExchange(request: ClientRequest, handler: RequestHandler, channel: Channel) -> EventLoopFuture<Void> {
+    func authExchange(request: ClientRequest, handler: RequestHandler, domain: String?, channel: Channel) -> EventLoopFuture<Void> {
         do {
             let ioData = self.apiRequestIoData!
             let id = ObjectIdentifier(channel)
@@ -93,7 +94,11 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
             self.logger?.trace("API.Client-认证中: 将凭据和加密后的用户口令进行 json 编码")
             guard let body = try? JSONEncoder().encode(AuthExchangeJSON(credential: credential, tokenEncrypted: tokenEncrypted)) else { return eventLoop.makeFailedFuture(APIReqErr.unknowSendError.d("JSON 编码失败", 14001, (#file, #line))) }
             self.logger?.trace("API.Client-认证中: 发送用户凭据以及用户口令")
-            return self.send(.init(method: .POST, url: request.url, headers: ["content-type": "application/json"], body: .init(data: body)), channel: channel, handler: handler, bufferStrategy: .collect, progress: { _ in }).flatMapThrowing { res in
+            var headers: HTTPHeaders = ["content-type": "application/json"]
+            if let domain = domain {
+                headers.replaceOrAdd(name: .host, value: domain)
+            }
+            return self.send(.init(method: .POST, url: request.url, headers: headers, body: .init(data: body)), channel: channel, handler: handler, bufferStrategy: .collect, progress: { _ in }).flatMapThrowing { res in
                 // 此处一定有响应，因为 bufferStrategy 是 .collect
                 let res = res!
                 self.logger?.trace("API.Client-正在完成认证: 认证请求发送完成")
@@ -111,6 +116,12 @@ final class APIReqClient: ReqClient, StorageKey, WhooshingClient, @unchecked Sen
             }
         } catch let err {
             return channel.eventLoop.makeFailedFuture(err)
+        }
+    }
+
+    deinit {
+        Task { [weak self] in
+            await self?.closeAll()
         }
     }
 }

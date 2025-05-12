@@ -31,7 +31,7 @@ final class InlineReqClient: ReqClient, WhooshingClient, StorageKey, @unchecked 
         progress: @escaping ProgressAction
     ) -> EventLoopFuture<ClientResponse?> {
         let req = ClientRequest(method: method, url: url, headers: headers, body: nil, byteBufferAllocator: self.byteBufferAllocator)
-        return self.makeChannel(url: req.url).flatMap { (channel, handler) in
+        return self.makeChannel(url: req.url).flatMap { (channel, handler, _) in
             do {
                 var request = req
                 try beforeSend(&request, channel)
@@ -121,6 +121,13 @@ final class InlineReqClient: ReqClient, WhooshingClient, StorageKey, @unchecked 
             self.requestIoData.connectionValidate[ObjectIdentifier(channel)] = true
         }.flatMapError { err in
             return channel.eventLoop.makeFailedFuture(err)
+        }
+    }
+
+    deinit {
+        Task { [weak self] in
+            self?.logger?.debug("Inline.Client-主动关闭连接")
+            await self?.closeAll()
         }
     }
 }

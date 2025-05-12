@@ -101,7 +101,7 @@ public struct ProgressContext<Value>: CustomStringConvertible {
 
     /// 返回当前进度上下文的字符串描述，方便调试和日志记录。
     public var description: String {
-        "Progress(\(index), 字节进度: \(bytesPersentageStr) [\(curBytesStr)(\(curBytes))-\(totalBytesStr)(\(totalBytes == nil ? "~" : String(totalBytes!)))], 数据块: \(data.readableBytes), 完成: \(done), 耗时: \(timeCost)s, 速度: \(speedStr), 值: \(response.self))"
+        "Progress(\(index), 字节进度: \(bytesPersentageStr) [\(curBytesStr)(\(curBytes))-\(totalBytesStr)(\(totalBytes == nil ? "~" : String(totalBytes!)))], 数据块: \(data.readableBytes), 完成: \(done), 耗时: \(timeCost)s, 速度: \(speedStr), 值: \(Value.self))"
     }
 
     /// 创建一个新的 `ProgressContext` 实例，保留原有数据，仅替换 `response`。

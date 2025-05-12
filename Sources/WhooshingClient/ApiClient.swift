@@ -47,6 +47,17 @@ public final class ApiClient: Sendable {
         self.client = .new(eventLoop: eventLoop, logger: logger, byteBufferAllocator: allocator)
         client.storage[API.RequestIOData.self] = .init(credential: credential, token: token)
     }
+
+    public func closeAll() async {
+        await client.closeAll()
+    }
+
+    deinit {
+        client.logger?.debug("API.Client-主动关闭连接")
+        Task { [weak client] in
+            await client?.closeAll()
+        }
+    }
 }
 
 extension ApiClient: WhooshingClient {

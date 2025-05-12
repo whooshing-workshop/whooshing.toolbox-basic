@@ -33,7 +33,7 @@ public enum API {
     }
     
     struct RequestIOCrypto: RequestIOHandler, Sendable {
-        let client: APIReqClient
+        unowned private(set) var client: APIReqClient
         let logger: Logger?
         
         /// 发送请求时，进行编码并加密
@@ -42,6 +42,7 @@ public enum API {
             let id = ObjectIdentifier(context.channel)
             do {
                 let cipher: Data
+                logger?.trace("API.Client.HTTP-发送请求，进行加密(key: \(ioData.connectionKeys[id] != nil)) in \(context.channel.clientAddrInfo)")
                 if let key = ioData.connectionKeys[id] { 
                     cipher = try Crypto.Symm.encrypt(dataChunk, key: key)
                 } else {
@@ -75,6 +76,7 @@ public enum API {
             }
 
             do {
+                logger?.trace("API.Client.HTTP-收到响应，进行解密(key: \(ioData.connectionKeys[id] != nil)) in \(context.channel.clientAddrInfo)")
                 var plain: ByteBuffer
                 if let key = ioData.connectionKeys[id] {
                     plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key)

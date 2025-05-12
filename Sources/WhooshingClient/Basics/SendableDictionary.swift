@@ -10,7 +10,9 @@ import NIOConcurrencyHelpers
 /// 并显式声明符合 `@unchecked Sendable`，适合用于跨线程共享的数据结构。
 ///
 /// - Note: 请确保 `Key` 和 `Value` 类型本身也是 `Sendable`。
-public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key: Sendable & Hashable, Value: Sendable {
+public final class SendableDictionary<Key, Value>: @unchecked Sendable, Sequence where Key: Sendable & Hashable, Value: Sendable {
+
+    public typealias Iterator = Dictionary<Key, Value>.Iterator
 
     /// 当前字典中所有键的集合（线程安全访问）。
     public var allKey: [Key: Value].Keys {
@@ -55,6 +57,24 @@ public final class SendableDictionary<Key, Value>: @unchecked Sendable where Key
     public func forEach(closure: @escaping ((key: Key, value: Value)) -> ()) {
         lock.withLock {
             wrapped.forEach { closure($0) }
+        }
+    }
+
+    /// 支持 for in 遍历字典键值对
+    /// 
+    /// for (key, value) in sendableDic {
+    ///     .........
+    /// }
+    public func makeIterator() -> Iterator {
+        lock.withLock {
+            wrapped.makeIterator()
+        }
+    }
+
+    /// 清空所有的键值对，线程安全
+    public func removeAll() {
+        lock.withLock {
+            wrapped.removeAll()
         }
     }
 }

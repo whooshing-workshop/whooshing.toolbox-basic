@@ -34,6 +34,7 @@ extension API {
         func input(request: Data, context: ChannelHandlerContext, streaming: Bool) -> EventLoopFuture<Data?> {
             let id = ObjectIdentifier(context.channel)
             do {
+                app.logger.trace("API.HTTP-客户端请求进入，进行解密(key: \(app.apiServiceData.clientKeys[id] != nil)) in \(context.channel.serverAddrInfo)")
                 let req: Data
                 if let key = app.apiServiceData.clientKeys[id] {
                     req = try Crypto.Symm.decrypt(request, key: key)
@@ -52,6 +53,7 @@ extension API {
         func output(response: Data, context: ChannelHandlerContext, info: ChannelInfo, streaming: Bool) -> EventLoopFuture<Data> {
             let id = ObjectIdentifier(context.channel)
             do {
+                app.logger.trace("API.HTTP-客户端响应发出，进行加密(temp: \(app.apiServiceData.clientTokens[id] != nil), key: \(app.apiServiceData.clientKeys[id] != nil)) in \(context.channel.serverAddrInfo)")
                 let res: Data
                 // 使用 clientTokens 加密，是临时的，仅仅是作为服务器第一次响应时的加密密钥
                 if let key = app.apiServiceData.clientTokens[id] {

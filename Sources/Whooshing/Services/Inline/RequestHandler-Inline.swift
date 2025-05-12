@@ -30,7 +30,7 @@ extension Inline {
     
     /// 实现 HTTP Request 的加解密
     struct RequestIOCrypto: RequestIOHandler, Sendable {
-        let client: InlineReqClient
+        unowned var client: InlineReqClient
         let logger: Logger
         
         /// 发送请求时，进行编码并加密
@@ -38,6 +38,7 @@ extension Inline {
             do {
                 let cipher: Data
                 let id = ObjectIdentifier(context.channel)
+                logger.trace("Inline.Client.HTTP-发送请求，进行加密(key: \(client.requestIoData.connectionKeys[id] != nil)) in \(context.channel.clientAddrInfo)")
                 if let key = client.requestIoData.connectionKeys[id] { cipher = try Crypto.Symm.encrypt(dataChunk, key: key) }
                 else { cipher = try Crypto.Symm.encrypt(dataChunk, key: client.requestIoData.rootKey) }
                 let buffer = ByteBuffer(data: cipher)
@@ -52,6 +53,7 @@ extension Inline {
             do {
                 let id = ObjectIdentifier(context.channel)
                 var plain: ByteBuffer
+                logger.trace("Inline.Client.HTTP-收到响应，进行解密(key: \(client.requestIoData.connectionKeys[id] != nil)) in \(context.channel.clientAddrInfo)")
                 if let key = client.requestIoData.connectionKeys[id] { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: key) }
                 else { plain = try Crypto.Symm.decrypt(.init(buffer: response), key: client.requestIoData.rootKey) }
                 let plainStable = plain

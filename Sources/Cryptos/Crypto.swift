@@ -350,7 +350,7 @@ private extension Crypto {
 
 private extension Crypto.Symm {
     static func aesEncrypt(_ data: any ThrowableDataConvertable, key: Key) throws -> Data {
-        // print("正在进行加密：\(try data.data().count)")
+        // print("正在进行加密：\(try data.data().count), key: \(key.data().base64String()))")
         guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2001, (#file, #line)) }
         let sealedBox = try Guard({ try AES.GCM.seal(data.data(), using: key) }, throw: CptErr.encryptFailed.d("AES 加密未能成功封印明文数据", 1009, (#file, #line)))
         guard let cipher = sealedBox.combined else {
@@ -361,7 +361,7 @@ private extension Crypto.Symm {
     }
 
     static func aesDecrypt<D>(_ cipher: Data, key: Key) throws -> D where D: ThrowableDataConvertable {
-        // print("正在进行解密：\(cipher.count)")
+        // print("正在进行解密：\(cipher.count), key: \(key.data().base64String()))")
         guard key.bitCount == Crypto.symmetricKeySize.bitCount else { throw CptErr.keyInvalid.d("密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位", 2002, (#file, #line)) }
         let sealedBox = try Guard( { try AES.GCM.SealedBox(combined: cipher) }, throw: CptErr.decryptFailed.d("AES 解密-将密文转换为 SealedBox 时出错", 1007, (#file, #line)))
         let decryptedData = try Guard({ try AES.GCM.open(sealedBox, using: key) }, throw: CptErr.decryptFailed.d("AES 解密-解开密文时出错", 1008, (#file, #line)))

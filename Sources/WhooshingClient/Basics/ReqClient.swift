@@ -41,23 +41,44 @@ open class ReqClient: Client, @unchecked Sendable {
         self.ioHandler = ioHandler
     }
 
-    public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler)> {
-        guard let host = url.host else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) }
-        guard let port = url.port else { return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) }
-        if let channel = channelPool["\(host):\(port)"], channel.isActive {
+    public func makeChannel(url: URI) -> EventLoopFuture<(Channel, RequestHandler, domain: String?)> {
+        guard let host = url.host else { 
+            return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Host", 10080, (#file, #line))) 
+        }
+        
+        guard let proto = url.scheme?.lowercased(), ["http", "https"].contains(proto) else {
+            return eventLoop.makeFailedFuture(Err.requestFormatError.d("预期请求协议为 http 或 https，但得到 \(url.scheme ?? "nil")", 13052, (#file, #line)))
+        }
+
+        let port: Int
+        let isIPv4 = host == "localhost" || isIPv4(host)
+        
+        if isIPv4 {
+            guard let p = url.port else { 
+                return eventLoop.makeFailedFuture(Err.requestFormatError.d("无法获取 Port", 10081, (#file, #line))) 
+            }
+            port = p
+        } else {
+            port = url.port ?? (proto == "https" ? 443 : 20002)
+        }
+
+        let id = "\(host):\(port)"
+
+        if let channel = self.channelPool[id], channel.isActive {
             return channel.pipeline.handler(type: RequestHandler.self).flatMap { handler in
-                return channel.eventLoop.makeSucceededFuture((channel, handler))
+                return channel.eventLoop.makeSucceededFuture((channel, handler, isIPv4 ? nil : host))
             }
         }
 
         let handler = RequestHandler(promise: nil, logger: logger, byteBufferAllocator: byteBufferAllocator, ioHandler: ioHandler)
 
-        let bootstrap = ClientBootstrap(group: eventLoop)
+        let bootstrap = ClientBootstrap(group: self.eventLoop)
             .channelInitializer { channel in
                 channel.pipeline.addHandlers([
                     LengthFieldPrepender(lengthFieldLength: .eight, lengthFieldEndianness: .big),
                     ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight, lengthFieldEndianness: .big)),
-                    handler
+                    handler,
+                    NIOCloseOnErrorHandler()
                 ])
             }
             .channelOption(.socketOption(.tcp_nodelay), value: 1)
@@ -65,11 +86,11 @@ open class ReqClient: Client, @unchecked Sendable {
             .channelOption(.maxMessagesPerRead, value: 1)
 
         return bootstrap.connect(host: host, port: port).map { channel in
-            self.channelPool["\(host):\(port)"] = channel
-            return (channel, handler)
+            self.channelPool[id] = channel
+            return (channel, handler, isIPv4 ? nil : host)
         }
     }
-    
+
     public func send(
         _ c: ClientRequest,
         channel: Channel,
@@ -82,15 +103,16 @@ open class ReqClient: Client, @unchecked Sendable {
         var client = c
         if case let .streaming(totalSize, _) = bufferStrategy {
             client.body = nil
-            client.headers.add(name: .contentLength, value: String(totalSize))
+            client.headers.replaceOrAdd(name: .contentLength, value: String(totalSize))
         } else if let body = client.body {
-            client.headers.add(name: .contentLength, value: String(body.readableBytes))
+            client.headers.replaceOrAdd(name: .contentLength, value: String(body.readableBytes))
         }
         handler.promise = promise
         handler.bufferStrategy = bufferStrategy
         handler.progress = { prog in
             if prog.response {
                 if self.headerPool[id] == nil {
+                    print(String(buffer: prog.data))
                     self.headerPool[id] = try Guard( { try .init(data: prog.data) }, throw: Err.requestParseFailed.d(14010, #file, #line))
                 }
                 let header = self.headerPool[id]!
@@ -108,14 +130,34 @@ open class ReqClient: Client, @unchecked Sendable {
             promise.futureResult
         }
     }
+
+    private func isIPv4(_ host: String) -> Bool {
+        let parts = host.split(separator: ".")
+        guard parts.count == 4 else { return false }
+        return parts.allSatisfy { part in
+            if let num = Int(part), (0...255).contains(num) {
+                return true
+            }
+            return false
+        }
+    }
     
     public func send(_ request: ClientRequest) -> EventLoopFuture<ClientResponse> { fatalError("不应执行该方法") }
-    
+
+    public func closeAll() async {
+        for (_, channel) in channelPool {
+            try? await channel.close(mode: .all)
+            print("连接关闭")
+        }
+        channelPool.removeAll()
+    }
+
     enum Err: String, ErrList {
         var domain: String { "woo.sys.client.err" }
         case requestFormatError = "请求格式有误"
         case requestBodyTooLarge = "请求的内容过大"
         case requestParseFailed = "服务器响应头解包时出错"
+        case requestDomainParseFailed = "域名解析失败"
     }
 }
 
