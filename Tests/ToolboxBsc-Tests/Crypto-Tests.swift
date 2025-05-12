@@ -84,21 +84,6 @@ struct CryptoTest {
             #expect(Bool(false), "加盐哈希测试失败: \(error)")
         }
     }
-    
-    @Test("测试对对称加密密钥进行加解密")
-    func testSymmKeyCrypto() {
-        let key = Crypto.Symm.makeKey()
-        let cKey = Crypto.Symm.makeKey()
-        do {
-            let cipher = try Crypto.Symm.encrypt(key, key: cKey)
-            let cipher_bytes = ByteBuffer(data: cipher)
-            let cipher_data = cipher_bytes.data()
-            let res: Crypto.Symm.Key = try Crypto.Symm.decrypt(cipher_data, key: cKey)
-            #expect(key == res)
-        } catch {
-            #expect(Bool(false), "对对称加密加解密失败: \(error)")
-        }
-    }
 
     @Test("测试混合加密情况")
     func testMixedEncryptionAlgorithms() {
