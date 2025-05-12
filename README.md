@@ -19,8 +19,6 @@
 .package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", .upToNextMajor(from: "1.2.3"))
 ```
 
-```
-
 或导入不同的 Target：
 
 ``` swift
