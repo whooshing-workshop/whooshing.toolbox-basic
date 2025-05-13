@@ -2,14 +2,14 @@ import Foundation
 import Crypto
 import DataConvertable
 
-extension Crypto.Symm.Key: Sendable {}
+extension Crypto.Symm.Key: @retroactive @unchecked Sendable {}
 extension Crypto.Symm.Key: @retroactive Codable {}
 extension Crypto.Symm.Key: @retroactive Hashable {}
 extension Crypto.Symm.Key: SafeDataConvertable {
     public func data() -> Data { self.withUnsafeBytes { Data($0) } }
 }
 
-extension Crypto.Asym.CPublicKey: Sendable {}
+extension Crypto.Asym.CPublicKey: @retroactive @unchecked Sendable {}
 extension Crypto.Asym.CPrivateKey: @retroactive Codable {}
 extension Crypto.Asym.CPrivateKey: @retroactive Hashable {}
 extension Crypto.Asym.CPrivateKey: ThrowableDataConvertable {
@@ -17,7 +17,7 @@ extension Crypto.Asym.CPrivateKey: ThrowableDataConvertable {
     public func data() -> Data { self.rawRepresentation }
 }
 
-extension Crypto.Asym.CPrivateKey: Sendable {}
+extension Crypto.Asym.CPrivateKey: @retroactive @unchecked Sendable {}
 extension Crypto.Asym.CPublicKey: @retroactive Codable {}
 extension Crypto.Asym.CPublicKey: @retroactive Hashable {}
 extension Crypto.Asym.CPublicKey: ThrowableDataConvertable {
@@ -25,7 +25,7 @@ extension Crypto.Asym.CPublicKey: ThrowableDataConvertable {
     public func data() -> Data { self.rawRepresentation }
 }
 
-extension Crypto.Asym.SPublicKey: Sendable {}
+extension Crypto.Asym.SPublicKey: @retroactive @unchecked Sendable {}
 extension Crypto.Asym.SPrivateKey: @retroactive Codable {}
 extension Crypto.Asym.SPrivateKey: @retroactive Hashable {}
 extension Crypto.Asym.SPrivateKey: ThrowableDataConvertable {
@@ -33,7 +33,7 @@ extension Crypto.Asym.SPrivateKey: ThrowableDataConvertable {
     public func data() -> Data { self.rawRepresentation }
 }
 
-extension Crypto.Asym.SPrivateKey: Sendable {}
+extension Crypto.Asym.SPrivateKey: @retroactive @unchecked Sendable {}
 extension Crypto.Asym.SPublicKey: @retroactive Codable {}
 extension Crypto.Asym.SPublicKey: @retroactive Hashable {}
 extension Crypto.Asym.SPublicKey: ThrowableDataConvertable {
