@@ -2,7 +2,6 @@ import Testing
 @testable import Cryptos
 import Foundation
 import Crypto
-import NIO
 
 @Suite("加密模块-测试")
 struct CryptoTest {
