@@ -49,7 +49,7 @@
 
     如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
-public struct BscError: Err {
+public struct BscError: Err, Sendable {
     public var domain: String!
     /// 描述该错误。
     public var summary: String!
@@ -214,7 +214,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
     }
     ```
 */
-public protocol Err: Error, Equatable, CustomStringConvertible{
+public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 扩展类型，默认为 Never，即无类型。配合 `initAdditions(_)` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = Never
 
