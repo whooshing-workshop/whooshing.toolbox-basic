@@ -15,11 +15,8 @@ let package = Package(
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
-        .library( name: "PgSQL", targets: ["PgSQL"] ),
     ],
     dependencies: [
-        .package(url: "https://github.com/SJJC-Team/whooshing-fluent.git", from: "1.0.0"),
-        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
     ],
     targets: [
@@ -38,21 +35,12 @@ let package = Package(
                 .target(name: "ErrorHandle")
             ]
         ),
-        .target(
-            name:  "PgSQL",
-            dependencies: [
-                .target(name: "ErrorHandle"),
-                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
-            ]
-        ),
         .testTarget(
-            name: "ToolboxBsc-Tests",
+            name: "toolbox-basic-Tests",
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
-                .target(name: "PgSQL"),
                 .target(name: "Cryptos"),
-                .product(name: "Fluent", package: "whooshing-fluent")
             ]
         ),
     ]
