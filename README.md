@@ -7,7 +7,6 @@
   - **非对称加密(EdDSA)**
   - **HMAC 消息验证**
   - **Curve25529 电子签名**
-- **PostgreSQL 数据模型**：由 [vapor/fluent-postgres-driver](https://github.com/vapor/fluent-postgres-driver) 提供实现
 - **错误处理**
 - **数据转换**
 
@@ -25,8 +24,6 @@
 dependencies:[
     // 提供 Whooshing 基本的哈希，对称，非对称加密算法
     .product(name: "Crypto", package: "whooshing.toolbox-basic"),
-    // 提供对 PostgreSQL 数据库的 ORM，通过封装 Vapor-PGSQL 实现
-    .product(name: "PgSQL", package: "whooshing.toolbox-basic"),
     // 提供各种数据转换
     .product(name: "DataConvertable", package: "whooshing.toolbox-basic"),
     // 错误处理
@@ -43,7 +40,6 @@ dependencies:[
 | [**基本的加密算法**](Sources/Cryptos/Crypto.swift)           | ✅        | [Crypto-Tests.swift](Tests/ToolboxBsc-Tests/Crypto-Tests.swift) | ✅        |
 | [**错误处理**](Sources/ErrorHandle/Error.swift)              | ✅        | [Error-Tests.swift](Tests/ToolboxBsc-Tests/Error-Tests.swift) | ✅        |
 | [**数据转换**](Sources/DataConvertable/DataConvertable.swift) | ✅        | [DataConvertable-Tests.swift](Tests/ToolboxBsc-Tests/DataConvertable-Tests.swift) | ✅        |
-| [**PostgreSQL 数据模型**](Sources/PgSQL/PgSQL.swift)         | ✅        | [PgSQL-Tests.swift](Tests/ToolboxBsc-Tests/PgSQL-Tests.swift) | ✅        |
 
 ## **代码提交约定**
 
