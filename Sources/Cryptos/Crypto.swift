@@ -2,7 +2,6 @@ import Crypto
 import Foundation
 import ErrorHandle
 import DataConvertable
-// import Vapor
 
 /// 加解密 Crypto 模块可能出现的所有错误
 public enum CryptoErrorLists: String, ErrList {
