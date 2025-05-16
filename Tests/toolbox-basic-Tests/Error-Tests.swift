@@ -19,10 +19,10 @@ struct ErrorTests {
 
     static let subErr = A.error2.d(#file, #line).adds([1, 2])
 
-    let err2 = Self.err2.d(Self.explain2, Self.mark2, (#file, #line)).adds(Self.datas2)
+    let err2 = Self.err2.d(Self.explain2, Self.mark2).adds(Self.datas2)
 
     @Test("测试 ErrListWithOptionAddition 扩展的参数传递") func testErrListWithOptionAddition() {
-        let error = Self.err.d(Self.explain, Self.mark, (#file, #line)).adds(Self.datas)
+        let error = Self.err.d(Self.explain, Self.mark).adds(Self.datas)
         #expect(error.summary == B.error3.rawValue)
         #expect(error.explain == Self.explain)
         #expect(error.mark == Self.mark)
@@ -47,12 +47,12 @@ struct ErrorTests {
     let lineStart = 57
 
     @Test("测试所有方法的参数传递", arguments: [
-        0: Self.err.d(#file, #line),
-        1: Self.err.d(Self.explain, #file, #line),
-        2: Self.err.d(Self.explain, (#file, #line)),
-        3: Self.err.d(Self.mark, #file, #line),
-        4: Self.err.d(Self.explain, Self.mark, (#file, #line)),
-        5: Self.err.d(Self.mark, (#file, #line)),
+        0: Self.err.d(),
+        1: Self.err.d(Self.explain),
+        2: Self.err.d(Self.explain),
+        3: Self.err.d(Self.mark),
+        4: Self.err.d(Self.explain, Self.mark),
+        5: Self.err.d(Self.mark),
     ])
     func testFuncs(i: Int, e: CustomError2) {
         #expect(explains[i] == 0 ? e.explain == nil : e.explain == Self.explain)
@@ -70,17 +70,17 @@ struct ErrorTests {
     @Test("测试 Guard 以及 == 函数") func testGuardFunction() {
         do {
             let _ = try Guard(
-                { throw A.error1.d(1005, #file, #line).adds([1, 2, 3]) },
-                throw: B.error3.d(3008, #file, #line)
+                { throw A.error1.d(1005).adds([1, 2, 3]) },
+                throw: B.error3.d(3008)
             )
             #expect(Bool(false))
         } catch let err as B.ErrType {
             #expect(err.summary == B.error3.rawValue)
             #expect(err.mark == 3008)
-            #expect(err.subError as! A.ErrType != A.error1.d(1005, #file, #line).adds([1, 2, 3]))
-            #expect(err.subError as! A.ErrType == A.error1.d(1005, #file, 73).adds([1, 2, 3]))
-            #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(5000, "Test", 89).adds([0, 0])))
-            #expect(!(err.subError as! A.ErrType).isSameType(of: A.error2.d(5000, "Test", 89).adds([0, 0])))
+            #expect(err.subError as! A.ErrType != A.error1.d(1005, file: #file, line: #line).adds([1, 2, 3]))
+            #expect(err.subError as! A.ErrType == A.error1.d(1005, file: #file, line: 73).adds([1, 2, 3]))
+            #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(5000, file: "Test", line: 89).adds([0, 0])))
+            #expect(!(err.subError as! A.ErrType).isSameType(of: A.error2.d(5000, file: "Test", line: 89).adds([0, 0])))
         } catch {
             #expect(Bool(false))
         }

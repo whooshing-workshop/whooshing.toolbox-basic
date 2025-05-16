@@ -35,7 +35,7 @@
          ...
          // 使用错误列表提供的方法来创建错误并抛出
          // 这几个参数依次是上面列出的 explain, mark, file, line
-         throw A.error1.d("一些错误解释，即 explain", 1001, (#file, #line))
+         throw A.error1.d("一些错误解释，即 explain", 1001)
          ...
      }
 
@@ -96,7 +96,7 @@ public struct BscError: Err, Sendable {
     func demo() throws {
         ...
         // 创建错误并抛出
-        throw A.error1.d("一些错误解释，即 explain", 1011, (#file, #line))
+        throw A.error1.d("一些错误解释，即 explain", 1011)
         ...
     }
     ```
@@ -139,7 +139,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
         例如：
 
         ``` swift
-        ErrorList.error1.d("一些解释", 1004, (#file, #line))
+        ErrorList.error1.d("一些解释", 1004)
         ```
 
         这些细节信息并非是恒定不变的，例如：systemError，它的描述 (summary) 可能为 “系统发生错误”。
@@ -160,7 +160,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
         func databaseAction(...) throws {
             ...
             // 此处定义这次发生错误的一些解释
-            throw A.systemError.d("数据库认证用户 XXX 时失败", 1006, (#file, #line))
+            throw A.systemError.d("数据库认证用户 XXX 时失败", 1006)
             ...
         }
 
@@ -172,12 +172,10 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
         }
         ```
     */
-    func d(_ file: String, _ line: Int) -> ErrType
-    func d(_ explain: String, _ file: String, _ line: Int) -> ErrType
-    func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType
-    func d(_ mark: Int, _ loc: (String, Int)) -> ErrType
-    func d(_ explain: String, _ loc: (String, Int)) -> ErrType
-    func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType
+    func d(file: String, line: Int) -> ErrType
+    func d(_ explain: String, file: String, line: Int) -> ErrType
+    func d(_ mark: Int, file: String, line: Int) -> ErrType
+    func d(_ explain: String, _ mark: Int, file: String, line: Int) -> ErrType
 }
 
 /**
@@ -254,7 +252,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     ///
     /// 用法：
     /// ``` swift
-    /// ErrorTypes.aError.d("Some Explain", #file, #line).subErr(yourSubErr)
+    /// ErrorTypes.aError.d("Some Explain").subErr(yourSubErr)
     /// ```
     func subErr(_ err: Error?) -> Self
 
@@ -262,7 +260,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     ///
     /// 用法：
     /// ``` swift
-    /// ErrorTypes.aError.d("Some Explain", #file, #line).adds(yourAddtionDatas)
+    /// ErrorTypes.aError.d("Some Explain").adds(yourAddtionDatas)
     /// ```
     ///
     /// 关于附加数据自定义，见 ```protocol Err``` 的解释
@@ -309,7 +307,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
 
     typealias A = WanttedErrorTypes
 
-    try throwError() // 抛出错误为 SomeError.err，并不是我想要的，而我希望它若发生错误便抛出 A.error1.d("错误的解释...", #3, (#file, #line)) 以适应 Whooshing 的错误处理系统。
+    try throwError() // 抛出错误为 SomeError.err，并不是我想要的，而我希望它若发生错误便抛出 A.error1.d("错误的解释...", 3) 以适应 Whooshing 的错误处理系统。
     ```
     你可以使用传统的 `do - catch` 结构来完成，像下面这样：
 
@@ -317,14 +315,14 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     do {
         try throwError()
     } catch {   // 当 throwError() 方法发生错误并抛出错误后，捕获该错误，并改为 throw 另一个。
-        throw A.error1.d("错误的解释...", #3, (#file, #line))
+        throw A.error1.d("错误的解释...", 3)
     }
     ```
 
     也可以使用所提供的 cv(_, _) 方法：
 
     ``` swift
-    try Guard({ throwError() }, throw: A.error1.d("错误的解释...", #3, (#file, #line)))  // 当 throwError() 发生错误时，会抛出所期望的错误。
+    try Guard({ throwError() }, throw: A.error1.d("错误的解释...", 3))  // 当 throwError() 发生错误时，会抛出所期望的错误。
     ```
 
     事实上这两种方式的实现方法是一致的，但后者更简洁。
@@ -337,12 +335,10 @@ public func Guard<T>(_ cmd: () throws -> T, throw to: any Err) throws -> T {
 // MARK: - 以下包括一些协议的默认实现
 
 public extension ErrList {
-    func d(_ file: String, _ line: Int) -> ErrType { detail(loc: (file, line)) }
-    func d(_ explain: String, _ file: String, _ line: Int) -> ErrType { detail(explain: explain, loc: (file, line)) }
-    func d(_ mark: Int, _ file: String, _ line: Int) -> ErrType { detail(mark: mark, loc: (file, line)) }
-    func d(_ mark: Int, _ loc: (String, Int)) -> ErrType { detail(mark: mark, loc: loc) }
-    func d(_ explain: String, _ loc: (String, Int)) -> ErrType { detail(explain: explain, loc: loc) }
-    func d(_ explain: String, _ mark: Int, _ loc: (String, Int)) -> ErrType { detail(explain: explain, mark: mark, loc: loc) }
+    func d(file: String = #file, line: Int = #line) -> ErrType { detail(loc: (file, line)) }
+    func d(_ explain: String, file: String = #file, line: Int = #line) -> ErrType { detail(explain: explain, loc: (file, line)) }
+    func d(_ mark: Int, file: String = #file, line: Int = #line) -> ErrType { detail(mark: mark, loc: (file, line)) }
+    func d(_ explain: String, _ mark: Int, file: String = #file, line: Int = #line) -> ErrType { detail(explain: explain, mark: mark, loc: (file, line)) }
 }
 
 private extension ErrList {

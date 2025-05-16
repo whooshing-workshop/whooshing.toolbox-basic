@@ -183,7 +183,7 @@ public struct Base64String: ThrowableDataConvertable, CustomStringConvertible, E
     public init(_ string: String) { self.string = string }
     public init(data: Data) { self.string = data.base64EncodedString() }
     public func data() throws -> Data {
-        guard let d = Data(base64Encoded: string) else { throw CvtErr.base64StringtoData.d(1030, (#file, #line)) }
+        guard let d = Data(base64Encoded: string) else { throw CvtErr.base64StringtoData.d(1030) }
         return d
     }
     public static func == (lhs: Self, rhs: Self) -> Bool { lhs.string == rhs.string }
@@ -200,12 +200,12 @@ extension Data: SafeDataConvertable {
 
 extension String: ThrowableDataConvertable {
     public init(data: Data) throws {
-        guard let s = String(data: data, encoding: .utf8) else { throw CvtErr.dataToString.d(1002, (#file, #line)) }
+        guard let s = String(data: data, encoding: .utf8) else { throw CvtErr.dataToString.d(1002) }
         self = s
     }
 
     public func data() throws -> Data {
-        guard let d = self.data(using: .utf8) else { throw CvtErr.StringtoData.d(1001, (#file, #line)) }
+        guard let d = self.data(using: .utf8) else { throw CvtErr.StringtoData.d(1001) }
         return d
     }
 }
@@ -214,7 +214,7 @@ public extension SafeDataConvertable where Self: ExpressibleByIntegerLiteral {
     init(data: Data) {
         var value: Self = 0
         if data.count < MemoryLayout.size(ofValue: value) { 
-            print(CvtErr.dataToNum.d("将把数字以 0 处理", 1005, (#file, #line)))
+            print(CvtErr.dataToNum.d("将把数字以 0 处理", 1005))
             self = 0
         }
         _ = Swift.withUnsafeMutableBytes(of: &value, { data.copyBytes(to: $0)} )
@@ -290,7 +290,7 @@ extension Dictionary: ThrowableDataConvertable where Key: ThrowableDataConvertab
 
 extension UUID: ThrowableDataConvertable {
     public init(data: Data) throws {
-        guard let v = try UUID(uuidString: String(data: data)) else { throw CvtErr.dataToUuid.d(1050, (#file, #line)) }
+        guard let v = try UUID(uuidString: String(data: data)) else { throw CvtErr.dataToUuid.d(1050) }
         self = v
     }
     
