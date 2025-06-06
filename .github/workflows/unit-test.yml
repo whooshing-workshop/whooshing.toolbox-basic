@@ -16,7 +16,7 @@ jobs:
       work_dir: "."
 
       with_release_mode_testing: true
-      with_musl: false
+      with_musl: true
       with_api_check: false
       ios_xcodebuild_action: ''
 
