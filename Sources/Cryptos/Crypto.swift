@@ -173,7 +173,7 @@ public enum Crypto {
         public enum Stream {
             
             /// 数据块加密的密文额外大小，即 `cipher.count = plain.count + cipherExtraLength`
-            static var cipherExtraLength: Int { Crypto.Symm.cipherExtraLength }
+            public static var cipherExtraLength: Int { Crypto.Symm.cipherExtraLength }
             
             /// 对数据流进行加密，十分适用于文件流加密这类有记忆的流式传输加密
             ///
@@ -184,7 +184,7 @@ public enum Crypto {
             /// - Returns: 加密过后的数据密文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.encrypt` 代替
-            static func encrypt(_ data: any ThrowableDataConvertable, key: Key, chunkTag: Int) throws -> Data {
+            public static func encrypt(_ data: any ThrowableDataConvertable, key: Key, chunkTag: Int) throws -> Data {
                 try chunkEncrypt(data, key: key, chunkTag: chunkTag)
             }
             
@@ -197,7 +197,7 @@ public enum Crypto {
             /// - Returns: 解密后的数据明文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.decrypt` 代替
-            static func decrypt(_ cipher: Data, key: Key, chunkTag: Int) throws -> Data {
+            public static func decrypt(_ cipher: Data, key: Key, chunkTag: Int) throws -> Data {
                 try chunkDecrypt(cipher, key: key, chunkTag: chunkTag)
             }
             
