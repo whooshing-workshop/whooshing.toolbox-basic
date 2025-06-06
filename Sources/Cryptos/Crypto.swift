@@ -406,7 +406,7 @@ private extension Crypto.Symm {
         let sealedBox = try AES.GCM.SealedBox(
             nonce: .init(data: chunkTagData),
             ciphertext: cipher.subdata(in: 0..<(cipher.count - cipherExtraLength)),
-            tag: cipher.subdata(in: (cipher.count - cipherExtraLength)..<cipher.count),
+            tag: cipher.subdata(in: (cipher.count - cipherExtraLength)..<cipher.count)
         )
         let plain = try AES.GCM.open(sealedBox, using: key, authenticating: chunkTagData)
         
