@@ -140,4 +140,53 @@ struct CryptoTest {
             #expect(Bool(false), "大数据加解密测试失败: \(err)")
         }
     }
+    
+    @Test("测试流式加解密")
+    func testStreamingDataEncryption() async throws {
+        let total = 65535
+        let chunkSize = 1000
+        let chunkCipherSize = Crypto.Symm.Stream.cipherExtraLength + chunkSize
+        
+        let key = Crypto.Symm.makeKey()
+        let data = Self.randomData(size: total)
+        var current = 0
+        
+        var cipherData = Data()
+        
+        var i = 0
+        while current < data.count {
+            let endIndex = min(current + chunkSize, data.count)
+            let chunkCipher = try Crypto.Symm.Stream.encrypt(data.subdata(in: current..<endIndex), key: key, chunkTag: i)
+            let chunkSize = min(chunkSize, data.count - current)
+            #expect(chunkCipher.count == chunkSize + Crypto.Symm.Stream.cipherExtraLength)
+            cipherData += chunkCipher
+            current += chunkSize
+            i += 1
+        }
+        
+        var plainData = Data()
+        
+        i = 0
+        current = 0
+        while current < cipherData.count {
+            let endIndex = min(current + chunkCipherSize, cipherData.count)
+            let chunkPlain = try Crypto.Symm.Stream.decrypt(cipherData.subdata(in: current..<endIndex), key: key, chunkTag: i)
+            let chunkSize = min(chunkCipherSize, cipherData.count - current)
+            #expect(chunkPlain.count == chunkSize - Crypto.Symm.Stream.cipherExtraLength)
+            plainData += chunkPlain
+            current += chunkSize
+            i += 1
+        }
+        
+        #expect(plainData == data)
+    }
+    
+    
+    static func randomData(size: Int) -> Data {
+        var data = Data()
+        var rng = SystemRandomNumberGenerator()
+        let randomBytes = (0..<size).map { _ in UInt8.random(in: 0...255, using: &rng) }
+        data.append(contentsOf: randomBytes)
+        return data
+    }
 }
