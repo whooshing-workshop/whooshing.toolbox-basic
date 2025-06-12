@@ -129,9 +129,11 @@ struct CryptoTest {
     func testKeyDerive() throws {
         let key = Crypto.Symm.makeKey()
         
-        let key2 = try Crypto.Symm.derive(key: key, salt: "Salt2", info: "Key2")
-        let key3 = try Crypto.Symm.derive(key: key, salt: "Salt3", info: "Key3")
-        let key4 = try Crypto.Symm.derive(key: key, salt: "Salt2", info: "Key2")
+        let key2 = try key.derive("Salt2", info: "Key2")
+        let key3 = try key.derive("Salt3", info: "Key3")
+        let key4 = try key.derive("Salt2", info: "Key2")
+        let key5 = key.derive(nil)
+        let key6 = try key.derive("Salt2", info: nil)
         
         #expect(key2.bitCount == key.bitCount)
         #expect(key3.bitCount == key.bitCount)
@@ -140,6 +142,9 @@ struct CryptoTest {
         #expect(key != key3)
         #expect(key2 != key3)
         #expect(key2 == key4)
+        #expect(key == key5)
+        #expect(key6 != key)
+        #expect(key6 != key2)
         
         let origin = "Hello World!"
         

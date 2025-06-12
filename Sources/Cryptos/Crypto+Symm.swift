@@ -66,48 +66,6 @@ public extension Crypto {
 
         /// 创建一个对称加密密钥
         public static func makeKey() -> Key { Key(size: symmetricKeySize) }
-        
-        /// 从一个父密钥派生新密钥
-        ///
-        /// - Parameters:
-        ///     - key: 父密钥
-        ///     - salt: 派生盐，应当不重复且随机
-        ///     - info: 派生密钥上下文信息
-        /// - Returns: 从父密钥创建的新派生密钥
-        ///
-        /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 key
-        public static func derive(key: Key, salt: (any ThrowableDataConvertable)?, info: (any ThrowableDataConvertable)?) throws -> Key {
-            if let salt = salt, let info = info {
-                return try HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, salt: salt.data(), info: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else if let salt = salt {
-                return try HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, salt: salt.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else if let info = info {
-                return try HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, info: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else {
-                return key
-            }
-        }
-        
-        /// 从一个父密钥派生新密钥
-        ///
-        /// - Parameters:
-        ///     - key: 父密钥
-        ///     - salt: 派生盐，应当不重复且随机
-        ///     - info: 派生密钥上下文信息
-        /// - Returns: 从父密钥创建的新派生密钥
-        ///
-        /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 key
-        public static func derive(key: Key, salt: (any SafeDataConvertable)?, info: (any SafeDataConvertable)?) -> Key {
-            if let salt = salt, let info = info {
-                return HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, salt: salt.data(), info: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else if let salt = salt {
-                return HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, salt: salt.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else if let info = info {
-                return HKDF<HashFunction>.deriveKey(inputKeyMaterial: key, info: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
-            } else {
-                return key
-            }
-        }
 
         /// 对数据进行加密
         ///
@@ -194,6 +152,49 @@ public extension Crypto {
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
             public static func validate(_ data: any SafeDataConvertable, authCode: Data, key: Key) -> Bool { try! validate(data as (any ThrowableDataConvertable), authCode: authCode, key: key) }
             public static func validate(_ data: any ThrowableDataConvertable, authCode: Data, key: Key) throws -> Bool { try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.data(), using: key) }
+        }
+    }
+}
+
+@available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)
+public extension Crypto.Symm.Key {
+    /// 以本身派生新密钥
+    ///
+    /// - Parameters:
+    ///     - salt: 派生盐，应当不重复且随机
+    ///     - info: 派生密钥上下文信息
+    /// - Returns: 从父密钥创建的新派生密钥
+    ///
+    /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 self
+    func derive(_ salt: (any ThrowableDataConvertable)?, info: (any ThrowableDataConvertable)? = nil) throws -> Self {
+        if let salt = salt, let info = info {
+            return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else if let salt = salt {
+            return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else if let info = info {
+            return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else {
+            return self
+        }
+    }
+    
+    /// 以本身派生新密钥
+    ///
+    /// - Parameters:
+    ///     - salt: 派生盐，应当不重复且随机
+    ///     - info: 派生密钥上下文信息
+    /// - Returns: 从父密钥创建的新派生密钥
+    ///
+    /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 self
+    func derive(_ salt: (any SafeDataConvertable)?, info: (any SafeDataConvertable)? = nil) -> Self {
+        if let salt = salt, let info = info {
+            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else if let salt = salt {
+            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else if let info = info {
+            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        } else {
+            return self
         }
     }
 }
