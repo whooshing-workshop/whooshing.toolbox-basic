@@ -124,6 +124,41 @@ struct CryptoTest {
             #expect(Bool(false), "混合加密算法测试失败: \(error)")
         }
     }
+    
+    @Test("密钥派生测试")
+    func testKeyDerive() throws {
+        let key = Crypto.Symm.makeKey()
+        
+        let key2 = try Crypto.Symm.derive(key: key, salt: "Salt2", info: "Key2")
+        let key3 = try Crypto.Symm.derive(key: key, salt: "Salt3", info: "Key3")
+        let key4 = try Crypto.Symm.derive(key: key, salt: "Salt2", info: "Key2")
+        
+        #expect(key2.bitCount == key.bitCount)
+        #expect(key3.bitCount == key.bitCount)
+        
+        #expect(key != key2)
+        #expect(key != key3)
+        #expect(key2 != key3)
+        #expect(key2 == key4)
+        
+        let origin = "Hello World!"
+        
+        let cipher = try Crypto.Symm.encrypt(origin, key: key)
+        let cipher2 = try Crypto.Symm.encrypt(origin, key: key2)
+        let cipher3 = try Crypto.Symm.encrypt(origin, key: key3)
+        
+        #expect(throws: Error.self, performing: { let _: String = try Crypto.Symm.decrypt(cipher, key: key2) })
+        #expect(throws: Error.self, performing: { let _: String = try Crypto.Symm.decrypt(cipher2, key: key) })
+        #expect(throws: Error.self, performing: { let _: String = try Crypto.Symm.decrypt(cipher3, key: key2) })
+        
+        let plain: String = try Crypto.Symm.decrypt(cipher, key: key)
+        let plain2: String = try Crypto.Symm.decrypt(cipher2, key: key2)
+        let plain3: String = try Crypto.Symm.decrypt(cipher3, key: key3)
+        
+        #expect(plain == origin)
+        #expect(plain2 == origin)
+        #expect(plain3 == origin)
+    }
 
     @Test("测试大数据加解密")
     func testLargeDataEncryption() {
