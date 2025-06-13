@@ -23,7 +23,7 @@ struct ErrorTests {
 
     @Test("测试 ErrListWithOptionAddition 扩展的参数传递") func testErrListWithOptionAddition() {
         let error = Self.err.d(Self.explain, Self.mark).adds(Self.datas)
-        #expect(error.summary == B.error3.rawValue)
+        #expect(error.error.rawValue == B.error3.rawValue)
         #expect(error.explain == Self.explain)
         #expect(error.mark == Self.mark)
         #expect(error.a1 == Self.datas[0])
@@ -33,7 +33,7 @@ struct ErrorTests {
     }
 
     @Test("测试 ErrListWithIndeedAddition 扩展的参数传递") func testErrListWithIndeedAddition() {
-        #expect(err2.summary == A.error1.rawValue)
+        #expect(err2.error.rawValue == A.error1.rawValue)
         #expect(err2.explain == Self.explain2)
         #expect(err2.mark == Self.mark2)
         #expect(err2.a1 == Self.datas2[0])
@@ -75,7 +75,7 @@ struct ErrorTests {
             )
             #expect(Bool(false))
         } catch let err as B.ErrType {
-            #expect(err.summary == B.error3.rawValue)
+            #expect(err.error.rawValue == B.error3.rawValue)
             #expect(err.mark == 3008)
             #expect(err.subError as! A.ErrType != A.error1.d(1005, file: #file, line: #line).adds([1, 2, 3]))
             #expect(err.subError as! A.ErrType == A.error1.d(1005, file: #file, line: 73).adds([1, 2, 3]))
@@ -100,7 +100,7 @@ struct CustomError1: Err {
     
     typealias AdditionType = [Int]
     var domain: String!
-    var summary: String!
+    var error: (any ErrList)!
     var explain: String?
     var file: String!
     var line: Int!
@@ -128,7 +128,7 @@ enum ErrorTypes2: String, ErrList {
 struct CustomError2: Err {
     typealias AdditionType = [String]?
     var domain: String!
-    var summary: String!
+    var error: (any ErrList)!
     var explain: String?
     var file: String!
     var line: Int!

@@ -4,7 +4,7 @@
     最基本的错误类型，以一个结构体的方式记录各种错误信息，包括：
 
     - **domain**：该错误的错误域，仅用做展示和区分，无其他作用
-    - **summary**：该错误的描述
+    - **error**：该错误的错误枚举值
     - **explain**：该错误的附加解释
     - **mark**：该错误的标记，仅用做展示和区分，无其他作用
     - **file**：错误发生所在的文件位置
@@ -49,10 +49,11 @@
 
     如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
+
 public struct BscError: Err, Sendable {
     public var domain: String!
-    /// 描述该错误。
-    public var summary: String!
+    /// 该错误的错误枚举值。
+    public var error: (any ErrList)!
     /// 每次发生错误时，可以自行阐述一些附加说明。
     public var explain: String?
     /// 每次发生错误，可以为其指定一个标记，方便排错。
@@ -103,7 +104,7 @@ public struct BscError: Err, Sendable {
  
     当然，你也可以在自定义错误类型和错误列表中定义和实现任何方法等等，但这通常是不必要的。
 */
-public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
+public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == String {
     associatedtype ErrType = BscError
     associatedtype RawValue
     /// 该错误列表的域名，仅作为展示和与其他错误列表做区分，无其他用途。
@@ -192,7 +193,7 @@ public protocol ErrList where Self.ErrType: Err, Self.RawValue == String {
 
         typealias AdditionType = [String]
         var domain: String!
-        var summary: String!
+        var error: (any ErrList)!
         var explain: String?
         var file: String!
         var line: Int!
@@ -221,8 +222,8 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 仅仅只是用作区分展示，无其他作用。使用该错误域区分可以更方便排错。例如 加密错误 可以用 crypto.error 作为域名，而 数据库错误 可以用 database.error 做域名。
     /// 这个错误名称仅仅展示在 error.summary 中，当然你也可以在代码逻辑中使用该参数。
     var domain: String! { get set }
-    /// 该错误的描述
-    var summary: String! { get set }
+    /// 该错误的错误枚举值
+    var error: (any ErrList)! { get set }
     /// 该错误的附加解释
     var explain: String? { get set }
     /// 该错误的标记，仅用做展示和区分，无其他作用
@@ -241,11 +242,11 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     ///
     /// 尽管该方法是开放的，但也避免直接使用该方法生成错误。尽管这是可以的，但十分冗长。
     /// 尽量不要覆写此方法，除非你知道你在做什么。
-    init(domain: String, summary: String, explain: String?, mark: Int?, file: String, line: Int)
+    init(domain: String, error: ErrList, explain: String?, mark: Int?, file: String, line: Int)
 
     /// 判断该错误是否与其他错误同类型。
     ///
-    /// 仅检查两者的 domain 以及 summary，若这两者相同，则认为同类型。
+    /// 仅检查两者的 domain 以及 error，若这两者相同，则认为同类型。
     func isSameType(of err: any Err) -> Bool
 
     /// 用于设置 subError 参数
@@ -342,14 +343,14 @@ public extension ErrList {
 }
 
 private extension ErrList {
-    func detail(explain: String? = nil, mark: Int? = nil, loc: (file: String, line: Int)) -> ErrType { ErrType(domain: self.domain, summary: self.rawValue, explain: explain, mark: mark, file: loc.file, line: loc.line) }
+    func detail(explain: String? = nil, mark: Int? = nil, loc: (file: String, line: Int)) -> ErrType { ErrType(domain: self.domain, error: self, explain: explain, mark: mark, file: loc.file, line: loc.line) }
 }
 
 public extension Err {
-    init(domain: String, summary: String, explain: String?, mark: Int?, file: String, line: Int) {
+    init(domain: String, error: ErrList, explain: String?, mark: Int?, file: String, line: Int) {
         self.init()
         self.domain = domain
-        self.summary = summary
+        self.error = error
         self.explain = explain
         self.mark = mark
         self.file = file
@@ -372,7 +373,8 @@ public extension Err {
 public extension Err {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.domain == rhs.domain &&
-        lhs.summary == rhs.summary &&
+        type(of: lhs.error) == type(of: rhs.error) &&
+        lhs.error.rawValue == rhs.error.rawValue &&
         lhs.explain == rhs.explain &&
         lhs.mark == rhs.mark &&
         lhs.file == rhs.file &&
@@ -381,24 +383,67 @@ public extension Err {
     
     func isSameType(of err: any Err) -> Bool {
         self.domain == err.domain &&
-        self.summary == err.summary
+        type(of: self) == type(of: err) &&
+        self.error.rawValue == err.error.rawValue
     }
 }
 
 public extension Err {
     var description: String {
-        var res = self.domain + "("
-        let preds = ["\"", "\"", "#", "At \"", "SubErr:\""]
-        let appes = ["\"", "\"", "", "\"", "\""]
+        descriptionString(withHead: true)
+    }
+    
+    func descriptionString(withHead: Bool) -> String {
+        var res = ""
+        
+        if withHead && subError != nil {
+            res += "Error Chains:\n"
+            res += "\t"
+        }
+        
+        if !withHead {
+            res += "\t"
+        }
+        
+        res += "\(String(describing: type(of: error!))).\(error!.self)[" + self.domain + "]("
+        let preds = ["\"", "\"", "#", "At \""]
+        let appes = ["\"", "\"", "", "\""]
         var resArr: [String] = []
-        for (i, curData) in ([summary, explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line), subError != nil ? "\(subError!)" : nil] as [String?]).enumerated() {
+        for (i, curData) in (["\(error.rawValue)", explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line)] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"
+        
+        if let subErr = subError {
+            if let bscErr = subErr as? (any Err) {
+                res += "\n" + bscErr.descriptionString(withHead: false)
+            } else {
+                res += "\n\t\(String(describing: type(of: subErr))).\(subErr.self)"
+            }
+            
+            if withHead {
+                res += "\nError Chains Ended"
+            }
+        }
+        
         return res
     }
 }
 
 public extension Err where AdditionType == Never {
     func initAdds(_ addtion: AdditionType, new: inout Self) { }
+}
+
+public struct StringError: Error, CustomStringConvertible, ExpressibleByStringLiteral {
+    public let reason: String
+    
+    public init(_ reason: String) {
+        self.reason = reason
+    }
+    
+    public init(stringLiteral value: StringLiteralType) {
+        self.reason = value
+    }
+    
+    public var description: String { self.reason }
 }
