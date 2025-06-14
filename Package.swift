@@ -15,12 +15,16 @@ let package = Package(
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
+        .library( name: "NIOAdvanced", targets: ["NIOAdvanced"] )
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
     ],
     targets: [
-        .target( name: "ErrorHandle" ),
+        .target( 
+            name: "ErrorHandle"
+        ),
         .target(
             name: "Cryptos",
             dependencies: [
@@ -33,6 +37,13 @@ let package = Package(
             name: "DataConvertable",
             dependencies: [
                 .target(name: "ErrorHandle")
+            ]
+        ),
+        .target(
+            name: "NIOAdvanced",
+            dependencies: [
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio")
             ]
         ),
         .testTarget(
