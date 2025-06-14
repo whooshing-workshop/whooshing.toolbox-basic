@@ -3,20 +3,6 @@ import Foundation
 import ErrorHandle
 import DataConvertable
 
-/// 加解密 Crypto 模块可能出现的所有错误
-public enum CryptoErrorLists: String, ErrList {
-    public var domain: String { "ToolboxBsc.Crypto" }
-    case encryptFailed = "加密失败"
-    case decryptFailed = "解密失败"
-    case signFailed = "签名失败"
-    case validateFailed = "签名验证失败"
-    case keyEncapsulateFailed = "密钥协商失败"
-    case saltGenerateFailed = "盐值生成失败"
-    case keyInvalid = "密钥不合法"
-}
-
-public typealias CptErr = CryptoErrorLists
-
 /**
     #### 封装了与加密相关的静态方法和功能，使用 enum 定义是只将其作为一个命名空间。
 
@@ -31,6 +17,18 @@ public typealias CptErr = CryptoErrorLists
         - **EdDSA**: 非对称的电子签名来源验证
 */
 public enum Crypto {
+    
+    /// 加解密 Crypto 模块可能出现的所有错误
+    public enum Errcase: String, ErrList {
+    //    case encryptFailed = "加密失败"
+    //    case decryptFailed = "解密失败"
+    //    case signFailed = "签名失败"
+    //    case validateFailed = "签名验证失败"
+    //    case saltGenerateFailed = "盐值生成失败"
+    //    case keyInvalid = "密钥不合法"
+        
+        case hashFailed = "哈希失败"
+    }
     
     /**
         #### 哈希摘要算法
@@ -57,7 +55,11 @@ public enum Crypto {
         ```
     */
     public static func hash(_ data: any SafeDataConvertable) -> Data { try! hash(data as (any ThrowableDataConvertable)) }
-    public static func hash(_ data: any ThrowableDataConvertable) throws -> Data { .init(try HashFunction.hash(data: data.data())) }
+    public static func hash(_ data: any ThrowableDataConvertable) throws(BscError<Errcase>) -> Data {
+        try required(throws: Errcase.hashFailed) {
+            .init(try HashFunction.hash(data: data.data()))
+        }
+    }
     
     /**
         #### 哈希摘要算法，加盐哈希
@@ -69,9 +71,11 @@ public enum Crypto {
             - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
         - Returns: 哈希摘要，只提供 Data 类型。
     */
-    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws -> Data {
+    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws(BscError<Errcase>) -> Data {
         if salt == nil { salt = randomDataGenerate(length: 32) }
-        return .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
+        return try required(throws: Errcase.hashFailed) {
+            .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
+        }
     }
     
     /// 随机数据生成函数，可指定长度以生成随机数据

@@ -53,7 +53,7 @@ struct CryptoTest {
         
         do {
             let signature = try Crypto.Asym.Sign.make(data, key: keyPair.private)
-            let isValid = try Crypto.Asym.Sign.validate(data, sign: signature, key: keyPair.public)
+            let isValid = Crypto.Asym.Sign.validate(data, sign: signature, key: keyPair.public)
             #expect(isValid, "签名验证失败")
         } catch {
             #expect(Bool(false), "签名与验证测试失败: \(error)")
@@ -113,7 +113,7 @@ struct CryptoTest {
             // HMAC 验证解开后的 HMAC
             let isHMACValid2 = Crypto.Symm.Sign.validate(encryptedData, authCode: plainHmac, key: symmKey)
             // 签名验证
-            let isSignatureValid = try Crypto.Asym.Sign.validate(encryptedData, sign: signature, key: signKeyPair.public)
+            let isSignatureValid = Crypto.Asym.Sign.validate(encryptedData, sign: signature, key: signKeyPair.public)
             // 断言
             #expect(decryptedData == originalData)
             #expect(isHMACValid, "HMAC 验证失败")

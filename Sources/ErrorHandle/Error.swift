@@ -5,7 +5,6 @@
 
     - **error**：该错误的错误枚举值
     - **explain**：该错误的附加解释
-    - **mark**：该错误的标记，仅用做展示和区分，无其他作用
     - **file**：错误发生所在的文件位置
     - **line**：错误发生所在的行数
     - **subErr**： 该错误的子错误
@@ -31,7 +30,7 @@
      func demo() throws {
          ...
          // 使用错误列表提供的方法来创建错误并抛出
-         // 这几个参数依次是上面列出的 explain, mark, file, line
+         // 这几个参数依次是上面列出的 explain, file, line
          throw A.error1.d("一些错误解释，即 explain", 1001)
          ...
      }
@@ -52,8 +51,6 @@ public struct BscError<ErrorList>: Err, AnyBscError, Sendable where ErrorList: E
     public var error: ErrorList!
     /// 每次发生错误时，可以自行阐述一些附加说明。
     public var explain: String?
-    /// 每次发生错误，可以为其指定一个标记，方便排错。
-    public var mark: Int?
     /// 发生错误的文件名称。
     public var file: String!
     /// 发生错误的行数。
@@ -128,7 +125,6 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorLis
         参数解释：
 
         - **explain**：为该错误设置一个解释，通常是比较细节的内容。
-        - **mark**：为该错误设置一个标记，便于排错(仅仅是用于展示以及比对，该库不用它做任何其他用处)。
         - **file**：该错误发生的文件。
         - **line**：该错误发生的行数。
         - **function**：该错误发生的函数。
@@ -170,8 +166,6 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorLis
     */
     func d(file: String, line: Int, function: String) -> ErrType
     func d(_ explain: String, file: String, line: Int, function: String) -> ErrType
-    func d(_ mark: Int, file: String, line: Int, function: String) -> ErrType
-    func d(_ explain: String, _ mark: Int, file: String, line: Int, function: String) -> ErrType
 }
 
 /**
@@ -192,7 +186,6 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorLis
         var file: String!
         var line: Int!
         var function: String!
-        var mark: Int?
         var subError: Error?
         var addtionInformation: String!
         var addtionInformation2: String!
@@ -217,8 +210,6 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     var error: ErrorList! { get set }
     /// 该错误的附加解释
     var explain: String? { get set }
-    /// 该错误的标记，仅用做展示和区分，无其他作用
-    var mark: Int? { get set }
     /// 错误发生所在的文件位置
     var file: String! { get set }
     /// 错误发生所在的行数
@@ -231,11 +222,10 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 初始化方法，你需要在你的自定义错误类型中实现该构建函数。
     init()
 
-    /// 错误的初始化方法，默认实现会自动为 ```summary, explain, mark, file, line, function``` 赋值。
+    /// 错误的初始化方法，默认实现会自动为 ```summary, explain, file, line, function``` 赋值。
     ///
-    /// 尽管该方法是开放的，但也避免直接使用该方法生成错误。尽管这是可以的，但十分冗长。
     /// 尽量不要覆写此方法，除非你知道你在做什么。
-    init(error: ErrorList, explain: String?, mark: Int?, file: String, line: Int, function: String)
+    init(_ error: ErrorList, _ explain: String?, file: String, line: Int, function: String)
 
     /// 判断该错误是否与其他错误同类型。
     ///
@@ -307,22 +297,44 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     ``` swift
     do {
         try throwError()
-    } catch {   // 当 throwError() 方法发生错误并抛出错误后，捕获该错误，并改为 throw 另一个。
-        throw A.error1.d("错误的解释...", 3)
+    } catch {   // 当 throwError() 方法发生错误并抛出错误后，捕获该错误，并改为 throw 另一个，并将 error 作为 subError 传递。
+        throw A.error1.d("错误的解释...", 3).subErr(error)
     }
     ```
 
     也可以使用所提供的 cv(_, _) 方法：
 
     ``` swift
-    try Guard({ throwError() }, throw: A.error1.d("错误的解释...", 3))  // 当 throwError() 发生错误时，会抛出所期望的错误。
+    // 当 throwError() 发生错误时，会抛出所期望的错误。
+    try required(throw: A.error1.d("错误的解释...", 3)) {
+        try throwError()
+    }
     ```
 
     事实上这两种方式的实现方法是一致的，但后者更简洁。
 */
-public func Guard<T>(_ cmd: () throws -> T, throw to: any Err) throws -> T {
-    do { let res = try cmd(); return res }
-    catch let err { throw to.subErr(err) }
+public func required<T, G>(throws to: G, _ performing: () throws -> T) throws(G) -> T where G: Err {
+    do {
+        let res = try performing()
+        return res
+    } catch let err {
+        throw to.subErr(err)
+    }
+}
+
+public func required<G: ErrList, T>(
+    throws to: G,
+    file: String = #file,
+    line: Int = #line,
+    function: String = #function,
+    _ performing: () throws -> T
+) throws(G.ErrType) -> T {
+    do {
+        let res = try performing()
+        return res
+    } catch let err {
+        throw .init(to, file: file, line: line, function: function).subErr(err)
+    }
 }
 
 // MARK: - 以下包括一些协议的默认实现
@@ -330,20 +342,17 @@ public func Guard<T>(_ cmd: () throws -> T, throw to: any Err) throws -> T {
 public extension ErrList {
     func d(file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
     func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
-    func d(_ mark: Int, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(mark: mark, loc: (file, line, function)) }
-    func d(_ explain: String, _ mark: Int, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, mark: mark, loc: (file, line, function)) }
 }
 
 private extension ErrList {
-    func detail(explain: String? = nil, mark: Int? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(error: self, explain: explain, mark: mark, file: loc.file, line: loc.line, function: loc.function) }
+    func detail(explain: String? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(self, explain, file: loc.file, line: loc.line, function: loc.function) }
 }
 
 public extension Err {
-    init(error: ErrorList, explain: String?, mark: Int?, file: String, line: Int, function: String) {
+    init(_ error: ErrorList, _ explain: String? = nil, file: String = #file, line: Int = #line, function: String = #function) {
         self.init()
         self.error = error
         self.explain = explain
-        self.mark = mark
         self.file = file
         self.line = line
         self.function = function
@@ -367,7 +376,6 @@ public extension Err {
         type(of: lhs.error) == type(of: rhs.error) &&
         lhs.error.rawValue == rhs.error.rawValue &&
         lhs.explain == rhs.explain &&
-        lhs.mark == rhs.mark &&
         lhs.file == rhs.file &&
         lhs.line == rhs.line
     }
@@ -396,10 +404,10 @@ public extension Err {
         }
         
         res += "\(String(describing: type(of: error!))).\(error!.self)("
-        let preds = ["\"", "\"", "#", "At \""]
-        let appes = ["\"", "\"", "", "\""]
+        let preds = ["\"", "\"", "At \""]
+        let appes = ["\"", "\"", "\""]
         var resArr: [String] = []
-        for (i, curData) in (["\(error.rawValue)", explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
+        for (i, curData) in (["\(error.rawValue)", explain, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"

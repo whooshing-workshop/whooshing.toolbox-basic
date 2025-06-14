@@ -66,6 +66,10 @@ public extension Crypto {
         需要注意，该对称加密的加解密密钥对与签名密钥对不可混用，因此有 `makeCryptoKeyPair()` 与 `makeSignKeyPair()` 方法之别
     */
     enum Asym {
+        
+        public enum Errcase: String, ErrList {
+            case keyEncapsulateFailed = "密钥协商失败"
+        }
 
         /// 加解密密钥对 - 公钥
         public typealias CPublicKey = Curve25519.KeyAgreement.PublicKey
@@ -94,13 +98,22 @@ public extension Crypto {
         ///     - salt: 盐值，双方需要保持一致
         ///     - info: 上下文信息，双方需要保持一致。该参数可以自定设置为任意值，只是需要双方一致
         /// - Returns: 协商完成的对称密钥
-        public static func keyEncapsulate(key: CPrivateKey, partyPublic: CPublicKey, salt: any ThrowableDataConvertable, info: any ThrowableDataConvertable) throws -> Symm.Key {
-            let sharedKey = try Guard({ try key.sharedSecretFromKeyAgreement(with: partyPublic) }, throw: CptErr.keyEncapsulateFailed.d(1012))
-            return try sharedKey.hkdfDerivedSymmetricKey(using: HashFunction.self, salt: salt.data(), sharedInfo: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
+        public static func keyEncapsulate(key: CPrivateKey, partyPublic: CPublicKey, salt: any ThrowableDataConvertable, info: any ThrowableDataConvertable) throws(BscError<Errcase>) -> Symm.Key {
+            let sharedKey = try required(throws: Errcase.keyEncapsulateFailed.d("密钥协商失败")) {
+                try key.sharedSecretFromKeyAgreement(with: partyPublic)
+            }
+            return try required(throws: Errcase.keyEncapsulateFailed.d("密钥派生失败")) {
+                try sharedKey.hkdfDerivedSymmetricKey(using: HashFunction.self, salt: salt.data(), sharedInfo: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
+            }
         }
 
         /// 数字签名，可实现非对称加密，使用 Curve25519 进行签名和验证
         public enum Sign {
+            
+            public enum Errcase: String, ErrList {
+                case signMakeFailed = "签名生成失败"
+                case unkow = "验证失败，未知原因"
+            }
 
             /// 使用私钥创建签名
             ///
@@ -108,7 +121,13 @@ public extension Crypto {
             ///     - data: 要签名的数据
             ///     - key: 己方的私钥
             /// - Returns: 该数据的签名
-            public static func make(_ data: any ThrowableDataConvertable, key: SPrivateKey) throws -> Data { try key.signature(for: data.data()) }
+            public static func make(_ data: any ThrowableDataConvertable, key: SPrivateKey) throws(BscError<Errcase>) -> Data {
+                do {
+                    return try key.signature(for: data.data())
+                } catch {
+                    throw .init(.signMakeFailed).subErr(error)
+                }
+            }
 
             /// 使用公钥验证签名
             ///
@@ -116,8 +135,12 @@ public extension Crypto {
             ///     - data: 数据本体，需要被验证是否完整的数据
             ///     - key: 己方的公钥
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
-            public static func validate(_ data: any SafeDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try! validate(data as (any ThrowableDataConvertable), sign: sign, key: key) }
-            public static func validate(_ data: any ThrowableDataConvertable, sign: Data, key: SPublicKey) throws -> Bool { try key.isValidSignature(sign, for: data.data()) }
+            public static func validate(_ data: any SafeDataConvertable, sign: Data, key: SPublicKey) -> Bool { try! validate(data as (any ThrowableDataConvertable), sign: sign, key: key) }
+            public static func validate(_ data: any ThrowableDataConvertable, sign: Data, key: SPublicKey) throws(BscError<Errcase>) -> Bool {
+                try required(throws: Errcase.unkow.d("验证未成功")) {
+                    try key.isValidSignature(sign, for: data.data())
+                }
+            }
         }
     }
 }
