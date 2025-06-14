@@ -47,9 +47,9 @@
     如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
 
-public struct BscError: Err, Sendable {
+public struct BscError<ErrorList>: Err, AnyBscError, Sendable where ErrorList: ErrList & Sendable {
     /// 该错误的错误枚举值。
-    public var error: (any ErrList)!
+    public var error: ErrorList!
     /// 每次发生错误时，可以自行阐述一些附加说明。
     public var explain: String?
     /// 每次发生错误，可以为其指定一个标记，方便排错。
@@ -66,6 +66,8 @@ public struct BscError: Err, Sendable {
     /// 创建一个错误类型，但请尽量避免使用，尽管这是可行的。
     public init() {}
 }
+
+public protocol AnyBscError: Error, Sendable {}
 
 /**
     #### 错误列表的协议声明
@@ -99,8 +101,8 @@ public struct BscError: Err, Sendable {
  
     当然，你也可以在自定义错误类型和错误列表中定义和实现任何方法等等，但这通常是不必要的。
 */
-public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == String {
-    associatedtype ErrType = BscError
+public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorList == Self, Self.RawValue == String {
+    associatedtype ErrType = BscError<Self>
     associatedtype RawValue
     
     /**
@@ -209,9 +211,10 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
 public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 扩展类型，默认为 Never，即无类型。配合 `initAdditions(_)` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = Never
+    associatedtype ErrorList: ErrList
     
     /// 该错误的错误枚举值
-    var error: (any ErrList)! { get set }
+    var error: ErrorList! { get set }
     /// 该错误的附加解释
     var explain: String? { get set }
     /// 该错误的标记，仅用做展示和区分，无其他作用
@@ -232,7 +235,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     ///
     /// 尽管该方法是开放的，但也避免直接使用该方法生成错误。尽管这是可以的，但十分冗长。
     /// 尽量不要覆写此方法，除非你知道你在做什么。
-    init(error: any ErrList, explain: String?, mark: Int?, file: String, line: Int, function: String)
+    init(error: ErrorList, explain: String?, mark: Int?, file: String, line: Int, function: String)
 
     /// 判断该错误是否与其他错误同类型。
     ///
@@ -336,7 +339,7 @@ private extension ErrList {
 }
 
 public extension Err {
-    init(error: any ErrList, explain: String?, mark: Int?, file: String, line: Int, function: String) {
+    init(error: ErrorList, explain: String?, mark: Int?, file: String, line: Int, function: String) {
         self.init()
         self.error = error
         self.explain = explain

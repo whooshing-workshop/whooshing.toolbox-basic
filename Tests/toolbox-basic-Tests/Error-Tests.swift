@@ -98,7 +98,7 @@ enum ErrorTypes1: String, ErrList {
 struct CustomError1: Err {
     
     typealias AdditionType = [Int]
-    var error: (any ErrList)!
+    var error: ErrorTypes1!
     var explain: String?
     var file: String!
     var line: Int!
@@ -125,7 +125,7 @@ enum ErrorTypes2: String, ErrList {
 
 struct CustomError2: Err {
     typealias AdditionType = [String]?
-    var error: (any ErrList)!
+    var error: ErrorTypes2!
     var explain: String?
     var file: String!
     var line: Int!
