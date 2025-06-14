@@ -3,7 +3,6 @@
 
     最基本的错误类型，以一个结构体的方式记录各种错误信息，包括：
 
-    - **domain**：该错误的错误域，仅用做展示和区分，无其他作用
     - **error**：该错误的错误枚举值
     - **explain**：该错误的附加解释
     - **mark**：该错误的标记，仅用做展示和区分，无其他作用
@@ -22,8 +21,6 @@
      enum NormalErrorTypes: String, ErrList {
          // 表示该错误列表中的错误，都是 BscError 类型的。
          typealias ErrType = BscError
-         // 为你的错误列表命一个名称
-         var domain: String { "错误列表.domain" }
          case error1 = "Error 1 summary"
          case error2 = "Error 2 summary"
      }
@@ -43,7 +40,7 @@
      do {
          try demo(...)
      } catch let err {   // 捕获该错误
-         print(err)      // 打印： 错误3.domain("Error 1 summary", "一些错误解释", #1001, At "Error.swift:36")
+         print(err)      // 打印： NormalErrorTypes.error1("Error 1 summary", "一些错误解释", #1001, At "Error.swift:36 -> demo()")
      }
     ```
 
@@ -51,7 +48,6 @@
 */
 
 public struct BscError: Err, Sendable {
-    public var domain: String!
     /// 该错误的错误枚举值。
     public var error: (any ErrList)!
     /// 每次发生错误时，可以自行阐述一些附加说明。
@@ -62,6 +58,8 @@ public struct BscError: Err, Sendable {
     public var file: String!
     /// 发生错误的行数。
     public var line: Int!
+    /// 发生错误的函数。
+    public var function: String!
     /// 该错误的子错误
     public var subError: Error?
     
@@ -82,10 +80,7 @@ public struct BscError: Err, Sendable {
         // 表示该错误列表中的错误，都是 BscError 类型的。
         // 这行非必须，那么 ErrType 默认便是 BscError。请详见该基本错误。
         typealias ErrType = BscError
-        // 为你的错误列表设定域名，仅仅作为展示和区分，无其他作用
-        // 在这里设置错误域，这个错误域将会被设置到每一个 BscError 中，请见 BscError.domain。
-        var domain: String { "错误列表" }
-
+ 
         // 列出所有的错误，并为其指定 summary
         case error1 = "Error 1 summary"
         case error2 = "Error 2 summary"
@@ -107,9 +102,7 @@ public struct BscError: Err, Sendable {
 public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == String {
     associatedtype ErrType = BscError
     associatedtype RawValue
-    /// 该错误列表的域名，仅作为展示和与其他错误列表做区分，无其他用途。
-    var domain: String { get }
-
+    
     /**
         描述错误的键值(枚举值)
 
@@ -136,6 +129,7 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
         - **mark**：为该错误设置一个标记，便于排错(仅仅是用于展示以及比对，该库不用它做任何其他用处)。
         - **file**：该错误发生的文件。
         - **line**：该错误发生的行数。
+        - **function**：该错误发生的函数。
 
         例如：
 
@@ -150,7 +144,6 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
 
         ``` swift
         enum MyErrorTypes: String, ErrList {
-            var domain: String { "我的自定义错误.domain" }
             // 在此处定义错误的 summary
             case systemError = "系统发生错误"
         }
@@ -169,14 +162,14 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
         do {
             try databaseAction(...)
         } catch let err {   // 捕获该错误
-            print(err) // 打印： 我的自定义错误.domain("系统发生错误", "数据库认证用户 XXX 时失败", #1006, At "Error.swift:128")
+            print(err) // 打印： MyErrorTypes.systemError("系统发生错误", "数据库认证用户 XXX 时失败", #1006, At "Error.swift:128 -> databaseAction()")
         }
         ```
     */
-    func d(file: String, line: Int) -> ErrType
-    func d(_ explain: String, file: String, line: Int) -> ErrType
-    func d(_ mark: Int, file: String, line: Int) -> ErrType
-    func d(_ explain: String, _ mark: Int, file: String, line: Int) -> ErrType
+    func d(file: String, line: Int, function: String) -> ErrType
+    func d(_ explain: String, file: String, line: Int, function: String) -> ErrType
+    func d(_ mark: Int, file: String, line: Int, function: String) -> ErrType
+    func d(_ explain: String, _ mark: Int, file: String, line: Int, function: String) -> ErrType
 }
 
 /**
@@ -192,11 +185,11 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
     struct CustomError: Err {
 
         typealias AdditionType = [String]
-        var domain: String!
         var error: (any ErrList)!
         var explain: String?
         var file: String!
         var line: Int!
+        var function: String!
         var mark: Int?
         var subError: Error?
         var addtionInformation: String!
@@ -216,12 +209,7 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.RawValue == Stri
 public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 扩展类型，默认为 Never，即无类型。配合 `initAdditions(_)` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = Never
-
-    /// 该错误类型的错误域，
-    ///
-    /// 仅仅只是用作区分展示，无其他作用。使用该错误域区分可以更方便排错。例如 加密错误 可以用 crypto.error 作为域名，而 数据库错误 可以用 database.error 做域名。
-    /// 这个错误名称仅仅展示在 error.summary 中，当然你也可以在代码逻辑中使用该参数。
-    var domain: String! { get set }
+    
     /// 该错误的错误枚举值
     var error: (any ErrList)! { get set }
     /// 该错误的附加解释
@@ -232,17 +220,19 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     var file: String! { get set }
     /// 错误发生所在的行数
     var line: Int! { get set }
+    /// 错误发生所在的函数
+    var function: String! { get set }
     /// 该错误的子错误
     var subError: Error? { get set }
     
     /// 初始化方法，你需要在你的自定义错误类型中实现该构建函数。
     init()
 
-    /// 错误的初始化方法，默认实现会自动为 ```summary, explain, mark, file, line``` 赋值。
+    /// 错误的初始化方法，默认实现会自动为 ```summary, explain, mark, file, line, function``` 赋值。
     ///
     /// 尽管该方法是开放的，但也避免直接使用该方法生成错误。尽管这是可以的，但十分冗长。
     /// 尽量不要覆写此方法，除非你知道你在做什么。
-    init(domain: String, error: ErrList, explain: String?, mark: Int?, file: String, line: Int)
+    init(error: any ErrList, explain: String?, mark: Int?, file: String, line: Int, function: String)
 
     /// 判断该错误是否与其他错误同类型。
     ///
@@ -299,7 +289,6 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     }
 
     enum WanttedErrorTypes: String, ErrList {
-        var domain: String { "错误列表.domain" }
         case error1 = "错误 1"
         case error2 = "错误 2"
         case error3 = "错误 3"
@@ -336,25 +325,25 @@ public func Guard<T>(_ cmd: () throws -> T, throw to: any Err) throws -> T {
 // MARK: - 以下包括一些协议的默认实现
 
 public extension ErrList {
-    func d(file: String = #file, line: Int = #line) -> ErrType { detail(loc: (file, line)) }
-    func d(_ explain: String, file: String = #file, line: Int = #line) -> ErrType { detail(explain: explain, loc: (file, line)) }
-    func d(_ mark: Int, file: String = #file, line: Int = #line) -> ErrType { detail(mark: mark, loc: (file, line)) }
-    func d(_ explain: String, _ mark: Int, file: String = #file, line: Int = #line) -> ErrType { detail(explain: explain, mark: mark, loc: (file, line)) }
+    func d(file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
+    func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
+    func d(_ mark: Int, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(mark: mark, loc: (file, line, function)) }
+    func d(_ explain: String, _ mark: Int, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, mark: mark, loc: (file, line, function)) }
 }
 
 private extension ErrList {
-    func detail(explain: String? = nil, mark: Int? = nil, loc: (file: String, line: Int)) -> ErrType { ErrType(domain: self.domain, error: self, explain: explain, mark: mark, file: loc.file, line: loc.line) }
+    func detail(explain: String? = nil, mark: Int? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(error: self, explain: explain, mark: mark, file: loc.file, line: loc.line, function: loc.function) }
 }
 
 public extension Err {
-    init(domain: String, error: ErrList, explain: String?, mark: Int?, file: String, line: Int) {
+    init(error: any ErrList, explain: String?, mark: Int?, file: String, line: Int, function: String) {
         self.init()
-        self.domain = domain
         self.error = error
         self.explain = explain
         self.mark = mark
         self.file = file
         self.line = line
+        self.function = function
     }
 
     func subErr(_ err: Error?) -> Self {
@@ -372,7 +361,6 @@ public extension Err {
 
 public extension Err {
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.domain == rhs.domain &&
         type(of: lhs.error) == type(of: rhs.error) &&
         lhs.error.rawValue == rhs.error.rawValue &&
         lhs.explain == rhs.explain &&
@@ -382,7 +370,6 @@ public extension Err {
     }
     
     func isSameType(of err: any Err) -> Bool {
-        self.domain == err.domain &&
         type(of: self) == type(of: err) &&
         self.error.rawValue == err.error.rawValue
     }
@@ -405,11 +392,11 @@ public extension Err {
             res += "\t"
         }
         
-        res += "\(String(describing: type(of: error!))).\(error!.self)[" + self.domain + "]("
+        res += "\(String(describing: type(of: error!))).\(error!.self)("
         let preds = ["\"", "\"", "#", "At \""]
         let appes = ["\"", "\"", "", "\""]
         var resArr: [String] = []
-        for (i, curData) in (["\(error.rawValue)", explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line)] as [String?]).enumerated() {
+        for (i, curData) in (["\(error.rawValue)", explain, mark != nil ? String(mark!) : nil, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"
