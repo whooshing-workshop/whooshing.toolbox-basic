@@ -1,6 +1,8 @@
 import NIOCore
 
 extension EventLoopPromise {
+    @inlinable
+    @preconcurrency
     public func withError<T>() -> EventLoopTarget<Value, T> {
         .init(self)
     }
@@ -12,12 +14,17 @@ public struct EventLoopTarget<Value, ErrorType> where ErrorType: Error {
         .init(self.wrapped.futureResult)
     }
     
-    @usableFromInline
-    internal let wrapped: EventLoopPromise<Value>
+    public let wrapped: EventLoopPromise<Value>
     
     @inlinable
     internal init(_ wrapped: EventLoopPromise<Value>) {
         self.wrapped = wrapped
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func cast<NewError>(_ errorType: NewError.Type = NewError.self) -> EventLoopTarget<Value, NewError> {
+        self.wrapped.withError()
     }
     
     @preconcurrency

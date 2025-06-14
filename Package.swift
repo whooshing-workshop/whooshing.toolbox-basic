@@ -42,8 +42,7 @@ let package = Package(
         .target(
             name: "NIOAdvanced",
             dependencies: [
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")
+                .product(name: "NIOCore", package: "swift-nio")
             ]
         ),
         .testTarget(

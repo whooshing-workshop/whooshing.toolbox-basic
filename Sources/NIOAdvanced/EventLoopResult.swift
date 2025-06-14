@@ -5,6 +5,8 @@ import Dispatch
 #endif
 
 extension EventLoopFuture {
+    @inlinable
+    @preconcurrency
     public func withError<T>() -> EventLoopResult<Value, T> {
         .init(self)
     }
@@ -14,12 +16,17 @@ public final class EventLoopResult<Value, ErrorType> where ErrorType: Error {
     
     public var eventLoop: EventLoop { wrapped.eventLoop }
     
-    @usableFromInline
-    internal let wrapped: EventLoopFuture<Value>
+    public let wrapped: EventLoopFuture<Value>
     
     @inlinable
     internal init(_ wrapped: EventLoopFuture<Value>) {
         self.wrapped = wrapped
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func cast<NewError>(_ errorType: NewError.Type = NewError.self) -> EventLoopResult<Value, NewError> {
+        self.wrapped.withError()
     }
 }
 
@@ -35,9 +42,9 @@ extension EventLoopResult {
     
     @inlinable
     @preconcurrency
-    public func flatMap<NewValue: Sendable, NewError>(
-        _ callback: @escaping @Sendable (Value) -> EventLoopResult<NewValue, NewError>
-    ) -> EventLoopResult<NewValue, NewError> {
+    public func flatMap<NewValue: Sendable>(
+        _ callback: @escaping @Sendable (Value) -> EventLoopResult<NewValue, ErrorType>
+    ) -> EventLoopResult<NewValue, ErrorType> {
         self.wrapped.flatMap { value in
             callback(value).wrapped
         }.withError()
@@ -45,9 +52,9 @@ extension EventLoopResult {
     
     @inlinable
     @preconcurrency
-    public func flatMapThrowing<NewValue, NewError>(
-        _ callback: @escaping @Sendable (Value) throws(NewError) -> NewValue
-    ) -> EventLoopResult<NewValue, NewError> {
+    public func flatMapThrowing<NewValue>(
+        _ callback: @escaping @Sendable (Value) throws(ErrorType) -> NewValue
+    ) -> EventLoopResult<NewValue, ErrorType> {
         self.wrapped.flatMapThrowing { value in
             try callback(value)
         }.withError()
@@ -85,9 +92,9 @@ extension EventLoopResult {
     
     @inlinable
     @preconcurrency
-    public func flatMapResult<NewValue, SomeError: Error>(
-        _ body: @escaping @Sendable (Value) -> Result<NewValue, SomeError>
-    ) -> EventLoopResult<NewValue, SomeError> {
+    public func flatMapResult<NewValue, NewError>(
+        _ body: @escaping @Sendable (Value) -> Result<NewValue, NewError>
+    ) -> EventLoopResult<NewValue, NewError> {
         self.wrapped.flatMapResult { value in
             body(value)
         }.withError()
@@ -314,21 +321,21 @@ extension EventLoopResult {
     
     @preconcurrency
     @inlinable
-    public static func whenAllComplete<NewError>(
-        _ futures: [EventLoopResult<Value, NewError>],
+    public static func whenAllComplete(
+        _ futures: [EventLoopResult<Value, ErrorType>],
         on eventLoop: EventLoop
-    ) -> EventLoopResult<[Result<Value, NewError>], ErrorType> where Value: Sendable {
+    ) -> EventLoopResult<[Result<Value, ErrorType>], Never> where Value: Sendable {
         EventLoopFuture<Value>.whenAllComplete(
             futures.map { $0.wrapped },
             on: eventLoop
-        ).map { $0.map { $0.mapError { $0 as! NewError } } }.withError()
+        ).map { $0.map { $0.mapError { $0 as! ErrorType } } }.withError()
     }
     
     @preconcurrency
     @inlinable
-    public static func whenAllComplete<NewError>(
-        _ futures: [EventLoopResult<Value, NewError>],
-        promise: EventLoopTarget<[Result<Value, NewError>], ErrorType>
+    public static func whenAllComplete(
+        _ futures: [EventLoopResult<Value, ErrorType>],
+        promise: EventLoopTarget<[Result<Value, ErrorType>], Never>
     ) where Value: Sendable {
         let result = promise.wrapped.futureResult.eventLoop.makePromise(of: [Result<Value, Error>].self)
         promise.wrapped.futureResult.map { $0.map { $0.mapError { $0 as Error } } }.cascade(to: result)
@@ -370,9 +377,9 @@ extension EventLoopResult {
 
 extension EventLoopResult {
     @inlinable
-    public func unwrap<NewValue, NewError>(
-        orError: NewError
-    ) -> EventLoopResult<NewValue, NewError> where Value == NewValue? {
+    public func unwrap<NewValue>(
+        orError: ErrorType
+    ) -> EventLoopResult<NewValue, ErrorType> where Value == NewValue? {
         self.wrapped.unwrap(orError: orError).withError()
     }
     
@@ -399,10 +406,10 @@ extension EventLoopResult {
 extension EventLoopResult {
     @inlinable
     @preconcurrency
-    public func flatMapBlocking<NewValue: Sendable, NewError>(
+    public func flatMapBlocking<NewValue: Sendable>(
         onto queue: DispatchQueue,
-        _ callbackMayBlock: @escaping @Sendable (Value) throws(NewError) -> NewValue
-    ) -> EventLoopResult<NewValue, NewError> where Value: Sendable {
+        _ callbackMayBlock: @escaping @Sendable (Value) throws(ErrorType) -> NewValue
+    ) -> EventLoopResult<NewValue, ErrorType> where Value: Sendable {
         self.wrapped.flatMapBlocking(
             onto: queue,
             callbackMayBlock
