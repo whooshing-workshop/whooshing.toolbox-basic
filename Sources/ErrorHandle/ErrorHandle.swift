@@ -166,6 +166,14 @@ public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorLis
     */
     func d(file: String, line: Int, function: String) -> ErrType
     func d(_ explain: String, file: String, line: Int, function: String) -> ErrType
+    
+    /// 用于设置 subError 参数
+    ///
+    /// 用法：
+    /// ``` swift
+    /// ErrorTypes.aError.subErr(yourSubErr)
+    /// ```
+    func subErr(_ error: Error?, file: String, line: Int, function: String) -> ErrType
 }
 
 /**
@@ -302,7 +310,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     }
     ```
 
-    也可以使用所提供的 cv(_, _) 方法：
+    也可以使用所提供的 required(_, _) 方法：
 
     ``` swift
     // 当 throwError() 发生错误时，会抛出所期望的错误。
@@ -322,14 +330,14 @@ public func required<T, G>(throws to: G, _ performing: () throws -> T) throws(G)
     }
 }
 
-public func required<G: ErrList, T>(
+public func required<G, T>(
     throws to: G,
     _ explain: String? = nil,
     file: String = #file,
     line: Int = #line,
     function: String = #function,
     _ performing: () throws -> T
-) throws(G.ErrType) -> T {
+) throws(G.ErrType) -> T where G: ErrList {
     do {
         let res = try performing()
         return res
@@ -343,6 +351,7 @@ public func required<G: ErrList, T>(
 public extension ErrList {
     func d(file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
     func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
+    func subErr(_ error: Error?, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
 }
 
 private extension ErrList {
