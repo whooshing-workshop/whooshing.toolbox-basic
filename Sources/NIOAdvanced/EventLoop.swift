@@ -1,7 +1,8 @@
 import NIOCore
+import ErrorHandle
 
 extension EventLoop {
-    public func makeSucceededVoidResult<ErrorType>() -> EventLoopResult<Void, ErrorType> {
+    public func makeSucceededVoidResult<ErrorType>(throws errorType: ErrorType.Type = ErrorType.self) -> EventLoopResult<Void, ErrorType> {
         self.makeSucceededVoidFuture().withError()
     }
 }
@@ -10,6 +11,7 @@ extension EventLoop {
     @inlinable
     @preconcurrency
     public func submitResult<T, G>(
+        throws errorType: G.Type = G.self,
         _ task: @escaping @Sendable () throws(G) -> T
     ) -> EventLoopResult<T, G> {
         self.submit {
@@ -20,6 +22,7 @@ extension EventLoop {
     @inlinable
     @preconcurrency
     public func flatSubmitResult<T: Sendable, G>(
+        throws errorType: G.Type = G.self,
         _ task: @escaping @Sendable () -> EventLoopResult<T, G>
     ) -> EventLoopResult<T, G> {
         self.flatSubmit {
@@ -44,16 +47,12 @@ extension EventLoop {
     @preconcurrency
     @inlinable
     public func makeSucceededResult<Success: Sendable, ErrorType>(
-        _ value: Success
+        _ value: Success,
+        throws errorType: ErrorType.Type = ErrorType.self
     ) -> EventLoopResult<Success, ErrorType> {
         self.makeSucceededFuture(value).withError()
     }
 }
-
-extension EventLoopGroup {
-    
-}
-
 
 extension EventLoopResult {
     
@@ -101,6 +100,7 @@ extension EventLoopResult {
         @inlinable
         @available(*, noasync)
         public func flatMapError<NewError>(
+            throws: NewError.Type = NewError.self,
             _ callback: @escaping (ErrorType) -> EventLoopResult<Value, NewError>
         ) -> EventLoopResult<Value, NewError>.Isolated where Value: Sendable {
             self.wrapped.flatMapError { callback($0 as! ErrorType).wrapped }.withError()
@@ -109,6 +109,7 @@ extension EventLoopResult {
         @inlinable
         @available(*, noasync)
         public func flatMapError<NewError>(
+            throws: NewError.Type = NewError.self,
             _ callback: @escaping (ErrorType) -> EventLoopResult<Value, NewError>.Isolated
         ) -> EventLoopResult<Value, NewError>.Isolated {
             self.wrapped.flatMapError { callback($0 as! ErrorType).wrapped }.withError()
@@ -117,6 +118,7 @@ extension EventLoopResult {
         @inlinable
         @available(*, noasync)
         public func flatMapResult<NewValue, NewError>(
+            throws: NewError.Type = NewError.self,
             _ body: @escaping (Value) -> Result<NewValue, NewError>
         ) -> EventLoopResult<NewValue, NewError>.Isolated {
             self.wrapped.flatMapResult { body($0) }.withError()
@@ -193,6 +195,96 @@ extension EventLoopResult {
     }
 }
 
+extension EventLoopResult.Isolated {
+    @inlinable
+    @preconcurrency
+    public func flatMapErrThrowing<NewError>(
+        _ callback: @escaping @Sendable (ErrorType) throws(NewError) -> Value,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
+        self.flatMapErrorThrowing { error throws(NewError.ErrType) in
+            do {
+                return try callback(error)
+            } catch let err {
+                throw .init(err as! NewError, file: file, line: line, function: function).subErr(err)
+            }
+        }
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func flatMapErr<NewError>(
+        _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where Value: Sendable, NewError: ErrList {
+        self.flatMapError { error in
+            callback(error).flatMapErrorThrowing { err throws(NewError.ErrType) in
+                throw .init(err, file: file, line: line, function: function).subErr(err)
+            }
+        }
+    }
+}
+
+extension EventLoopResult.Isolated {
+    @inlinable
+    @preconcurrency
+    public func flatCast<NewValue: Sendable, NewError>(
+        throws: NewError.Type = NewError.self,
+        _ callback: @escaping @Sendable (Value) -> EventLoopResult<NewValue, NewError>
+    ) -> EventLoopResult<NewValue, NewError>.Isolated {
+        self.wrapped.flatMap { value in
+            callback(value).wrapped
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func flatCastThrowing<NewValue, NewError>(
+        _ callback: @escaping @Sendable (Value) throws(NewError) -> NewValue,
+    ) -> EventLoopResult<NewValue, NewError>.Isolated {
+        self.wrapped.flatMapThrowing { value in
+            try callback(value)
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func forceErrorCast<NewError>(
+        _ errorType: NewError.Type = NewError.self
+    ) -> EventLoopResult<Value, NewError>.Isolated {
+        self.wrapped.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func errorCast<NewError>(
+        throws: NewError.Type = NewError.self,
+        _ callback: @Sendable @escaping (ErrorType) -> NewError
+    ) -> EventLoopResult<Value, NewError>.Isolated where Value: Sendable {
+        self.flatMapErrorThrowing { error throws(NewError) in
+            throw callback(error)
+        }
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func errCast<NewError>(
+        _ error: NewError,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
+        self.flatMapErrorThrowing { err throws(NewError.ErrType) in
+            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
+        }
+    }
+}
+
 @available(*, unavailable)
 extension EventLoopResult.Isolated: Sendable {}
 
@@ -201,6 +293,28 @@ extension EventLoopFuture.Isolated {
     @preconcurrency
     public func withError<ErrorType>() -> EventLoopResult<Value, ErrorType>.Isolated {
         .init(self)
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func withError<T>(_ callback: @Sendable @escaping (Error) -> T) -> EventLoopResult<Value, T>.Isolated {
+        self.flatMapErrorThrowing { error in
+            throw callback(error)
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func withError<T>(
+        _ error: T,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, T.ErrType>.Isolated where T: ErrList {
+        self.flatMapErrorThrowing { err throws(T.ErrType) in
+            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
+        }.withError()
     }
 }
 

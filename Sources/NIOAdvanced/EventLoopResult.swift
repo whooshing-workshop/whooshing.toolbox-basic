@@ -1,4 +1,5 @@
 import NIOCore
+import ErrorHandle
 
 #if canImport(Dispatch)
 import Dispatch
@@ -7,8 +8,30 @@ import Dispatch
 extension EventLoopFuture {
     @inlinable
     @preconcurrency
-    public func withError<T>() -> EventLoopResult<Value, T> {
+    public func withError<T>() -> EventLoopResult<Value, T> where T: Error {
         .init(self)
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func withError<T>(_ callback: @Sendable @escaping (Error) -> T) -> EventLoopResult<Value, T> {
+        self.flatMapErrorThrowing { error in
+            throw callback(error)
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func withError<T>(
+        _ error: T,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, T.ErrType> where T: ErrList {
+        self.flatMapErrorThrowing { err throws(T.ErrType) in
+            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
+        }.withError()
     }
 }
 
@@ -19,14 +42,8 @@ public final class EventLoopResult<Value, ErrorType> where ErrorType: Error {
     public let wrapped: EventLoopFuture<Value>
     
     @inlinable
-    internal init(_ wrapped: EventLoopFuture<Value>) {
+    internal init(_ wrapped: EventLoopFuture<Value>) where ErrorType: Error {
         self.wrapped = wrapped
-    }
-    
-    @inlinable
-    @preconcurrency
-    public func cast<NewError>(_ errorType: NewError.Type = NewError.self) -> EventLoopResult<Value, NewError> {
-        self.wrapped.withError()
     }
 }
 
@@ -83,6 +100,7 @@ extension EventLoopResult {
     @inlinable
     @preconcurrency
     public func flatMapError<NewError>(
+        throws: NewError.Type = NewError.self,
         _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>
     ) -> EventLoopResult<Value, NewError> where Value: Sendable {
         self.wrapped.flatMapError { error in
@@ -93,6 +111,7 @@ extension EventLoopResult {
     @inlinable
     @preconcurrency
     public func flatMapResult<NewValue, NewError>(
+        throws: NewError.Type = NewError.self,
         _ body: @escaping @Sendable (Value) -> Result<NewValue, NewError>
     ) -> EventLoopResult<NewValue, NewError> {
         self.wrapped.flatMapResult { value in
@@ -138,6 +157,62 @@ extension EventLoopResult {
             case .success(let value): callback(.success(value))
             case .failure(let error): callback(.failure(error as! ErrorType))
             }
+        }
+    }
+}
+
+extension EventLoopResult {
+    @inlinable
+    @preconcurrency
+    public func flatCast<NewValue: Sendable, NewError>(
+        throws: NewError.Type = NewError.self,
+        _ callback: @escaping @Sendable (Value) -> EventLoopResult<NewValue, NewError>
+    ) -> EventLoopResult<NewValue, NewError> {
+        self.wrapped.flatMap { value in
+            callback(value).wrapped
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func flatCastThrowing<NewValue, NewError>(
+        _ callback: @escaping @Sendable (Value) throws(NewError) -> NewValue
+    ) -> EventLoopResult<NewValue, NewError> {
+        self.wrapped.flatMapThrowing { value in
+            try callback(value)
+        }.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func forceErrorCast<NewError>(
+        _ errorType: NewError.Type = NewError.self
+    ) -> EventLoopResult<Value, NewError> {
+        self.wrapped.withError()
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func errorCast<NewError>(
+        throws: NewError.Type = NewError.self,
+        _ callback: @Sendable @escaping (ErrorType) -> NewError
+    ) -> EventLoopResult<Value, NewError> where Value: Sendable {
+        self.flatMapErrorThrowing { error throws(NewError) in
+            throw callback(error)
+        }
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func errCast<NewError>(
+        _ error: NewError,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType> where NewError: ErrList {
+        self.flatMapErrorThrowing { err throws(NewError.ErrType) in
+            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
         }
     }
 }
@@ -202,6 +277,7 @@ extension EventLoopResult {
     @preconcurrency
     public func fold<OtherValue: Sendable, NewError>(
         _ futures: [EventLoopResult<OtherValue, ErrorType>],
+        throws: NewError.Type = NewError.self,
         with combiningFunction: @escaping @Sendable (Value, OtherValue) -> EventLoopResult<Value, NewError>
     ) -> EventLoopResult<Value, NewError> where Value: Sendable {
         self.wrapped.fold(futures.map { $0.wrapped }) { value, otherValue in
@@ -499,6 +575,42 @@ extension EventLoopResult {
             file: file,
             line: line
         ).withError()
+    }
+}
+
+// MARK: fit for errorhandle
+
+extension EventLoopResult {
+    @inlinable
+    @preconcurrency
+    public func flatMapErrThrowing<NewError>(
+        _ callback: @escaping @Sendable (ErrorType) throws(NewError) -> Value,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType> where NewError: ErrList {
+        self.flatMapErrorThrowing { error throws(NewError.ErrType) in
+            do {
+                return try callback(error)
+            } catch let err {
+                throw .init(err as! NewError, file: file, line: line, function: function).subErr(err)
+            }
+        }
+    }
+    
+    @inlinable
+    @preconcurrency
+    public func flatMapErr<NewError>(
+        _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<Value, NewError.ErrType> where Value: Sendable, NewError: ErrList {
+        self.flatMapError { error in
+            callback(error).flatMapErrorThrowing { err throws(NewError.ErrType) in
+                throw .init(err, file: file, line: line, function: function).subErr(err)
+            }
+        }
     }
 }
 

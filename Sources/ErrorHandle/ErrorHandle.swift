@@ -324,6 +324,7 @@ public func required<T, G>(throws to: G, _ performing: () throws -> T) throws(G)
 
 public func required<G: ErrList, T>(
     throws to: G,
+    _ explain: String? = nil,
     file: String = #file,
     line: Int = #line,
     function: String = #function,
@@ -333,7 +334,7 @@ public func required<G: ErrList, T>(
         let res = try performing()
         return res
     } catch let err {
-        throw .init(to, file: file, line: line, function: function).subErr(err)
+        throw .init(to, explain, file: file, line: line, function: function).subErr(err)
     }
 }
 

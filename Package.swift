@@ -42,6 +42,7 @@ let package = Package(
         .target(
             name: "NIOAdvanced",
             dependencies: [
+                .target(name: "ErrorHandle"),
                 .product(name: "NIOCore", package: "swift-nio")
             ]
         ),
@@ -51,6 +52,9 @@ let package = Package(
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
+                .target(name: "NIOAdvanced"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOCore", package: "swift-nio")
             ]
         ),
     ]
