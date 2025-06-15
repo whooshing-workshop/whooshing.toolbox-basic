@@ -44,6 +44,17 @@ extension EventLoop {
         self.makeFailedFuture(error).withError()
     }
     
+    @inlinable
+    public func makeFailedResult<T, G>(
+        _ error: G,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> EventLoopResult<T, G.ErrType> where G: ErrList {
+        self.makeFailedResult(.init(error, explain, file: file, line: line, function: function))
+    }
+    
     @preconcurrency
     @inlinable
     public func makeSucceededResult<Success: Sendable, ErrorType>(
@@ -244,7 +255,7 @@ extension EventLoopResult.Isolated {
     @inlinable
     @preconcurrency
     public func flatCastThrowing<NewValue, NewError>(
-        _ callback: @escaping @Sendable (Value) throws(NewError) -> NewValue,
+        _ callback: @escaping @Sendable (Value) throws(NewError) -> NewValue
     ) -> EventLoopResult<NewValue, NewError>.Isolated {
         self.wrapped.flatMapThrowing { value in
             try callback(value)
