@@ -43,7 +43,9 @@ let package = Package(
             name: "NIOAdvanced",
             dependencies: [
                 .target(name: "ErrorHandle"),
-                .product(name: "NIOCore", package: "swift-nio")
+                .target(name: "DataConvertable"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio")
             ]
         ),
         .testTarget(

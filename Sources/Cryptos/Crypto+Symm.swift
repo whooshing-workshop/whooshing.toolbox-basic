@@ -128,7 +128,7 @@ public extension Crypto {
             /// - Returns: 解密后的数据明文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.decrypt` 代替
-            public static func decrypt(_ cipher: Data, key: Key, chunkTag: Int) throws(BscError<Errcase>) -> Data {
+            public static func decrypt<T>(_ cipher: Data, key: Key, chunkTag: Int) throws(BscError<Errcase>) -> T where T: ThrowableDataConvertable {
                 try chunkDecrypt(cipher, key: key, chunkTag: chunkTag)
             }
             
@@ -280,7 +280,7 @@ private extension Crypto.Symm.Stream {
         }
     }
     
-    static func chunkDecrypt(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) throws(BscError<Crypto.Symm.Errcase>) -> Data {
+    static func chunkDecrypt<T>(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) throws(BscError<Crypto.Symm.Errcase>) -> T where T: ThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         precondition(cipher.count >= cipherExtraLength, "密文过短，格式不正确，无法解密，至少超过 \(cipherExtraLength)，却得到 \(cipher.count) 字节")
         
@@ -294,7 +294,7 @@ private extension Crypto.Symm.Stream {
             )
             let plain = try AES.GCM.open(sealedBox, using: key, authenticating: chunkTagData)
             
-            return plain
+            return try T.init(data: plain)
         } catch {
             throw .init(.aesDecryptFailed)
         }

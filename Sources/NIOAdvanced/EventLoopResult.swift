@@ -265,8 +265,10 @@ extension EventLoopResult {
     public func wait(
         file: StaticString = #file,
         line: UInt = #line
-    ) throws -> Value where Value: Sendable {
-        try self.wrapped.wait(file: file, line: line)
+    ) throws(ErrorType) -> Value where Value: Sendable {
+        try flatError(as: ErrorType.self) {
+            try self.wrapped.wait(file: file, line: line)
+        }
     }
 }
 
@@ -614,6 +616,17 @@ extension EventLoopResult {
     }
 }
 
+extension EventLoopResult {
+    @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
+    @preconcurrency
+    @inlinable
+    public func get() async throws(ErrorType) -> Value where Value: Sendable {
+        try await flatError(as: ErrorType.self) {
+            try await self.wrapped.get()
+        }
+    }
+}
+
 extension EventLoopResult: Sendable {}
 
 extension Optional {
@@ -625,3 +638,5 @@ extension Optional {
         p.setOrCascade(to: promise?.wrapped)
     }
 }
+
+

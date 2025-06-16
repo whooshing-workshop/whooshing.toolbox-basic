@@ -210,7 +210,7 @@ struct CryptoTest {
         current = 0
         while current < cipherData.count {
             let endIndex = min(current + chunkCipherSize, cipherData.count)
-            let chunkPlain = try Crypto.Symm.Stream.decrypt(cipherData.subdata(in: current..<endIndex), key: key, chunkTag: i)
+            let chunkPlain: Data = try Crypto.Symm.Stream.decrypt(cipherData.subdata(in: current..<endIndex), key: key, chunkTag: i)
             let chunkSize = min(chunkCipherSize, cipherData.count - current)
             #expect(chunkPlain.count == chunkSize - Crypto.Symm.Stream.cipherExtraLength)
             plainData += chunkPlain

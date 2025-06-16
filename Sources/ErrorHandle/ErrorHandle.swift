@@ -346,6 +346,47 @@ public func required<G, T>(
     }
 }
 
+public func flatError<T, G>(as errorType: T.Type = T.self, _ callback: () throws -> G) throws(T) -> G {
+    do {
+        return try callback()
+    } catch {
+        throw error as! T
+    }
+}
+
+public func flatError<T, G>(as errorType: T.Type = T.self, _ callback: () async throws -> G) async throws(T) -> G {
+    do {
+        return try await callback()
+    } catch {
+        throw error as! T
+    }
+}
+ 
+public func required<T, G>(throws to: G, _ performing: () async throws -> T) async throws(G) -> T where G: Err {
+    do {
+        let res = try await performing()
+        return res
+    } catch let err {
+        throw to.subErr(err)
+    }
+}
+
+public func required<G, T>(
+    throws to: G,
+    _ explain: String? = nil,
+    file: String = #file,
+    line: Int = #line,
+    function: String = #function,
+    _ performing: () async throws -> T
+) async throws(G.ErrType) -> T where G: ErrList {
+    do {
+        let res = try await performing()
+        return res
+    } catch let err {
+        throw .init(to, explain, file: file, line: line, function: function).subErr(err)
+    }
+}
+
 // MARK: - 以下包括一些协议的默认实现
 
 public extension ErrList {

@@ -386,3 +386,16 @@ extension EventLoopPromise.Isolated {
         .init(self)
     }
 }
+
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
+extension EventLoop {
+    @preconcurrency
+    @inlinable
+    public func makeResultWithTask<Return: Sendable, NewError>(
+        _ body: @Sendable @escaping () async throws(NewError) -> Return
+    ) -> EventLoopResult<Return, NewError> {
+        self.makeFutureWithTask {
+            try await body()
+        }.withError()
+    }
+}
