@@ -10,10 +10,10 @@ import ErrorHandle
         // 声明一个字符串
         let string = "Hello World!"
         // 将字符串转为 Data
-        let data = try string.data()
+        let data = try string.dataRes.get()
         // 重新将 Data 转为字符串
-        let newString = try String(data: data)
-
+        let newString = try String.make(data: data).get()
+ 
         print(string == newString)      // true
     } catch let err {
         // 数据转换时出现了错误，需要处理错误
@@ -26,9 +26,9 @@ import ErrorHandle
     // 声明一个字符串
     let string = "Hello World!"
     // 将字符串转为 Data
-    let data = try! string.data()
+    let data = try! string.dataRes.get()
     // 重新将 Data 转为字符串
-    let newString = try! String(data: data)
+    let newString = try! String.make(data: data).get()
 
     print(string == newString)      // true
     ```
@@ -44,8 +44,8 @@ import ErrorHandle
     ``` swift
     // Int 类型是 Safe 的
     let arr = [1, 2, 3]
-    let arrData = arr.data()
-    let newArr = [Int](data: arrData)
+    let arrData = arr.data
+    let newArr = [Int].new(data: arrData)
 
     print(arr == newArr)        // true
     ```
@@ -55,8 +55,8 @@ import ErrorHandle
     ``` swift
     do {
         let arr = ["1", "2", "3"]
-        let arrData = try arr.data()
-        let newArr = try [String](data: arrData)
+        let arrData = try arr.dataRes.get()
+        let newArr = try [String].make(data: arrData).get()
         print(arr == newArr)            // true
     } catch let err {
         print(err)
@@ -70,8 +70,8 @@ import ErrorHandle
     ``` swift
     do {
         let dic = [1: "One", 2: "Two", 3: "Three"]
-        let data = try dic.data()
-        let newDic = try [Int: String](data: data)
+        let data = try dic.dataRes.get()
+        let newDic = try [Int: String].make(data: data).get()
 
         print(dic == newDic)        // true
     } catch let err {
@@ -131,8 +131,8 @@ public protocol DecodingThrowableDataConvertable {
     例如，```Int``` 类型(包括所有数字类型)，默认实现了该协议，因此它可以：
     ``` swift
     let int = 100
-    let data = int.data()
-    let newInt = Int(data: data)
+    let data = int.data
+    let newInt = Int.new(data: data)
     ```
     另见协议 `ThrowableDataConvertable`
 */
