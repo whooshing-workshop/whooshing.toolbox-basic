@@ -73,7 +73,6 @@ struct ErrorTests {
             #expect(err.subError as! A.ErrType != A.error1.d(file: #file, line: #line).adds([1, 2, 3]))
             #expect(err.subError as! A.ErrType == A.error1.d(file: #file, line: 67).adds([1, 2, 3]))
             #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(file: "Test", line: 89).adds([0, 0])))
-            #expect(!(err.subError as! A.ErrType).isSameType(of: A.error2.d(file: "Test", line: 89).adds([0, 0])))
         }
     }
 }

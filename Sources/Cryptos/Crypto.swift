@@ -18,15 +18,7 @@ import DataConvertable
 */
 public enum Crypto {
     
-    /// 加解密 Crypto 模块可能出现的所有错误
     public enum Errcase: String, ErrList {
-    //    case encryptFailed = "加密失败"
-    //    case decryptFailed = "解密失败"
-    //    case signFailed = "签名失败"
-    //    case validateFailed = "签名验证失败"
-    //    case saltGenerateFailed = "盐值生成失败"
-    //    case keyInvalid = "密钥不合法"
-        
         case hashFailed = "哈希失败"
     }
     
@@ -54,10 +46,17 @@ public enum Crypto {
         }
         ```
     */
-    public static func hash(_ data: any SafeDataConvertable) -> Data { try! hash(data as (any ThrowableDataConvertable)) }
-    public static func hash(_ data: any ThrowableDataConvertable) throws(BscError<Errcase>) -> Data {
-        try required(throws: Errcase.hashFailed) {
-            .init(try HashFunction.hash(data: data.data()))
+    public static func hash<T>(_ data: T) -> Data where T: DecodingSafeDataConvertable {
+        try! __hash(data).get()
+    }
+    
+    public static func hash<T>(_ data: T) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+        __hash(data)
+    }
+    
+    static func __hash<T>(_ data: T) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+        Result(throws: .hashFailed) {
+            Data(try HashFunction.hash(data: data.dataRes.get()))
         }
     }
     
@@ -71,10 +70,12 @@ public enum Crypto {
             - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
         - Returns: 哈希摘要，只提供 Data 类型。
     */
-    public static func saltyHash(_ data: any ThrowableDataConvertable, salt: inout Data?) throws(BscError<Errcase>) -> Data {
-        if salt == nil { salt = randomDataGenerate(length: 32) }
-        return try required(throws: Errcase.hashFailed) {
-            .init(try HashFunction.hash(data: HashFunction.hash(data: data.data()) + salt!))
+    public static func saltyHash<T>(_ data: T, salt: inout Data?) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+        if salt == nil {
+            salt = randomDataGenerate(length: 32)
+        }
+        return Result(throws: .hashFailed) {
+            Data(try HashFunction.hash(data: HashFunction.hash(data: data.dataRes.get()) + salt!))
         }
     }
     

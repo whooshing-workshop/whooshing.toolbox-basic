@@ -79,7 +79,9 @@ public extension Crypto {
         ///     - data: 待加密的数据
         ///     - key: 用于加密的密钥，可以由 `makeKey()` 函数生成
         /// - 返回值: 加密过后的密文，只提供 Data 形式
-        public static func encrypt(_ data: any ThrowableDataConvertable, key: Key) throws(BscError<Errcase>) -> Data { try aesEncrypt(data, key: key) }
+        public static func encrypt<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+            aesEncrypt(data, key: key)
+        }
 
         /// 对数据进行解密
         ///
@@ -91,7 +93,9 @@ public extension Crypto {
         /// ``` swift
         /// let plain: String = try Crypto.symm.decrypt(..., key: ...)
         /// ```
-        public static func decrypt<D>(_ cipher: Data, key: Key) throws(BscError<Errcase>) -> D where D: ThrowableDataConvertable { try aesDecrypt(cipher, key: key) }
+        public static func decrypt<D>(_ cipher: Data, key: Key) -> Res<D, Errcase> where D: EncodingThrowableDataConvertable {
+            aesDecrypt(cipher, key: key)
+        }
         
         /**
             #### 数据流加解密
@@ -115,8 +119,8 @@ public extension Crypto {
             /// - Returns: 加密过后的数据密文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.encrypt` 代替
-            public static func encrypt(_ data: any ThrowableDataConvertable, key: Key, chunkTag: Int) throws(BscError<Errcase>) -> Data {
-                try chunkEncrypt(data, key: key, chunkTag: chunkTag)
+            public static func encrypt<T>(_ data: T, key: Key, chunkTag: Int) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+                chunkEncrypt(data, key: key, chunkTag: chunkTag)
             }
             
             /// 对数据流密文进行解密，十分适用于文件流加密这类有记忆的流式传输加密
@@ -128,8 +132,8 @@ public extension Crypto {
             /// - Returns: 解密后的数据明文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.decrypt` 代替
-            public static func decrypt<T>(_ cipher: Data, key: Key, chunkTag: Int) throws(BscError<Errcase>) -> T where T: ThrowableDataConvertable {
-                try chunkDecrypt(cipher, key: key, chunkTag: chunkTag)
+            public static func decrypt<T>(_ cipher: Data, key: Key, chunkTag: Int) -> Res<T, Errcase> where T: EncodingThrowableDataConvertable {
+                chunkDecrypt(cipher, key: key, chunkTag: chunkTag)
             }
             
         }
@@ -151,10 +155,17 @@ public extension Crypto {
             /// ``` swift
             /// let mac = try Crypto.Symm.Sign.make(data, key)
             /// ```
-            public static func make(_ data: any SafeDataConvertable, key: Key) -> Data { try! make(data as (any ThrowableDataConvertable), key: key) }
-            public static func make(_ data: any ThrowableDataConvertable, key: Key) throws(BscError<Errcase>) -> Data {
-                try required(throws: Errcase.makeSignFailed) {
-                    .init(try HMAC<HashFunction>.authenticationCode(for: data.data(), using: key))
+            public static func make<T>(_ data: T, key: Key) -> Data where T: DecodingSafeDataConvertable {
+                try! __make(data, key: key).get()
+            }
+            
+            public static func make<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+                __make(data, key: key)
+            }
+            
+            static func __make<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+                .init(throws: .makeSignFailed) {
+                    .init(try HMAC<HashFunction>.authenticationCode(for: data.dataRes.get(), using: key))
                 }
             }
             
@@ -165,10 +176,17 @@ public extension Crypto {
             ///     - authCode: MAC 消息验证码，由 ```Crypto.Symm.Sign.make(..., key)``` 生成
             ///     - key: 用于解密的密钥，需与加密密钥一致方可进行验证
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
-            public static func validate(_ data: any SafeDataConvertable, authCode: Data, key: Key) -> Bool { try! validate(data as (any ThrowableDataConvertable), authCode: authCode, key: key) }
-            public static func validate(_ data: any ThrowableDataConvertable, authCode: Data, key: Key) throws(BscError<Errcase>) -> Bool {
-                try required(throws: Errcase.validationFailed) {
-                    try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.data(), using: key)
+            public static func validate<T>(_ data: T, authCode: Data, key: Key) -> Bool where T: DecodingSafeDataConvertable {
+                try! __validate(data, authCode: authCode, key: key).get()
+            }
+            
+            public static func validate<T>(_ data: T, authCode: Data, key: Key) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
+                __validate(data, authCode: authCode, key: key)
+            }
+            
+            static func __validate<T>(_ data: T, authCode: Data, key: Key) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
+                .init(throws: .validationFailed) {
+                    try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.dataRes.get(), using: key)
                 }
             }
         }
@@ -176,9 +194,9 @@ public extension Crypto {
 }
 
 @available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)
-public extension Crypto.Symm.Key {
+extension Crypto.Symm.Key {
     
-    enum Errcase: String, ErrList {
+    public enum Errcase: String, ErrList {
         case keyDeriveFailed = "密钥派生失败"
     }
     
@@ -186,24 +204,18 @@ public extension Crypto.Symm.Key {
     ///
     /// - Parameters:
     ///     - salt: 派生盐，应当不重复且随机
+    /// - Returns: 从父密钥创建的新派生密钥
+    public func derive<T>(salt: T) -> Self where T: DecodingSafeDataConvertable {
+        try! __derive(salt: salt).get()
+    }
+    
+    /// 以本身派生新密钥
+    ///
+    /// - Parameters:
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
-    ///
-    /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 self
-    func derive(_ salt: (any ThrowableDataConvertable)?, info: (any ThrowableDataConvertable)? = nil) throws(BscError<Errcase>) -> Self {
-        do {
-            if let salt = salt, let info = info {
-                return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-            } else if let salt = salt {
-                return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-            } else if let info = info {
-                return try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-            } else {
-                return self
-            }
-        } catch {
-            throw .init(.keyDeriveFailed).subErr(error)
-        }
+    public func derive<T>(info: T) -> Self where T: DecodingSafeDataConvertable {
+        try! __derive(info: info).get()
     }
     
     /// 以本身派生新密钥
@@ -212,45 +224,85 @@ public extension Crypto.Symm.Key {
     ///     - salt: 派生盐，应当不重复且随机
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
+    public func derive<T, G>(_ salt: T, info: G) -> Self where T: DecodingSafeDataConvertable, G: DecodingSafeDataConvertable {
+        try! __derive(salt: salt, info: info).get()
+    }
+    
+    /// 以本身派生新密钥
     ///
-    /// salt 与 info 为可缺省值，若两值都指定为 nil，则函数返回原密钥，即 self
-    func derive(_ salt: (any SafeDataConvertable)?, info: (any SafeDataConvertable)? = nil) -> Self {
-        if let salt = salt, let info = info {
-            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-        } else if let salt = salt {
-            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-        } else if let info = info {
-            return HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.data(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
-        } else {
-            return self
+    /// - Parameters:
+    ///     - salt: 派生盐，应当不重复且随机
+    /// - Returns: 从父密钥创建的新派生密钥
+    public func derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
+        __derive(salt: salt)
+    }
+    
+    /// 以本身派生新密钥
+    ///
+    /// - Parameters:
+    ///     - info: 派生密钥上下文信息
+    /// - Returns: 从父密钥创建的新派生密钥
+    public func derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
+        __derive(info: info)
+    }
+    
+    /// 以本身派生新密钥
+    ///
+    /// - Parameters:
+    ///     - salt: 派生盐，应当不重复且随机
+    ///     - info: 派生密钥上下文信息
+    /// - Returns: 从父密钥创建的新派生密钥
+    public func derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
+        __derive(salt: salt, info: info)
+    }
+    
+    
+    func __derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
+        .init(throws: .keyDeriveFailed) {
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        }
+    }
+    
+    func __derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
+        .init(throws: .keyDeriveFailed) {
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+        }
+    }
+    
+    func __derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
+        .init(throws: .keyDeriveFailed) {
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
 }
 
 private extension Crypto.Symm {
-    static func aesEncrypt(_ data: any ThrowableDataConvertable, key: Key) throws(BscError<Errcase>) -> Data {
+    static func aesEncrypt<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         // print("正在进行加密: \(try data.data().count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
-        let sealedBox = try required(throws: Errcase.aesEncryptFailed.d("AES 加密未能成功封印明文数据")) {
-            try AES.GCM.seal(data.data(), using: key, nonce: .init())
+        
+        return Result(throws: .aesEncryptFailed, "AES 加密未能成功封印明文数据") {
+            try AES.GCM.seal(data.dataRes.get(), using: key, nonce: .init())
+        }.flatMap { sealedBox in
+            guard let cipher = sealedBox.combined else {
+                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在")
+            }
+            // print("加密得到: \(cipher.count)")
+            return .success(cipher)
         }
-        guard let cipher = sealedBox.combined else {
-            throw .init(.aesEncryptFailed, "AES 加密-未知错误，密文不存在")
-        }
-        // print("加密得到: \(cipher.count)")
-        return cipher
     }
 
-    static func aesDecrypt<D>(_ cipher: Data, key: Key) throws(BscError<Errcase>) -> D where D: ThrowableDataConvertable {
+    static func aesDecrypt<D>(_ cipher: Data, key: Key) -> Res<D, Errcase> where D: EncodingThrowableDataConvertable {
         // print("正在进行解密: \(cipher.count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
-        do {
+        
+        return Result(throws: .aesDecryptFailed) {
             let sealedBox = try AES.GCM.SealedBox(combined: cipher)
             let decryptedData = try AES.GCM.open(sealedBox, using: key)
+            return decryptedData
+        }.flatMap { decryptedData in
             // print("解密得到: \(decryptedData.count)")
-            return try D(data: decryptedData)
-        } catch {
-            throw .init(.aesDecryptFailed).subErr(error)
+            return D.make(data: decryptedData).mapError(as: Errcase.aesDecryptFailed)
         }
     }
 
@@ -258,45 +310,42 @@ private extension Crypto.Symm {
 }
 
 private extension Crypto.Symm.Stream {
-    static var __cipherExtraLength: Int { 16 }
+    static var __cipherExtraLength: Int { 28 }
     
-    static func chunkEncrypt(_ data: any ThrowableDataConvertable, key: Crypto.Symm.Key, chunkTag: Int) throws(BscError<Crypto.Symm.Errcase>) -> Data {
+    static func chunkEncrypt<T>(_ data: T, key: Crypto.Symm.Key, chunkTag: Int) -> Res<Data, Crypto.Symm.Errcase> where T: DecodingThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         
         let chunkTagData = chunkTagToData(chunkTag)
         
-        do {
-            let sealedBox = try AES.GCM.seal(
-                data.data(),
+        return Result(throws: .aesEncryptFailed) {
+            try AES.GCM.seal(
+                data.dataRes.get(),
                 using: key,
-                nonce: .init(data: chunkTagData),
+                nonce: .init(),
                 authenticating: chunkTagData
             )
+        }.flatMap { sealedBox in
+            guard let cipher = sealedBox.combined else {
+                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在")
+            }
             
-            // 密文总长度为 plain.count + 16 bytes
-            return sealedBox.ciphertext + sealedBox.tag
-        } catch {
-            throw .init(.aesEncryptFailed).subErr(error)
+            // 密文总长度为 plain.count + 16 + 12 bytes
+            return .success(cipher)
         }
     }
     
-    static func chunkDecrypt<T>(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) throws(BscError<Crypto.Symm.Errcase>) -> T where T: ThrowableDataConvertable {
+    static func chunkDecrypt<T>(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) -> Res<T, Crypto.Symm.Errcase> where T: EncodingThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         precondition(cipher.count >= cipherExtraLength, "密文过短，格式不正确，无法解密，至少超过 \(cipherExtraLength)，却得到 \(cipher.count) 字节")
         
+        /// authentication tag.
         let chunkTagData = chunkTagToData(chunkTag)
         
-        do {
-            let sealedBox = try AES.GCM.SealedBox(
-                nonce: .init(data: chunkTagData),
-                ciphertext: cipher.subdata(in: 0..<(cipher.count - cipherExtraLength)),
-                tag: cipher.subdata(in: (cipher.count - cipherExtraLength)..<cipher.count)
-            )
-            let plain = try AES.GCM.open(sealedBox, using: key, authenticating: chunkTagData)
-            
-            return try T.init(data: plain)
-        } catch {
-            throw .init(.aesDecryptFailed)
+        return Result(throws: .aesDecryptFailed) {
+            let sealedBox = try AES.GCM.SealedBox(combined: cipher)
+            return try AES.GCM.open(sealedBox, using: key, authenticating: chunkTagData)
+        }.flatMap { plain in
+            return T.make(data: plain).mapError(as: Crypto.Symm.Errcase.aesDecryptFailed)
         }
     }
     

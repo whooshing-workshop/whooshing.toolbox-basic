@@ -98,25 +98,8 @@ public protocol AnyBscError: Error, Sendable {}
  
     当然，你也可以在自定义错误类型和错误列表中定义和实现任何方法等等，但这通常是不必要的。
 */
-public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorList == Self, Self.RawValue == String {
+public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorList == Self {
     associatedtype ErrType = BscError<Self>
-    associatedtype RawValue
-    
-    /**
-        描述错误的键值(枚举值)
-
-        每个错误枚举都当有一个 rawValue 属性，且该 rawValue 必须为 String 类型。
-        
-        一般使用 enum 声明一个错误列表，并将其键值设为 String 即可。
-        ``` swift
-        enum MyErrorList: String, ErrList {
-            case error1 = "该错误 1 的解释"
-            case error2 = "该错误 2 的解释"
-            ...
-        }
-        ```
-    */
-    var rawValue: RawValue { get }
     /**
         为一个错误设置细节信息
 
@@ -387,6 +370,52 @@ public func required<G, T>(
     }
 }
 
+public typealias Res<G, T> = Result<G, T.ErrType> where T: ErrList
+
+public extension Result where Failure: Err {
+    init(
+        throws error: Failure.ErrorList,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function,
+        catching body: () throws -> Success
+    ) {
+        self.init { () throws(Failure) in
+            do {
+                return try body()
+            } catch let err {
+                throw Failure.init(error, explain, file: file, line: line, function: function).subErr(err)
+            }
+        }
+    }
+    
+    static func failure(
+        _ error: Failure.ErrorList,
+        _ explain: String? = nil,
+        subErr: Error? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function,
+    ) -> Self {
+        .failure(Failure.init(error, explain, file: file, line: line, function: function).subErr(subErr))
+    }
+}
+
+public extension Result {
+    consuming func mapError<T>(
+        as error: T,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function
+    ) -> Result<Success, T.ErrType> where T : ErrList {
+        self.mapError { err in
+            .init(error, explain, file: file, line: line, function: function).subErr(err)
+        }
+    }
+}
+
 // MARK: - 以下包括一些协议的默认实现
 
 public extension ErrList {
@@ -425,15 +454,13 @@ public extension Err {
 public extension Err {
     static func == (lhs: Self, rhs: Self) -> Bool {
         type(of: lhs.error) == type(of: rhs.error) &&
-        lhs.error.rawValue == rhs.error.rawValue &&
         lhs.explain == rhs.explain &&
         lhs.file == rhs.file &&
         lhs.line == rhs.line
     }
     
     func isSameType(of err: any Err) -> Bool {
-        type(of: self) == type(of: err) &&
-        self.error.rawValue == err.error.rawValue
+        type(of: self) == type(of: err)
     }
 }
 
@@ -458,7 +485,7 @@ public extension Err {
         let preds = ["\"", "\"", "At \""]
         let appes = ["\"", "\"", "\""]
         var resArr: [String] = []
-        for (i, curData) in (["\(error.rawValue)", explain, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
+        for (i, curData) in (["\(String(describing: error))", explain, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"

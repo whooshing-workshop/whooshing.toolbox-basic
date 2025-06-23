@@ -98,12 +98,27 @@ public extension Crypto {
         ///     - salt: 盐值，双方需要保持一致
         ///     - info: 上下文信息，双方需要保持一致。该参数可以自定设置为任意值，只是需要双方一致
         /// - Returns: 协商完成的对称密钥
-        public static func keyEncapsulate(key: CPrivateKey, partyPublic: CPublicKey, salt: any ThrowableDataConvertable, info: any ThrowableDataConvertable) throws(BscError<Errcase>) -> Symm.Key {
-            let sharedKey = try required(throws: Errcase.keyEncapsulateFailed.d("密钥协商失败")) {
+        public static func keyEncapsulate<T, G>(
+            key: CPrivateKey,
+            partyPublic: CPublicKey,
+            salt: T,
+            info: G
+        ) -> Res<Symm.Key, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
+            Result (throws: .keyEncapsulateFailed, "密钥协商失败") {
                 try key.sharedSecretFromKeyAgreement(with: partyPublic)
-            }
-            return try required(throws: Errcase.keyEncapsulateFailed.d("密钥派生失败")) {
-                try sharedKey.hkdfDerivedSymmetricKey(using: HashFunction.self, salt: salt.data(), sharedInfo: info.data(), outputByteCount: symmetricKeySize.bitCount / 8)
+            }.flatMap { sharedKey in
+                do {
+                    return .success(
+                        try sharedKey.hkdfDerivedSymmetricKey(
+                            using: HashFunction.self,
+                            salt: salt.dataRes.get(),
+                            sharedInfo: info.dataRes.get(),
+                            outputByteCount: symmetricKeySize.bitCount / 8
+                        )
+                    )
+                } catch {
+                    return .failure(.keyEncapsulateFailed, "密钥派生失败", subErr: error)
+                }
             }
         }
 
@@ -112,7 +127,7 @@ public extension Crypto {
             
             public enum Errcase: String, ErrList {
                 case signMakeFailed = "签名生成失败"
-                case unkow = "验证失败，未知原因"
+                case unknown = "验证失败，未知原因"
             }
 
             /// 使用私钥创建签名
@@ -121,11 +136,9 @@ public extension Crypto {
             ///     - data: 要签名的数据
             ///     - key: 己方的私钥
             /// - Returns: 该数据的签名
-            public static func make(_ data: any ThrowableDataConvertable, key: SPrivateKey) throws(BscError<Errcase>) -> Data {
-                do {
-                    return try key.signature(for: data.data())
-                } catch {
-                    throw .init(.signMakeFailed).subErr(error)
+            public static func make<T>(_ data: T, key: SPrivateKey) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
+                .init(throws: .signMakeFailed) {
+                    try key.signature(for: data.dataRes.get())
                 }
             }
 
@@ -135,10 +148,17 @@ public extension Crypto {
             ///     - data: 数据本体，需要被验证是否完整的数据
             ///     - key: 己方的公钥
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
-            public static func validate(_ data: any SafeDataConvertable, sign: Data, key: SPublicKey) -> Bool { try! validate(data as (any ThrowableDataConvertable), sign: sign, key: key) }
-            public static func validate(_ data: any ThrowableDataConvertable, sign: Data, key: SPublicKey) throws(BscError<Errcase>) -> Bool {
-                try required(throws: Errcase.unkow.d("验证未成功")) {
-                    try key.isValidSignature(sign, for: data.data())
+            public static func validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Bool where T: DecodingSafeDataConvertable {
+                try! __validate(data, sign: sign, key: key).get()
+            }
+            
+            public static func validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
+                __validate(data, sign: sign, key: key)
+            }
+            
+            static func __validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
+                .init(throws: .unknown, "验证未成功") {
+                    try key.isValidSignature(sign, for: data.dataRes.get())
                 }
             }
         }
