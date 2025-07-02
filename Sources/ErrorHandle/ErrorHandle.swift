@@ -411,7 +411,7 @@ public extension Result where Failure: Err {
         subErr: Error? = nil,
         file: String = #file,
         line: Int = #line,
-        function: String = #function,
+        function: String = #function
     ) -> Self {
         .failure(Failure.init(error, explain, file: file, line: line, function: function).subErr(subErr))
     }
