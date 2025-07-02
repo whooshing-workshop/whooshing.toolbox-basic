@@ -98,7 +98,7 @@ public protocol AnyBscError: Error, Sendable {}
  
     当然，你也可以在自定义错误类型和错误列表中定义和实现任何方法等等，但这通常是不必要的。
 */
-public protocol ErrList: Sendable where Self.ErrType: Err, Self.ErrType.ErrorList == Self {
+public protocol ErrList: Sendable, RawRepresentable, CaseIterable where Self.ErrType: Err, Self.ErrType.ErrorList == Self {
     associatedtype ErrType = BscError<Self>
     /**
         为一个错误设置细节信息
@@ -390,6 +390,21 @@ public extension Result where Failure: Err {
         }
     }
     
+    static func async(
+        throws error: Failure.ErrorList,
+        _ explain: String? = nil,
+        file: String = #file,
+        line: Int = #line,
+        function: String = #function,
+        catching body: () async throws -> Success
+    ) async -> Self {
+        do {
+            return .success(try await body())
+        } catch let err {
+            return .failure(Failure.init(error, explain, file: file, line: line, function: function).subErr(err))
+        }
+    }
+    
     static func failure(
         _ error: Failure.ErrorList,
         _ explain: String? = nil,
@@ -412,6 +427,14 @@ public extension Result {
     ) -> Result<Success, T.ErrType> where T : ErrList {
         self.mapError { err in
             .init(error, explain, file: file, line: line, function: function).subErr(err)
+        }
+    }
+    
+    static func async(catching body: () async throws -> Success) async -> Self {
+        do {
+            return .success(try await body())
+        } catch let err {
+            return .failure(err as! Failure)
         }
     }
 }
@@ -485,7 +508,7 @@ public extension Err {
         let preds = ["\"", "\"", "At \""]
         let appes = ["\"", "\"", "\""]
         var resArr: [String] = []
-        for (i, curData) in (["\(String(describing: error))", explain, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
+        for (i, curData) in (["\(error!.rawValue)", explain, self.file + ":" + String(self.line) + " -> " + self.function] as [String?]).enumerated() {
             if let d = curData { resArr.append(preds[i] + d + appes[i]) }
         }
         res += resArr.joined(separator: ", ") + ")"
@@ -494,7 +517,7 @@ public extension Err {
             if let bscErr = subErr as? (any Err) {
                 res += "\n" + bscErr.descriptionString(withHead: false)
             } else {
-                res += "\n\t\(String(describing: type(of: subErr))).\(subErr.self)"
+                res += "\n\t\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))"
             }
             
             if withHead {

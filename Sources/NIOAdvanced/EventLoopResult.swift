@@ -35,6 +35,8 @@ extension EventLoopFuture {
     }
 }
 
+public typealias EventLoopRes<Value, T> = EventLoopResult<Value, T.ErrType> where T: ErrList
+
 public final class EventLoopResult<Value, ErrorType> where ErrorType: Error {
     
     public var eventLoop: EventLoop { wrapped.eventLoop }

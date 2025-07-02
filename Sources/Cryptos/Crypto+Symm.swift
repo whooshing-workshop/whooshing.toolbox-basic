@@ -108,7 +108,7 @@ public extension Crypto {
         public enum Stream {
             
             /// 数据块加密的密文额外大小，即 `cipher.count = plain.count + cipherExtraLength`
-            public static var cipherExtraLength: Int { Self.__cipherExtraLength }
+            public static var cipherExtraLength: Int64 { Self.__cipherExtraLength }
             
             /// 对数据流进行加密，十分适用于文件流加密这类有记忆的流式传输加密
             ///
@@ -310,7 +310,7 @@ private extension Crypto.Symm {
 }
 
 private extension Crypto.Symm.Stream {
-    static var __cipherExtraLength: Int { 28 }
+    static var __cipherExtraLength: Int64 { 28 }
     
     static func chunkEncrypt<T>(_ data: T, key: Crypto.Symm.Key, chunkTag: Int) -> Res<Data, Crypto.Symm.Errcase> where T: DecodingThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
