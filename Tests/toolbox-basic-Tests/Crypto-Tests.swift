@@ -191,7 +191,7 @@ struct CryptoTest {
     func testStreamingDataEncryption() async throws {
         let total = 65535
         let chunkSize = 1000
-        let chunkCipherSize = Crypto.Symm.Stream.cipherExtraLength + chunkSize
+        let chunkCipherSize = Int(Crypto.Symm.Stream.cipherExtraLength) + chunkSize
         
         let key = Crypto.Symm.makeKey()
         let data = Self.randomData(size: total)
@@ -204,7 +204,7 @@ struct CryptoTest {
             let endIndex = min(current + chunkSize, data.count)
             let chunkCipher = try Crypto.Symm.Stream.encrypt(data.subdata(in: current..<endIndex), key: key, chunkTag: i).get()
             let chunkSize = min(chunkSize, data.count - current)
-            #expect(chunkCipher.count == chunkSize + Crypto.Symm.Stream.cipherExtraLength)
+            #expect(chunkCipher.count == chunkSize + Int(Crypto.Symm.Stream.cipherExtraLength))
             cipherData += chunkCipher
             current += chunkSize
             i += 1
@@ -218,7 +218,7 @@ struct CryptoTest {
             let endIndex = min(current + chunkCipherSize, cipherData.count)
             let chunkPlain: Data = try Crypto.Symm.Stream.decrypt(cipherData.subdata(in: current..<endIndex), key: key, chunkTag: i).get()
             let chunkSize = min(chunkCipherSize, cipherData.count - current)
-            #expect(chunkPlain.count == chunkSize - Crypto.Symm.Stream.cipherExtraLength)
+            #expect(chunkPlain.count == chunkSize - Int(Crypto.Symm.Stream.cipherExtraLength))
             plainData += chunkPlain
             current += chunkSize
             i += 1
