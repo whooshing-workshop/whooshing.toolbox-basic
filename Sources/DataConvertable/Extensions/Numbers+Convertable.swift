@@ -2,6 +2,7 @@ import Foundation
 import ErrorHandle
 
 public extension EncodingSafeDataConvertable where Self: ExpressibleByIntegerLiteral {
+    @inlinable
     static func new(data: Data) -> Self {
         var value: Self = 0
         let size = MemoryLayout<Self>.size
@@ -25,6 +26,7 @@ public extension EncodingSafeDataConvertable where Self: ExpressibleByIntegerLit
 }
 
 public extension DecodingSafeDataConvertable where Self: ExpressibleByIntegerLiteral {
+    @inlinable
     var data: Data { Swift.withUnsafeBytes(of: self) { Data($0) } }
 }
 

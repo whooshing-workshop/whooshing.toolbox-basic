@@ -12,31 +12,34 @@ public enum DictionaryDecodeErrcase: String, ErrList {
 }
 
 extension Dictionary: EncodingSafeDataConvertable where Key: EncodingSafeDataConvertable, Value: EncodingSafeDataConvertable {
+    @inlinable
     public static func new(data: Data) -> Self {
         try! newDictionary(data: data).get()
     }
 }
 
 extension Dictionary: DecodingSafeDataConvertable where Key: DecodingSafeDataConvertable, Value: DecodingSafeDataConvertable {
+    @inlinable
     public var data: Data {
         try! getData(from: self).get()
     }
 }
 
 extension Dictionary: EncodingThrowableDataConvertable where Key: EncodingThrowableDataConvertable, Value: EncodingThrowableDataConvertable {
+    @inlinable
     public static func make(data: Data) -> Res<Self, DictionaryEncodeErrcase> {
         newDictionary(data: data)
     }
-    
 }
 
 extension Dictionary: DecodingThrowableDataConvertable where Key: DecodingThrowableDataConvertable, Value: DecodingThrowableDataConvertable {
+    @inlinable
     public var dataRes: Res<Data, DictionaryDecodeErrcase> {
         getData(from: self)
     }
 }
 
-
+@inlinable
 func newDictionary<K, V>(data: Data) -> Res<[K: V], DictionaryEncodeErrcase> where K: EncodingThrowableDataConvertable, V: EncodingThrowableDataConvertable {
     let lsize = MemoryLayout.size(ofValue: Int.self)
     var curLength = 0
@@ -65,6 +68,7 @@ func newDictionary<K, V>(data: Data) -> Res<[K: V], DictionaryEncodeErrcase> whe
     return .success(res)
 }
 
+@inlinable
 func getData<K, V>(from dictionary: [K: V]) -> Res<Data, DictionaryDecodeErrcase> where K: DecodingThrowableDataConvertable, V: DecodingThrowableDataConvertable {
     var res = Data()
     for (key, value) in dictionary {

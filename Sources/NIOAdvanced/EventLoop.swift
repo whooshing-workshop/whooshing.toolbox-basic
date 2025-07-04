@@ -2,6 +2,7 @@ import NIOCore
 import ErrorHandle
 
 extension EventLoop {
+    @inlinable
     public func makeSucceededVoidResult<ErrorType>(throws errorType: ErrorType.Type = ErrorType.self) -> EventLoopResult<Void, ErrorType> {
         self.makeSucceededVoidFuture().withError()
     }

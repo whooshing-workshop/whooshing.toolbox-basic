@@ -71,6 +71,7 @@ public extension Crypto {
         public typealias Key = SymmetricKey
 
         /// 创建一个对称加密密钥
+        @inlinable
         public static func makeKey() -> Key { Key(size: symmetricKeySize) }
 
         /// 对数据进行加密
@@ -79,6 +80,7 @@ public extension Crypto {
         ///     - data: 待加密的数据
         ///     - key: 用于加密的密钥，可以由 `makeKey()` 函数生成
         /// - 返回值: 加密过后的密文，只提供 Data 形式
+        @inlinable
         public static func encrypt<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
             aesEncrypt(data, key: key)
         }
@@ -93,6 +95,7 @@ public extension Crypto {
         /// ``` swift
         /// let plain: String = try Crypto.symm.decrypt(..., key: ...)
         /// ```
+        @inlinable
         public static func decrypt<D>(_ cipher: Data, key: Key) -> Res<D, Errcase> where D: EncodingThrowableDataConvertable {
             aesDecrypt(cipher, key: key)
         }
@@ -108,6 +111,7 @@ public extension Crypto {
         public enum Stream {
             
             /// 数据块加密的密文额外大小，即 `cipher.count = plain.count + cipherExtraLength`
+            @inlinable
             public static var cipherExtraLength: Int64 { Self.__cipherExtraLength }
             
             /// 对数据流进行加密，十分适用于文件流加密这类有记忆的流式传输加密
@@ -119,6 +123,7 @@ public extension Crypto {
             /// - Returns: 加密过后的数据密文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.encrypt` 代替
+            @inlinable
             public static func encrypt<T>(_ data: T, key: Key, chunkTag: Int) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
                 chunkEncrypt(data, key: key, chunkTag: chunkTag)
             }
@@ -132,6 +137,7 @@ public extension Crypto {
             /// - Returns: 解密后的数据明文
             ///
             /// - warning: 对于无记忆的流式传输，比如 websocket，除非你自己建立索引计数，否则应当使用普通的 `Symm.decrypt` 代替
+            @inlinable
             public static func decrypt<T>(_ cipher: Data, key: Key, chunkTag: Int) -> Res<T, Errcase> where T: EncodingThrowableDataConvertable {
                 chunkDecrypt(cipher, key: key, chunkTag: chunkTag)
             }
@@ -155,14 +161,17 @@ public extension Crypto {
             /// ``` swift
             /// let mac = try Crypto.Symm.Sign.make(data, key)
             /// ```
+            @inlinable
             public static func make<T>(_ data: T, key: Key) -> Data where T: DecodingSafeDataConvertable {
                 try! __make(data, key: key).get()
             }
             
+            @inlinable
             public static func make<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
                 __make(data, key: key)
             }
             
+            @inlinable
             static func __make<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
                 .init(throws: .makeSignFailed) {
                     .init(try HMAC<HashFunction>.authenticationCode(for: data.dataRes.get(), using: key))
@@ -176,14 +185,17 @@ public extension Crypto {
             ///     - authCode: MAC 消息验证码，由 ```Crypto.Symm.Sign.make(..., key)``` 生成
             ///     - key: 用于解密的密钥，需与加密密钥一致方可进行验证
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
+            @inlinable
             public static func validate<T>(_ data: T, authCode: Data, key: Key) -> Bool where T: DecodingSafeDataConvertable {
                 try! __validate(data, authCode: authCode, key: key).get()
             }
             
+            @inlinable
             public static func validate<T>(_ data: T, authCode: Data, key: Key) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
                 __validate(data, authCode: authCode, key: key)
             }
             
+            @inlinable
             static func __validate<T>(_ data: T, authCode: Data, key: Key) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
                 .init(throws: .validationFailed) {
                     try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.dataRes.get(), using: key)
@@ -205,6 +217,7 @@ extension Crypto.Symm.Key {
     /// - Parameters:
     ///     - salt: 派生盐，应当不重复且随机
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T>(salt: T) -> Self where T: DecodingSafeDataConvertable {
         try! __derive(salt: salt).get()
     }
@@ -214,6 +227,7 @@ extension Crypto.Symm.Key {
     /// - Parameters:
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T>(info: T) -> Self where T: DecodingSafeDataConvertable {
         try! __derive(info: info).get()
     }
@@ -224,6 +238,7 @@ extension Crypto.Symm.Key {
     ///     - salt: 派生盐，应当不重复且随机
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T, G>(_ salt: T, info: G) -> Self where T: DecodingSafeDataConvertable, G: DecodingSafeDataConvertable {
         try! __derive(salt: salt, info: info).get()
     }
@@ -233,6 +248,7 @@ extension Crypto.Symm.Key {
     /// - Parameters:
     ///     - salt: 派生盐，应当不重复且随机
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         __derive(salt: salt)
     }
@@ -242,6 +258,7 @@ extension Crypto.Symm.Key {
     /// - Parameters:
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         __derive(info: info)
     }
@@ -252,23 +269,27 @@ extension Crypto.Symm.Key {
     ///     - salt: 派生盐，应当不重复且随机
     ///     - info: 派生密钥上下文信息
     /// - Returns: 从父密钥创建的新派生密钥
+    @inlinable
     public func derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
         __derive(salt: salt, info: info)
     }
     
     
+    @inlinable
     func __derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
     
+    @inlinable
     func __derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
     
+    @inlinable
     func __derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
@@ -276,7 +297,8 @@ extension Crypto.Symm.Key {
     }
 }
 
-private extension Crypto.Symm {
+extension Crypto.Symm {
+    @inlinable
     static func aesEncrypt<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         // print("正在进行加密: \(try data.data().count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
@@ -292,6 +314,7 @@ private extension Crypto.Symm {
         }
     }
 
+    @inlinable
     static func aesDecrypt<D>(_ cipher: Data, key: Key) -> Res<D, Errcase> where D: EncodingThrowableDataConvertable {
         // print("正在进行解密: \(cipher.count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
@@ -309,9 +332,11 @@ private extension Crypto.Symm {
     static func aesKey(key: Data) -> Key { normalKey(key: key) }
 }
 
-private extension Crypto.Symm.Stream {
+extension Crypto.Symm.Stream {
+    @inlinable
     static var __cipherExtraLength: Int64 { 28 }
     
+    @inlinable
     static func chunkEncrypt<T>(_ data: T, key: Crypto.Symm.Key, chunkTag: Int) -> Res<Data, Crypto.Symm.Errcase> where T: DecodingThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         
@@ -334,6 +359,7 @@ private extension Crypto.Symm.Stream {
         }
     }
     
+    @inlinable
     static func chunkDecrypt<T>(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) -> Res<T, Crypto.Symm.Errcase> where T: EncodingThrowableDataConvertable {
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         precondition(cipher.count >= cipherExtraLength, "密文过短，格式不正确，无法解密，至少超过 \(cipherExtraLength)，却得到 \(cipher.count) 字节")
@@ -349,6 +375,7 @@ private extension Crypto.Symm.Stream {
         }
     }
     
+    @inlinable
     static func chunkTagToData(_ chunkTag: Int, length: Int = 12) -> Data {
         precondition(length >= 8, "Nonce 的长度必须至少为 8 bytes 以存储块标记，得到的长度为: \(length)")
         

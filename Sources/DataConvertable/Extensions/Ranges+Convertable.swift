@@ -2,36 +2,48 @@ import Foundation
 import ErrorHandle
 
 extension Range: SafeDataConvertable where Bound: SafeDataConvertable {
+    @inlinable
     public static func new(data: Data) -> Self {
         try! newRange(from: data).get()
     }
+    
+    @inlinable
     public var data: Data {
         try! getData(from: self).get()
     }
 }
 
 extension Range: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
+    @inlinable
     public static func make(data: Data) -> Res<Self, RangeEncodeErrcase> {
         newRange(from: data)
     }
+    
+    @inlinable
     public var dataRes: Res<Data, RangeDecodeErrcase> {
         getData(from: self)
     }
 }
 
 extension ClosedRange: SafeDataConvertable where Bound: SafeDataConvertable {
+    @inlinable
     public static func new(data: Data) -> Self {
         try! newClosedRange(from: data).get()
     }
+    
+    @inlinable
     public var data: Data {
         try! getData(from: self).get()
     }
 }
 
 extension ClosedRange: ThrowableDataConvertable where Bound: ThrowableDataConvertable {
+    @inlinable
     public static func make(data: Data) -> Res<Self, ClosedRangeEncodeErrcase> {
         newClosedRange(from: data)
     }
+    
+    @inlinable
     public var dataRes: Res<Data, ClosedRangeDecodeErrcase> {
         getData(from: self)
     }
@@ -48,6 +60,7 @@ public enum RangeDecodeErrcase: String, ErrList {
     case upperBoundFailed = "Range 高边界解码失败"
 }
 
+@inlinable
 func newRange<T>(from data: Data) -> Res<Range<T>, RangeEncodeErrcase> where T: ThrowableDataConvertable {
     let size = MemoryLayout.size(ofValue: Int.self)
     let lowerBoundSize = Int.new(data: data.prefix(size))
@@ -70,6 +83,7 @@ func newRange<T>(from data: Data) -> Res<Range<T>, RangeEncodeErrcase> where T: 
     return .success(Range<T>(uncheckedBounds: (lower: lowerBound, upper: upperBound)))
 }
 
+@inlinable
 func getData<T>(from range: Range<T>) -> Res<Data, RangeDecodeErrcase> where T: ThrowableDataConvertable {
     let lowerData: Data
     do {
@@ -98,6 +112,7 @@ public enum ClosedRangeDecodeErrcase: String, ErrList {
     case upperBoundFailed = "ClosedRange 高边界解码失败"
 }
 
+@inlinable
 func newClosedRange<T>(from data: Data) -> Res<ClosedRange<T>, ClosedRangeEncodeErrcase> where T: ThrowableDataConvertable {
     let size = MemoryLayout.size(ofValue: Int.self)
     let lowerBoundSize = Int.new(data: data.prefix(size))
@@ -120,6 +135,7 @@ func newClosedRange<T>(from data: Data) -> Res<ClosedRange<T>, ClosedRangeEncode
     return .success(ClosedRange<T>(uncheckedBounds: (lower: lowerBound, upper: upperBound)))
 }
 
+@inlinable
 func getData<T>(from closedRange: ClosedRange<T>) -> Res<Data, ClosedRangeDecodeErrcase> where T: ThrowableDataConvertable {
     let lowerData: Data
     do {

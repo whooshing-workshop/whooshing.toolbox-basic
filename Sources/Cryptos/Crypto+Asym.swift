@@ -86,8 +86,10 @@ public extension Crypto {
         public typealias SKeyPair = (public: SPublicKey, private: SPrivateKey)
 
         /// 创建加解密密钥对，包括公钥和私钥
+        @inlinable
         public static func makeCryptoKeyPair() -> CKeyPair { let privateKey = CPrivateKey(); return (privateKey.publicKey, privateKey) }
         /// 创建签名密钥对，包括公钥和私钥
+        @inlinable
         public static func makeSignKeyPair() -> SKeyPair { let privateKey = SPrivateKey(); return (privateKey.publicKey, privateKey) }
         
         /// 密钥协商，成功完成后会协商出一个对称密钥
@@ -98,6 +100,7 @@ public extension Crypto {
         ///     - salt: 盐值，双方需要保持一致
         ///     - info: 上下文信息，双方需要保持一致。该参数可以自定设置为任意值，只是需要双方一致
         /// - Returns: 协商完成的对称密钥
+        @inlinable
         public static func keyEncapsulate<T, G>(
             key: CPrivateKey,
             partyPublic: CPublicKey,
@@ -136,6 +139,7 @@ public extension Crypto {
             ///     - data: 要签名的数据
             ///     - key: 己方的私钥
             /// - Returns: 该数据的签名
+            @inlinable
             public static func make<T>(_ data: T, key: SPrivateKey) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
                 .init(throws: .signMakeFailed) {
                     try key.signature(for: data.dataRes.get())
@@ -148,14 +152,17 @@ public extension Crypto {
             ///     - data: 数据本体，需要被验证是否完整的数据
             ///     - key: 己方的公钥
             /// - Returns: 验证是否匹配，是 则返回 true，否 则返回 false
+            @inlinable
             public static func validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Bool where T: DecodingSafeDataConvertable {
                 try! __validate(data, sign: sign, key: key).get()
             }
             
+            @inlinable
             public static func validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
                 __validate(data, sign: sign, key: key)
             }
             
+            @inlinable
             static func __validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
                 .init(throws: .unknown, "验证未成功") {
                     try key.isValidSignature(sign, for: data.dataRes.get())

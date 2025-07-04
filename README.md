@@ -1,6 +1,6 @@
 # Whooshing 基本工具库
 
-提供最基本的 API，包括：
+为 Whooshing 系统提供最底层加解密，错误处理以及数据转换的基本能功能：
 
 - **基本的加密算法**：由 [swift-crypto](https://github.com/apple/swift-crypto) 提供加密功能
   - **对称加密(AES)**
@@ -15,7 +15,7 @@
 在你的 Package.swift 加入：
 
 ``` swift
-.package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", .upToNextMajor(from: "1.4.0"))
+.package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", .upToNextMajor(from: "1.4.1"))
 ```
 
 或导入不同的 Target：
@@ -31,22 +31,21 @@ dependencies:[
 ]
 ```
 
+-----------
 
+### 运行环境
 
-#### 当前进度
+* **macOS** (> 10.15)
+* **iOS** (> 14.0)
+* **Linux** (> 20)
+* **Swift** (> 6.0)
+* **watchOS** (> 6.0) **[未测试]**
+* **tvOS**(> 13) **[未测试]**
 
-| **模块**                                                     | **进度** | **测试**                                                     | **进度** |
-| ------------------------------------------------------------ | -------- | ------------------------------------------------------------ | -------- |
-| [**基本的加密算法**](Sources/Cryptos/Crypto.swift)           | ✅        | [Crypto-Tests.swift](Tests/ToolboxBsc-Tests/Crypto-Tests.swift) | ✅        |
-| [**错误处理**](Sources/ErrorHandle/Error.swift)              | ✅        | [Error-Tests.swift](Tests/ToolboxBsc-Tests/Error-Tests.swift) | ✅        |
-| [**数据转换**](Sources/DataConvertable/DataConvertable.swift) | ✅        | [DataConvertable-Tests.swift](Tests/ToolboxBsc-Tests/DataConvertable-Tests.swift) | ✅        |
+----------
 
-## **代码提交约定**
+### 联系与反馈
 
-见 [代码提交约定](https://github.com/SJJC-Team/.github-private/blob/main/profile/README.md)
+如有使用问题或建议，请通过 [GitHub Issues](https://github.com/SJJC-Team/whooshing.toolbox-basic/issues) 提交反馈。
 
-## **联系方式**
-
-* 开发者邮箱：contact@official.whooshings.space
-
-* 项目主页：https://whooshings.space
+或发至邮箱 [contact@official.whooshings.space](mailto:contact@official.whooshings.space)

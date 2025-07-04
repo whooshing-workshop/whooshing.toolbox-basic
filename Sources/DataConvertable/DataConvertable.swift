@@ -151,12 +151,14 @@ public protocol DecodingSafeDataConvertable: DecodingThrowableDataConvertable {
 }
 
 public extension EncodingSafeDataConvertable {
+    @inlinable
     static func make(data: Data) -> Result<Self, EncodeErrType> {
         .success(new(data: data))
     }
 }
 
 public extension DecodingSafeDataConvertable {
+    @inlinable
     var dataRes: Result<Data, DecodeErrType> {
         .success(data)
     }

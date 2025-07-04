@@ -98,9 +98,9 @@ struct CustomError1: Err {
     var a1: Int!
     var a2: Int!
 
-    func initAdds(_ addtion: [Int], new: inout CustomError1) {
-        new.a1 = addtion[0]
-        new.a2 = addtion[1]
+    mutating func initAdds(_ addtion: [Int]) {
+        a1 = addtion[0]
+        a2 = addtion[1]
     }
 }
 
@@ -124,13 +124,13 @@ struct CustomError2: Err {
     var a1: String = "Unset a1"
     var a2: String = "Unset a2"
 
-    func initAdds(_ addtion: [String]?, new: inout CustomError2) {
+    mutating func initAdds(_ addtion: [String]?) {
         if let d = addtion {
-            new.a1 = d[0]
-            new.a2 = d[1]
+            a1 = d[0]
+            a2 = d[1]
         } else {
-            new.a1 = "Unset a1"
-            new.a2 = "Unset a2"
+            a1 = "Unset a1"
+            a2 = "Unset a2"
         }
     }
 }

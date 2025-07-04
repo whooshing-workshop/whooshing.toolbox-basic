@@ -46,14 +46,17 @@ public enum Crypto {
         }
         ```
     */
+    @inlinable
     public static func hash<T>(_ data: T) -> Data where T: DecodingSafeDataConvertable {
         try! __hash(data).get()
     }
     
+    @inlinable
     public static func hash<T>(_ data: T) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         __hash(data)
     }
     
+    @inlinable
     static func __hash<T>(_ data: T) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         Result(throws: .hashFailed) {
             Data(try HashFunction.hash(data: data.dataRes.get()))
@@ -70,6 +73,7 @@ public enum Crypto {
             - salt: 盐值，该参数为 inout 参数，若输入非空的 salt 值，则该哈希会使用此盐值。否则，将会生成新值取代原 salt 值
         - Returns: 哈希摘要，只提供 Data 类型。
     */
+    @inlinable
     public static func saltyHash<T>(_ data: T, salt: inout Data?) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         if salt == nil {
             salt = randomDataGenerate(length: 32)
@@ -80,6 +84,7 @@ public enum Crypto {
     }
     
     /// 随机数据生成函数，可指定长度以生成随机数据
+    @inlinable
     public static func randomDataGenerate(length: Int = 32) -> Data {
         let randomBytes = SymmetricKey(size: .init(bitCount: length * 8)).withUnsafeBytes { Data($0) }
         return randomBytes
@@ -89,6 +94,9 @@ public enum Crypto {
 // MARK: - 以下为私有实现
 
 extension Crypto {
+    @usableFromInline
     typealias HashFunction = SHA512
+    
+    @inlinable
     static var symmetricKeySize: SymmetricKeySize { SymmetricKeySize.bits256 }
 }
