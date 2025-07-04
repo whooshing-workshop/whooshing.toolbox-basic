@@ -65,8 +65,10 @@ public extension Crypto {
 
         需要注意，该对称加密的加解密密钥对与签名密钥对不可混用，因此有 `makeCryptoKeyPair()` 与 `makeSignKeyPair()` 方法之别
     */
+    @frozen
     enum Asym {
         
+        @frozen
         public enum Errcase: String, ErrList {
             case keyEncapsulateFailed = "密钥协商失败"
         }

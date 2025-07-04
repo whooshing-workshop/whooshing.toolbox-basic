@@ -8,8 +8,10 @@ extension EventLoopPromise {
     }
 }
 
+@frozen
 public struct EventLoopTarget<Value, ErrorType> where ErrorType: Error {
     
+    @inlinable
     public var futureResult: EventLoopResult<Value, ErrorType> {
         .init(self.wrapped.futureResult)
     }

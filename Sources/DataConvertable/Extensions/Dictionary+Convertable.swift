@@ -1,11 +1,13 @@
 import Foundation
 import ErrorHandle
 
+@frozen
 public enum DictionaryEncodeErrcase: String, ErrList {
     case keyFailed = "字典 Key 编码失败"
     case valueFailed = "字典 Value 编码失败"
 }
 
+@frozen
 public enum DictionaryDecodeErrcase: String, ErrList {
     case keyFailed = "字典 Key 解码失败"
     case valueFailed = "字典 Value 解码失败"

@@ -4,6 +4,7 @@ import DataConvertable
 import ErrorHandle
 
 extension Crypto.Symm.Key: SafeDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case initFromDataFailed = "从 Data 生成 Key 失败"
     }
@@ -20,6 +21,7 @@ extension Crypto.Symm.Key: SafeDataConvertable {
 }
 
 extension Crypto.Asym.CPrivateKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case initFromDataFailed = "从 Data 生成 Key 失败"
     }
@@ -38,6 +40,7 @@ extension Crypto.Asym.CPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
 }
 
 extension Crypto.Asym.CPublicKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case initFromDataFailed = "从 Data 生成 Key 失败"
     }
@@ -56,6 +59,7 @@ extension Crypto.Asym.CPublicKey: EncodingThrowableDataConvertable, DecodingSafe
 }
 
 extension Crypto.Asym.SPrivateKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case initFromDataFailed = "从 Data 生成 Key 失败"
     }
@@ -72,6 +76,7 @@ extension Crypto.Asym.SPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
 }
 
 extension Crypto.Asym.SPublicKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case initFromDataFailed = "从 Data 生成 Key 失败"
     }

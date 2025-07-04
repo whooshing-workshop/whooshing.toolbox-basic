@@ -49,12 +49,13 @@ extension ClosedRange: ThrowableDataConvertable where Bound: ThrowableDataConver
     }
 }
 
-
+@frozen
 public enum RangeEncodeErrcase: String, ErrList {
     case lowerBoundFailed = "Range 低边界编码失败"
     case upperBoundFailed = "Range 高边界编码失败"
 }
 
+@frozen
 public enum RangeDecodeErrcase: String, ErrList {
     case lowerBoundFailed = "Range 低边界解码失败"
     case upperBoundFailed = "Range 高边界解码失败"
@@ -102,11 +103,13 @@ func getData<T>(from range: Range<T>) -> Res<Data, RangeDecodeErrcase> where T: 
     return .success(lowerData.count.data + upperData.count.data + lowerData + upperData)
 }
 
+@frozen
 public enum ClosedRangeEncodeErrcase: String, ErrList {
     case lowerBoundFailed = "ClosedRange 低边界编码失败"
     case upperBoundFailed = "ClosedRange 高边界编码失败"
 }
 
+@frozen
 public enum ClosedRangeDecodeErrcase: String, ErrList {
     case lowerBoundFailed = "ClosedRange 低边界解码失败"
     case upperBoundFailed = "ClosedRange 高边界解码失败"

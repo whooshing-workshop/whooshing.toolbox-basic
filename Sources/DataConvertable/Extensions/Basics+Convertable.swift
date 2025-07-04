@@ -11,6 +11,7 @@ extension Data: SafeDataConvertable {
 }
 
 extension UUID: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    @frozen
     public enum Errcase: String, ErrList {
         case uuidFailed = "Data 到 UUID 编码失败"
     }

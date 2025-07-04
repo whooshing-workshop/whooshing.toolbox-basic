@@ -16,8 +16,10 @@ import DataConvertable
         - **HMAC**: 使用对称加密和 HASH 生成信息来源验证
         - **EdDSA**: 非对称的电子签名来源验证
 */
+@frozen
 public enum Crypto {
     
+    @frozen
     public enum Errcase: String, ErrList {
         case hashFailed = "哈希失败"
     }

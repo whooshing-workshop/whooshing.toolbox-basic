@@ -61,8 +61,10 @@ public extension Crypto {
         }
         ```
     */
+    @frozen
     enum Symm{
         
+        @frozen
         public enum Errcase: String, ErrList {
             case aesEncryptFailed = "AES 加密失败"
             case aesDecryptFailed = "AES 解密失败"
@@ -108,6 +110,7 @@ public extension Crypto {
          
             每个密文的长度固定，为 明文大小 + cipherExtraLength。这保证了文件流加密时无需记录文件的加密块边界
          */
+        @frozen
         public enum Stream {
             
             /// 数据块加密的密文额外大小，即 `cipher.count = plain.count + cipherExtraLength`
@@ -145,8 +148,10 @@ public extension Crypto {
         }
         
         /// 消息来源验证块，实现 HMAC 的签名和认证
+        @frozen
         public enum Sign {
 
+            @frozen
             public enum Errcase: String, ErrList {
                 case makeSignFailed = "签名生成失败"
                 case validationFailed = "签名验证失败"
@@ -208,6 +213,7 @@ public extension Crypto {
 @available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)
 extension Crypto.Symm.Key {
     
+    @frozen
     public enum Errcase: String, ErrList {
         case keyDeriveFailed = "密钥派生失败"
     }

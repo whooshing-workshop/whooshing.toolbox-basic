@@ -39,6 +39,7 @@ public typealias EventLoopRes<Value, T> = EventLoopResult<Value, T.ErrType> wher
 
 public final class EventLoopResult<Value, ErrorType> where ErrorType: Error {
     
+    @inlinable
     public var eventLoop: EventLoop { wrapped.eventLoop }
     
     public let wrapped: EventLoopFuture<Value>
@@ -50,6 +51,7 @@ public final class EventLoopResult<Value, ErrorType> where ErrorType: Error {
 }
 
 extension EventLoopResult: Equatable {
+    @inlinable
     public static func == (lhs: EventLoopResult<Value, ErrorType>, rhs: EventLoopResult<Value, ErrorType>) -> Bool {
         lhs.wrapped == rhs.wrapped
     }

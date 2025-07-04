@@ -45,7 +45,7 @@
 
     如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
-
+@frozen
 public struct BscError<ErrorList>: Err, AnyBscError, Sendable where ErrorList: ErrList & Sendable {
     /// 该错误的错误枚举值。
     public var error: ErrorList!
@@ -67,6 +67,7 @@ public struct BscError<ErrorList>: Err, AnyBscError, Sendable where ErrorList: E
 
 public protocol AnyBscError: Error, Sendable {}
 
+@frozen
 public struct StringError: Error, CustomStringConvertible, ExpressibleByStringLiteral {
     public let reason: String
     

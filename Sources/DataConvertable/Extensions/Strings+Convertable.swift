@@ -2,10 +2,12 @@ import Foundation
 import ErrorHandle
 
 extension String: ThrowableDataConvertable {
+    @frozen
     public enum EncodeErrcase: String, ErrList {
         case dataToStringFailed = "将 Data 编码为 UTF8 String 失败"
     }
     
+    @frozen
     public enum DecodeErrcase: String, ErrList {
         case stringToDataFailed = "将 String 解码为 Data 失败"
     }
@@ -25,6 +27,7 @@ extension String: ThrowableDataConvertable {
 
 
 /// Base64 编码的字符串，用于加解密时进行数据传输时使用。对于有特殊字符的字符串进行数据转换会出错。
+@frozen
 public struct Base64String: Sendable {
     public let string: String
     
@@ -50,6 +53,7 @@ extension Base64String: EncodingSafeDataConvertable {
 }
 
 extension Base64String: DecodingThrowableDataConvertable {
+    @frozen
     public enum Errcase: String, ErrList {
         case stringToDataBase64Failed = "将 String 解码为 Base64 Data 失败"
     }
