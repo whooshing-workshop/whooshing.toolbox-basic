@@ -183,7 +183,7 @@ public extension Result {
     }
     
     @inlinable
-    static func async(catching body: () async throws -> Success) async -> Self {
+    static func async(catching body: () async throws(Failure) -> Success) async -> Self {
         do {
             return .success(try await body())
         } catch let err {

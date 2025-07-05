@@ -37,6 +37,14 @@ struct DataConvertableTest {
         #expect(convertedInt == originalInt, "整数转换失败")
     }
     
+    @Test("整数类型擦除转换测试")
+    func testIntTypeEraseConversion() {
+        let originalInt: Int = 42
+        let data = originalInt.data
+        let convertedInt = AnySafeDataConvertable.new(data: data)
+        #expect(convertedInt.cast(to: Int.self) == originalInt, "整数类型擦除转换失败")
+    }
+    
     @Test("数组转换测试")
     func testArrayConversion() {
         let originalArray: [Int] = [1, 2, 3, 4, 5]
@@ -79,6 +87,54 @@ struct DataConvertableTest {
         let data = originalDictionary.data
         let convertedDictionary = [Int: Int].new(data: data)
         #expect(convertedDictionary == originalDictionary, "字典转换失败")
+    }
+    
+    @Test("字典类型擦除测试")
+    func testTypeEraseConversion() {
+        let originalDictionary: [String: Int] = ["one": 1, "two": 2, "three": 3]
+        do {
+            let data = try originalDictionary.dataRes.get()
+            let convertedDictionary = try [String: AnySafeDataConvertable].make(data: data).get()
+            let res = convertedDictionary.reduce(into: [String: Int]()) { $0[$1.key] = $1.value.cast(to: Int.self) }
+            #expect(res == originalDictionary, "字典类型擦除失败")
+        } catch {
+            #expect(Bool(false), "字典类型擦除抛出错误: \(error)")
+        }
+    }
+    
+    @Test("字典类型擦除测试 2")
+    func testTypeEraseConversion_2() {
+        let o: [Int: Int] = [1: 1, 2: 2, 3: 3]
+        let originalDictionary: [AnySafeDataConvertable: AnySafeDataConvertable] = o.any
+        let data = originalDictionary.data
+        let convertedDictionary = [Int: Int].new(data: data)
+        #expect(convertedDictionary == o, "字典类型擦除测试 2 失败")
+    }
+    
+    @Test("字典类型擦除测试 3")
+    func testTypeEraseConversion_3() {
+        let o: [String: (any ThrowableDataConvertable)?] = ["one": 1, "two": 2, "three": 3, "four": nil]
+        let originalDictionary: [AnyThrowableDataConvertable: AnyThrowableDataConvertable] = o.filtered.any
+        do {
+            let data = try originalDictionary.dataRes.get()
+            let convertedDictionary = try [String: Int].make(data: data).get()
+            #expect(convertedDictionary == o.filtered.reduce(into: [String: Int]()) { $0[$1.key] = ($1.value as! Int) }, "字典类型擦除测试 3 失败")
+        } catch {
+            #expect(Bool(false), "字典类型擦除 3 抛出错误: \(error)")
+        }
+    }
+    
+    @Test("空字典转换测试")
+    func testEmptyDictionaryConversion() {
+        let originalDictionary: [String: Int] = [:]
+        do {
+            let data = try originalDictionary.dataRes.get()
+            let convertedDictionary = try [String: AnySafeDataConvertable].make(data: data).get()
+            let res = convertedDictionary.reduce(into: [String: Int]()) { $0[$1.key] = $1.value.cast(to: Int.self) }
+            #expect(res == originalDictionary, "字典转换失败")
+        } catch {
+            #expect(Bool(false), "字典转换抛出错误: \(error)")
+        }
     }
     
     @Test("UUID 转换测试")

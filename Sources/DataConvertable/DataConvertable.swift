@@ -115,12 +115,15 @@ import ErrorHandle
 */
 public typealias ThrowableDataConvertable = EncodingThrowableDataConvertable & DecodingThrowableDataConvertable
 
-public protocol EncodingThrowableDataConvertable {
+public typealias EncodableFromData = Decodable
+public typealias DecodableToData = Encodable
+
+public protocol EncodingThrowableDataConvertable: EncodableFromData {
     associatedtype EncodeErrType: Error
     static func make(data: Data) -> Result<Self, EncodeErrType>
 }
 
-public protocol DecodingThrowableDataConvertable {
+public protocol DecodingThrowableDataConvertable: DecodableToData, Hashable {
     associatedtype DecodeErrType: Error
     var dataRes: Result<Data, DecodeErrType> { get }
 }
@@ -162,4 +165,27 @@ public extension DecodingSafeDataConvertable {
     var dataRes: Result<Data, DecodeErrType> {
         .success(data)
     }
+}
+
+public extension EncodingThrowableDataConvertable {
+    @inlinable
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let data = try container.decode(Data.self)
+        self = try Self.make(data: data).get()
+    }
+}
+
+public extension DecodingThrowableDataConvertable {
+    @inlinable
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(self.dataRes.get())
+    }
+    
+    @inlinable
+    func hash(into hasher: inout Hasher) { try! hasher.combine(self.dataRes.get()) }
+    
+    @inlinable
+    static func == (lhs: Self, rhs: Self) -> Bool { (try? lhs.dataRes.get() == rhs.dataRes.get()) ?? false }
 }

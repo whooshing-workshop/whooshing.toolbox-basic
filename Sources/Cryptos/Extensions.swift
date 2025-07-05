@@ -20,6 +20,10 @@ extension Crypto.Symm.Key: SafeDataConvertable {
     }
 }
 
+extension Crypto.Asym.CPrivateKey: @retroactive Decodable {}
+extension Crypto.Asym.CPrivateKey: @retroactive Hashable {}
+extension Crypto.Asym.CPrivateKey: @retroactive Equatable {}
+extension Crypto.Asym.CPrivateKey: @retroactive Encodable {}
 extension Crypto.Asym.CPrivateKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     @frozen
     public enum EncodeErrcase: String, ErrList {
@@ -39,6 +43,10 @@ extension Crypto.Asym.CPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
     }
 }
 
+extension Crypto.Asym.CPublicKey: @retroactive Decodable {}
+extension Crypto.Asym.CPublicKey: @retroactive Hashable {}
+extension Crypto.Asym.CPublicKey: @retroactive Equatable {}
+extension Crypto.Asym.CPublicKey: @retroactive Encodable {}
 extension Crypto.Asym.CPublicKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     @frozen
     public enum EncodeErrcase: String, ErrList {
@@ -58,6 +66,10 @@ extension Crypto.Asym.CPublicKey: EncodingThrowableDataConvertable, DecodingSafe
     }
 }
 
+extension Crypto.Asym.SPrivateKey: @retroactive Decodable {}
+extension Crypto.Asym.SPrivateKey: @retroactive Hashable {}
+extension Crypto.Asym.SPrivateKey: @retroactive Equatable {}
+extension Crypto.Asym.SPrivateKey: @retroactive Encodable {}
 extension Crypto.Asym.SPrivateKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     @frozen
     public enum EncodeErrcase: String, ErrList {
@@ -75,6 +87,10 @@ extension Crypto.Asym.SPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
     public var data: Data { self.rawRepresentation }
 }
 
+extension Crypto.Asym.SPublicKey: @retroactive Decodable {}
+extension Crypto.Asym.SPublicKey: @retroactive Hashable {}
+extension Crypto.Asym.SPublicKey: @retroactive Equatable {}
+extension Crypto.Asym.SPublicKey: @retroactive Encodable {}
 extension Crypto.Asym.SPublicKey: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     @frozen
     public enum EncodeErrcase: String, ErrList {
