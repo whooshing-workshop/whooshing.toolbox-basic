@@ -99,7 +99,7 @@ public extension ErrList {
     @inlinable
     func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
     @inlinable
-    func subErr(_ error: Error?, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
+    func subErr(_ error: Error?, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)).subErr(error) }
 }
 
 extension ErrList {
