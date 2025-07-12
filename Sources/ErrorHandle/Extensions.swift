@@ -187,7 +187,7 @@ public extension Result {
         do {
             return .success(try await body())
         } catch let err {
-            return .failure(err as! Failure)
+            return .failure(err)
         }
     }
 }

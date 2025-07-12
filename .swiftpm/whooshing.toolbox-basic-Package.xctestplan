@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "AB67F41F-B0D2-4A03-8180-F629C27EDFFB",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "threadSanitizerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "toolbox-basic-Tests",
+        "name" : "toolbox-basic-Tests"
+      }
+    }
+  ],
+  "version" : 1
+}
