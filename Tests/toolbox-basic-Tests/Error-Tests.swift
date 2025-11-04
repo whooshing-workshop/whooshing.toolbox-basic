@@ -75,20 +75,40 @@ struct ErrorTests {
             #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(file: "Test", line: 89).adds([0, 0])))
         }
     }
+    
+    @Test("测试 RawError")
+    func rawErrorTest() async throws {
+        let err = ErrorTypes1.error1.d("Testing")
+        #expect(err.error.rawValue.rawValue == "[内部错误]Error 1 summary")
+    }
+    
+    @Test("测试 ErrorCategory")
+    func errorCategoryTest() async throws {
+        let err = ErrorTypes1.error1.d("Testing", category: .parameter)
+        #expect(err.description.contains("[提供的参数错误][内部错误]Error 1 summary"))
+    }
 }
 
 // MARK: - 类型定义
 
-enum ErrorTypes1: String, ErrList {
+enum ErrorTypes1: ErrList {
     typealias ErrType = CustomError1
-    case error1 = "Error 1 summary"
-    case error2 = "Error 2 summary"
+    case error1
+    case error2
+    
+    var rawValue: BscRawError {
+        switch self {
+        case .error1: .init("Error 1 summary", .internel)
+        case .error2: .init("Error 2 summary", .internel)
+        }
+    }
 }
 
 struct CustomError1: Err {
     
     typealias AdditionType = [Int]
     var error: ErrorTypes1!
+    var category: BscErrCategory?
     var explain: String?
     var file: String!
     var line: Int!
@@ -115,6 +135,7 @@ enum ErrorTypes2: String, ErrList {
 struct CustomError2: Err {
     typealias AdditionType = [String]?
     var error: ErrorTypes2!
+    var category: BscErrCategory?
     var explain: String?
     var file: String!
     var line: Int!

@@ -1,3 +1,5 @@
+public typealias BscError<ErrorList: ErrList> = ErrorBase<ErrorList, BscErrCategory>
+
 /**
     #### 默认错误类型
 
@@ -46,9 +48,11 @@
     如果愿意，你可以自定自己的错误类型。见 `protocol Err`
 */
 @frozen
-public struct BscError<ErrorList>: Err, AnyBscError, Sendable where ErrorList: ErrList & Sendable {
+public struct ErrorBase<ErrorList, ErrorCategory>: Err, AnyBscError, Sendable where ErrorList: ErrList & Sendable, ErrorCategory: ErrCategory {
     /// 该错误的错误枚举值。
     public var error: ErrorList!
+    /// 该错误的类型
+    public var category: ErrorCategory?
     /// 每次发生错误时，可以自行阐述一些附加说明。
     public var explain: String?
     /// 发生错误的文件名称。

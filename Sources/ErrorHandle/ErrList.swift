@@ -91,18 +91,26 @@ public protocol ErrList: Sendable, RawRepresentable, CaseIterable where Self.Err
     func subErr(_ error: Error?, file: String, line: Int, function: String) -> ErrType
 }
 
+extension ErrList where RawValue: RawError {
+    public init?(rawValue: RawValue) { nil }
+}
+
 // MARK: - 内部实现
 
 public extension ErrList {
     @inlinable
     func d(file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
     @inlinable
+    func d(category: ErrType.Category, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)) }
+    @inlinable
     func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
+    @inlinable
+    func d(_ explain: String, category: ErrType.Category? = nil, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, category: category, loc: (file, line, function)) }
     @inlinable
     func subErr(_ error: Error?, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)).subErr(error) }
 }
 
 extension ErrList {
     @inlinable
-    func detail(explain: String? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(self, explain, file: loc.file, line: loc.line, function: loc.function) }
+    func detail(explain: String? = nil, category: ErrType.Category? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(self, explain, category: category, file: loc.file, line: loc.line, function: loc.function) }
 }

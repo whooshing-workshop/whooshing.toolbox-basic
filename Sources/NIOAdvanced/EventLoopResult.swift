@@ -25,12 +25,13 @@ extension EventLoopFuture {
     public func withError<T>(
         _ error: T,
         _ explain: String? = nil,
+        category: T.ErrType.Category? = nil,
         file: String = #file,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, T.ErrType> where T: ErrList {
         self.flatMapErrorThrowing { err throws(T.ErrType) in
-            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
+            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
         }.withError()
     }
 }
@@ -211,12 +212,13 @@ extension EventLoopResult {
     public func errCast<NewError>(
         _ error: NewError,
         _ explain: String? = nil,
+        category: NewError.ErrType.Category? = nil,
         file: String = #file,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType> where NewError: ErrList {
         self.flatMapErrorThrowing { err throws(NewError.ErrType) in
-            throw .init(error, explain, file: file, line: line, function: function).subErr(err)
+            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
         }
     }
 }

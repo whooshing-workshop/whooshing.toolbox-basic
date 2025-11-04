@@ -3,6 +3,9 @@ import Crypto
 import DataConvertable
 import ErrorHandle
 
+extension SymmetricKey: @retroactive Encodable {}
+extension SymmetricKey: @retroactive Hashable {}
+extension SymmetricKey: @retroactive Decodable {}
 extension Crypto.Symm.Key: SafeDataConvertable {
     @frozen
     public enum EncodeErrcase: String, ErrList {
