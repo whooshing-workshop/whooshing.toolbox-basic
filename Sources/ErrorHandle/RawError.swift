@@ -13,10 +13,11 @@ public enum BscErrCategory: String, ErrCategory {
 /// 通用错误协议，用于定义带有类别和摘要信息的错误类型。
 /// 任意遵循该协议的类型都必须提供错误摘要、错误类别，并能以原始值形式表达自身。
 /// 适用于所有需要结构化错误信息的场景。
-public protocol RawError: RawRepresentable, CustomStringConvertible {
+public protocol RawError: RawRepresentable, CustomStringConvertible, Sendable {
     associatedtype Category: ErrCategory = BscErrCategory
+    associatedtype SummaryType = String
     /// 错误的简要文本描述，用于表示该错误的核心含义。
-    var summary: String { get }
+    var summary: SummaryType { get }
     /// 错误所属的类别，用于对错误进行分组与分类管理。
     var category: Category { get }
     
@@ -25,7 +26,7 @@ public protocol RawError: RawRepresentable, CustomStringConvertible {
     ///   - summary: 错误的简短描述。
     ///   - category: 错误所属的类别。
     /// 使用该构造函数可生成一个完整的错误对象。
-    init(_ summary: String, _ category: Category)
+    init(_ summary: SummaryType, _ category: Category)
 }
 
 public extension RawError {
@@ -33,14 +34,16 @@ public extension RawError {
     init?(rawValue: RawValue) { nil }
 }
 
+public typealias BscRawError = RawErrorBase<String>
+
 /// 基础错误实现，符合 RawError 协议。
 /// 用于构造标准化的错误对象，并提供格式化的原始值表示。
 /// 原始值由类别说明与错误摘要拼接构成。
-public struct BscRawError: RawError {
+public struct RawErrorBase<SummaryType: Sendable>: RawError {
     /// 完整的错误字符串表示，由类别前缀与摘要组成。
     public let rawValue: String
     /// 错误的核心描述内容。
-    public let summary: String
+    public let summary: SummaryType
     /// 错误所属的类别，用于分类与区分不同类型的错误。
     public let category: Category
     
@@ -49,7 +52,7 @@ public struct BscRawError: RawError {
     ///   - summary: 错误的简要描述。
     ///   - category: 错误的类别。
     /// 初始化后将自动生成格式化的 rawValue 字符串。
-    public init(_ summary: String, _ category: Category) {
+    public init(_ summary: SummaryType, _ category: Category) {
         self.summary = summary
         self.category = category
         self.rawValue = "[\(category.rawValue)]\(summary)"

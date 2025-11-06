@@ -1,6 +1,7 @@
 import Testing
 @testable import ErrorHandle
 import Foundation
+import Macros
 
 // MARK: - 测试内容
 
@@ -26,7 +27,7 @@ struct ErrorTests {
         #expect(error.a1 == Self.datas[0])
         #expect(error.a2 == Self.datas[1])
         #expect(error.file == #file)
-        #expect(error.line == 23)
+        #expect(error.line == 24)
     }
 
     @Test("测试 ErrListWithIndeedAddition 扩展的参数传递") func testErrListWithIndeedAddition() {
@@ -35,12 +36,12 @@ struct ErrorTests {
         #expect(err2.a1 == Self.datas2[0])
         #expect(err2.a2 == Self.datas2[1])
         #expect(err2.file == #file)
-        #expect(err2.line == 20)
+        #expect(err2.line == 21)
     }
 
     let explains = [0, 1, 1, 0, 1, 0]
     let marks = [0, 0, 0, 1, 1, 1]
-    let lineStart = 50
+    let lineStart = 51
 
     @Test("测试所有方法的参数传递", arguments: [
         0: Self.err.d(),
@@ -68,10 +69,10 @@ struct ErrorTests {
             }
             #expect(Bool(false))
         } catch let err {
-            #expect(err.line == 65)
+            #expect(err.line == 66)
             #expect(err.error.rawValue == B.error3.rawValue)
             #expect(err.subError as! A.ErrType != A.error1.d(file: #file, line: #line).adds([1, 2, 3]))
-            #expect(err.subError as! A.ErrType == A.error1.d(file: #file, line: 67).adds([1, 2, 3]))
+            #expect(err.subError as! A.ErrType == A.error1.d(file: #file, line: 68).adds([1, 2, 3]))
             #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(file: "Test", line: 89).adds([0, 0])))
         }
     }
@@ -91,8 +92,7 @@ struct ErrorTests {
 
 // MARK: - 类型定义
 
-enum ErrorTypes1: ErrList {
-    typealias ErrType = CustomError1
+enum DefinedErrorTypes: String {
     case error1
     case error2
     
@@ -102,6 +102,25 @@ enum ErrorTypes1: ErrList {
         case .error2: .init("Error 2 summary", .internel)
         }
     }
+}
+
+struct DefinedErrorTypes2: ErrList {
+    var rawValue: BscRawError
+    init?(rawValue: BscRawError) {
+        self.rawValue = rawValue
+    }
+    
+    static let error1 = Self(rawValue: .init("Error 1 summary", .internel))!
+    static let error2 = Self(rawValue: .init("Error 2 summary", .internel))!
+    
+    static var allCases: [Self] { [error1, error2] }
+}
+
+@ErrorList()
+@ErrorBuilder("CustomError1")
+enum ErrorTypes1: String {
+    @Mode("internel") case error1 = "Error 1 summary"
+    @Mode("internel") case error2 = "Error 2 summary"
 }
 
 struct CustomError1: Err {

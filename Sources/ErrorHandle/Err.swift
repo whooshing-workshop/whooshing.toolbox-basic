@@ -157,7 +157,13 @@ public extension Err {
             res += "\t"
         }
         
-        let prefix = category != nil ? "[\(category!.rawValue)]\(error!.rawValue)" : "\(error!.rawValue)"
+        let prefix: String
+        
+        if let e = error as? CustomStringConvertible {
+            prefix = category != nil ? "[\(category!.rawValue)]\(e.description)" : "\(e.description)"
+        } else {
+            prefix = category != nil ? "[\(category!.rawValue)]\(error!.rawValue)" : "\(error!.rawValue)"
+        }
         
         res += "\(String(describing: type(of: error!))).\(error!.self)("
         let preds = ["\"", "\"", "At \""]

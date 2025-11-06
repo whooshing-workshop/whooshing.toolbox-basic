@@ -63,6 +63,20 @@
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "Macros"
+               BuildableName = "Macros"
+               BlueprintName = "Macros"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -84,6 +98,16 @@
                BlueprintIdentifier = "toolbox-basic-Tests"
                BuildableName = "toolbox-basic-Tests"
                BlueprintName = "toolbox-basic-Tests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "macro-Tests"
+               BuildableName = "macro-Tests"
+               BlueprintName = "macro-Tests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>

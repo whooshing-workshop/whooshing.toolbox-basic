@@ -2,6 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
+import CompilerPluginSupport
 
 let package = Package(
     name: "whooshing.toolbox-basic",
@@ -12,6 +13,7 @@ let package = Package(
         .tvOS(.v13),
     ],
     products: [
+        .library( name: "Macros", targets: ["Macros"] ),
         .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
         .library( name: "DataConvertable", targets: ["DataConvertable"] ),
         .library( name: "Cryptos", targets: ["Cryptos"] ),
@@ -20,9 +22,24 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
     ],
     targets: [
-        .target( 
+        .macro(
+            name: "MacrosImplements",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+            ]
+        ),
+        .target(
+            name: "Macros",
+            dependencies: [
+                "MacrosImplements",
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+            ]
+        ),
+        .target(
             name: "ErrorHandle"
         ),
         .target(
@@ -51,13 +68,16 @@ let package = Package(
         .testTarget(
             name: "toolbox-basic-Tests",
             dependencies: [
+//                "Macros",
+                "MacrosImplements",
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
                 .target(name: "NIOAdvanced"),
                 .product(name: "NIOPosix", package: "swift-nio"),
-                .product(name: "NIOCore", package: "swift-nio")
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
-        ),
+        )
     ]
 )
