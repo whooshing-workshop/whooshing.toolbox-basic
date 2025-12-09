@@ -5,7 +5,7 @@ extension EventLoopGroup {
         return self.any().makeSucceededResult(())
     }
 
-    public func future<T, Error>(_ value: T) -> EventLoopResult<T, Error> {
+    public func future<T: Sendable, Error>(_ value: T) -> EventLoopResult<T, Error> {
         return self.any().makeSucceededResult(value)
     }
     
@@ -13,7 +13,7 @@ extension EventLoopGroup {
         return self.any().makeFailedResult(error)
     }
     
-    public func future<T, Error>(result: Result<T, Error>) -> EventLoopResult<T, Error> {
+    public func future<T: Sendable, Error>(result: Result<T, Error>) -> EventLoopResult<T, Error> {
         let promise: EventLoopTarget<T, Error> = self.any().makeTarget()
         promise.completeWith(result)
         return promise.futureResult

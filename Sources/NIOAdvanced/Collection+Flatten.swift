@@ -1,9 +1,7 @@
 import NIOCore
-import ErrorHandle
-import AsyncKit
 
 extension Collection {
-    public func flatten<Value, Error>(on eventLoop: any EventLoop) -> EventLoopResult<[Value], Error>
+    public func flatten<Value: Sendable, Error>(on eventLoop: any EventLoop) -> EventLoopResult<[Value], Error>
         where Element == EventLoopResult<Value, Error>
     {
         return eventLoop.flatten(Array(self))
@@ -19,24 +17,24 @@ extension Array {
 }
 
 extension Collection {
-    public func sequencedFlatMapEach<Result: Sendable, Error>(
+    public func sequencedFlatMapEach<Result: Sendable, Error, T>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping (_ element: Element) -> EventLoopResult<Result, Error>
-    ) -> EventLoopResult<[Result], Error> {
+        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Result, Error>
+    ) -> EventLoopResult<[Result], Error> where T == Element, T: Sendable {
         return self.reduce(eventLoop.future([])) { fut, elem in fut.flatMap { res in transform(elem).map { res + [$0] } } }
     }
 
-    public func sequencedFlatMapEach<Error>(
+    public func sequencedFlatMapEach<Error, T>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping (_ element: Element) -> EventLoopResult<Void, Error>
-    ) -> EventLoopResult<Void, Error> {
+        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Void, Error>
+    ) -> EventLoopResult<Void, Error> where T == Element, T: Sendable {
         return self.reduce(eventLoop.future()) { fut, elem in fut.flatMap { transform(elem) } }
     }
 
-    public func sequencedFlatMapEachCompact<Result: Sendable, Error>(
+    public func sequencedFlatMapEachCompact<Result: Sendable, Error, T>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping (_ element: Element) -> EventLoopResult<Result?, Error>
-    ) -> EventLoopResult<[Result], Error> {
+        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Result?, Error>
+    ) -> EventLoopResult<[Result], Error> where T == Element, T: Sendable {
         return self.reduce(eventLoop.future([])) { fut, elem in fut.flatMap { res in transform(elem).map { res + [$0].compactMap { $0 } } } }
     }
 }

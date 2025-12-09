@@ -1,7 +1,7 @@
 import NIOCore
 
 extension EventLoop {
-    public func flatten<T, Error>(_ futures: [EventLoopResult<T, Error>]) -> EventLoopResult<[T], Error> {
+    public func flatten<T: Sendable, Error>(_ futures: [EventLoopResult<T, Error>]) -> EventLoopResult<[T], Error> {
         return EventLoopResult<T, Error>.whenAllSucceed(futures, on: self)
     }
 

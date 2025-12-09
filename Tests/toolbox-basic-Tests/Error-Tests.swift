@@ -84,8 +84,8 @@ struct ErrorTests {
     
     @Test("测试 ErrorCategory")
     func errorCategoryTest() async throws {
-        let err = ErrorTypes1.error1.d("Testing", category: .parameter)
-        #expect(err.description.contains("[提供的参数错误][内部错误]Error 1 summary"))
+        let err = ErrorTypes1.error1.d("Testing", category: .external)
+        #expect(err.description.contains("[外部参数错误][内部错误]Error 1 summary"))
     }
 }
 
@@ -98,8 +98,8 @@ enum ErrorTypes1: ErrList {
     
     var rawValue: BscRawError {
         switch self {
-        case .error1: .init("Error 1 summary", .internel)
-        case .error2: .init("Error 2 summary", .internel)
+        case .error1: .init("Error 1 summary", .internal)
+        case .error2: .init("Error 2 summary", .internal)
         }
     }
 }
