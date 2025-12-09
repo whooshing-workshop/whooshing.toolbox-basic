@@ -16,25 +16,25 @@ extension Array {
     }
 }
 
-extension Collection {
-    public func sequencedFlatMapEach<Result: Sendable, Error, T>(
+extension Collection where Element: Sendable {
+    public func sequencedFlatMapEach<Result: Sendable, Error>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Result, Error>
-    ) -> EventLoopResult<[Result], Error> where T == Element, T: Sendable {
+        _ transform: @escaping @Sendable (_ element: Element) -> EventLoopResult<Result, Error>
+    ) -> EventLoopResult<[Result], Error> {
         return self.reduce(eventLoop.future([])) { fut, elem in fut.flatMap { res in transform(elem).map { res + [$0] } } }
     }
 
-    public func sequencedFlatMapEach<Error, T>(
+    public func sequencedFlatMapEach<Error>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Void, Error>
-    ) -> EventLoopResult<Void, Error> where T == Element, T: Sendable {
+        _ transform: @escaping @Sendable (_ element: Element) -> EventLoopResult<Void, Error>
+    ) -> EventLoopResult<Void, Error> {
         return self.reduce(eventLoop.future()) { fut, elem in fut.flatMap { transform(elem) } }
     }
 
-    public func sequencedFlatMapEachCompact<Result: Sendable, Error, T>(
+    public func sequencedFlatMapEachCompact<Result: Sendable, Error>(
         on eventLoop: any EventLoop,
-        _ transform: @escaping @Sendable (_ element: T) -> EventLoopResult<Result?, Error>
-    ) -> EventLoopResult<[Result], Error> where T == Element, T: Sendable {
+        _ transform: @escaping @Sendable (_ element: Element) -> EventLoopResult<Result?, Error>
+    ) -> EventLoopResult<[Result], Error> {
         return self.reduce(eventLoop.future([])) { fut, elem in fut.flatMap { res in transform(elem).map { res + [$0].compactMap { $0 } } } }
     }
 }
