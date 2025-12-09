@@ -4,10 +4,10 @@ public protocol ErrCategory: RawRepresentable, CaseIterable, Sendable {}
 
 /// 系统的基础错误类别枚举。
 /// - parameter: 表示提供给函数或接口的参数无效。
-/// - internel: 表示系统在处理过程中出现了内部错误。
+/// - internal: 表示系统在处理过程中出现了内部错误。
 public enum BscErrCategory: String, ErrCategory {
-    case parameter = "提供的参数错误"
-    case internel = "内部错误"
+    case external = "外部参数错误"
+    case `internal` = "内部错误"
 }
 
 /// 通用错误协议，用于定义带有类别和摘要信息的错误类型。
