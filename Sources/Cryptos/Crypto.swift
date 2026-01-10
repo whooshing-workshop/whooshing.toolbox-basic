@@ -101,4 +101,7 @@ extension Crypto {
     
     @inlinable
     static var symmetricKeySize: SymmetricKeySize { SymmetricKeySize.bits256 }
+    
+    @inlinable
+    static var symmetricKeyOutputByteCount: Int { symmetricKeySize.bitCount / 8 }
 }

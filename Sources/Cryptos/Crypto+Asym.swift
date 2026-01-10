@@ -118,7 +118,7 @@ public extension Crypto {
                             using: HashFunction.self,
                             salt: salt.dataRes.get(),
                             sharedInfo: info.dataRes.get(),
-                            outputByteCount: symmetricKeySize.bitCount / 8
+                            outputByteCount: symmetricKeyOutputByteCount
                         )
                     )
                 } catch {

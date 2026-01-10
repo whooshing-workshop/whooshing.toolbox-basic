@@ -284,30 +284,36 @@ extension Crypto.Symm.Key {
     @inlinable
     func __derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
-            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeyOutputByteCount)
         }
     }
     
     @inlinable
     func __derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
-            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), outputByteCount: Crypto.symmetricKeyOutputByteCount)
         }
     }
     
     @inlinable
     func __derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
         .init(throws: .keyDeriveFailed) {
-            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
+            try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeyOutputByteCount)
         }
     }
 }
 
 extension Crypto.Symm {
+    /// 验证密钥长度是否正确
+    @inlinable
+    static func validateKeySize(_ key: Key) {
+        precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
+    }
+    
     @inlinable
     static func aesEncrypt<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
         // print("正在进行加密: \(try data.data().count), key: \(key.data().base64String()))")
-        precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
+        validateKeySize(key)
         
         return Result(throws: .aesEncryptFailed, "AES 加密未能成功封印明文数据") {
             try AES.GCM.seal(data.dataRes.get(), using: key, nonce: .init())
@@ -323,7 +329,7 @@ extension Crypto.Symm {
     @inlinable
     static func aesDecrypt<D>(_ cipher: Data, key: Key) -> Res<D, Errcase> where D: EncodingThrowableDataConvertable {
         // print("正在进行解密: \(cipher.count), key: \(key.data().base64String()))")
-        precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
+        validateKeySize(key)
         
         return Result(throws: .aesDecryptFailed) {
             let sealedBox = try AES.GCM.SealedBox(combined: cipher)
@@ -344,7 +350,7 @@ extension Crypto.Symm.Stream {
     
     @inlinable
     static func chunkEncrypt<T>(_ data: T, key: Crypto.Symm.Key, chunkTag: Int) -> Res<Data, Crypto.Symm.Errcase> where T: DecodingThrowableDataConvertable {
-        precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
+        Crypto.Symm.validateKeySize(key)
         
         let chunkTagData = chunkTagToData(chunkTag)
         
@@ -367,7 +373,7 @@ extension Crypto.Symm.Stream {
     
     @inlinable
     static func chunkDecrypt<T>(_ cipher: Data, key: Crypto.Symm.Key, chunkTag: Int) -> Res<T, Crypto.Symm.Errcase> where T: EncodingThrowableDataConvertable {
-        precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
+        Crypto.Symm.validateKeySize(key)
         precondition(cipher.count >= cipherExtraLength, "密文过短，格式不正确，无法解密，至少超过 \(cipherExtraLength)，却得到 \(cipher.count) 字节")
         
         /// authentication tag.
