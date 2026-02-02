@@ -29,7 +29,7 @@ dependencies:[
     // 错误处理
     .product(name: "ErrorHandle", package: "whooshing.toolbox-basic"),
     // NIO 扩展
-    .product(name: "NIOAdvanced", package: "whooshing.toolbox-basic")，
+    .product(name: "NIOAdvanced", package: "whooshing.toolbox-basic"),
     // Logging 扩展
     .product(name: "LoggingAdvanced", package: "whooshing.toolbox-basic")
 ]
