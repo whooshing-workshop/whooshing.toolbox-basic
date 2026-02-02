@@ -1,5 +1,6 @@
 import NIOCore
 import ErrorHandle
+import Logging
 
 extension EventLoop {
     @inlinable
@@ -49,12 +50,13 @@ extension EventLoop {
     public func makeFailedResult<T, G>(
         _ error: G,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: G.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<T, G.ErrType> where G: ErrList {
-        self.makeFailedResult(.init(error, explain, category: category, file: file, line: line, function: function))
+        self.makeFailedResult(.init(error, explain, category: category, file: file, line: line, function: function).metadata(metadata))
     }
     
     @preconcurrency
@@ -213,7 +215,7 @@ extension EventLoopResult.Isolated {
     @preconcurrency
     public func flatMapErrThrowing<NewError>(
         _ callback: @escaping @Sendable (ErrorType) throws(NewError) -> Value,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
@@ -230,7 +232,7 @@ extension EventLoopResult.Isolated {
     @preconcurrency
     public func flatMapErr<NewError>(
         _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where Value: Sendable, NewError: ErrList {
@@ -288,13 +290,14 @@ extension EventLoopResult.Isolated {
     public func errCast<NewError>(
         _ error: NewError,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: NewError.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
         self.flatMapErrorThrowing { err throws(NewError.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
         }
     }
 }
@@ -322,13 +325,14 @@ extension EventLoopFuture.Isolated {
     public func withError<T>(
         _ error: T,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: T.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, T.ErrType>.Isolated where T: ErrList {
         self.flatMapErrorThrowing { err throws(T.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
         }.withError()
     }
 }

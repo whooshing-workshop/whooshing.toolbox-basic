@@ -1,3 +1,5 @@
+import Logging
+
 /**
     #### 错误类型的协议声明
 
@@ -51,6 +53,8 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     var function: String! { get set }
     /// 该错误的子错误
     var subError: Error? { get set }
+    /// 该错误的元数据(可用于 logger)
+    var metadata: Logger.Metadata? { get set }
     
     /// 初始化方法，你需要在你的自定义错误类型中实现该构建函数。
     init()
@@ -70,6 +74,14 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// ErrorTypes.aError.d("Some Explain").subErr(yourSubErr)
     /// ```
     func subErr(_ err: Error?) -> Self
+    
+    /// 用于设置 metadata 参数
+    ///
+    /// 用法：
+    /// ``` swift
+    /// ErrorTypes.aError.d("Some Explain").metadata(yourMetadata)
+    /// ````
+    func metadata(_ meta: Logger.Metadata?) -> Self
 
     /// 为错误设置一个附加数据
     ///
@@ -98,7 +110,7 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
 
 public extension Err {
     @inlinable
-    init(_ error: ErrorList, _ explain: String? = nil, category: Category? = nil, file: String = #file, line: Int = #line, function: String = #function) {
+    init(_ error: ErrorList, _ explain: String? = nil, category: Category? = nil, file: String = #fileID, line: Int = #line, function: String = #function) {
         self.init()
         self.error = error
         self.explain = explain
@@ -112,6 +124,13 @@ public extension Err {
     func subErr(_ err: Error?) -> Self {
         var new = self
         new.subError = err
+        return new
+    }
+    
+    @inlinable
+    func metadata(_ meta: Logger.Metadata?) -> Self {
+        var new = self
+        new.metadata = meta
         return new
     }
     
@@ -139,6 +158,11 @@ public extension Err {
 }
 
 public extension Err {
+    @inlinable
+    var msg: String {
+        "\(error!.rawValue)" + (explain == nil ? ""  : " - \(explain!)")
+    }
+    
     @inlinable
     var description: String {
         descriptionString(withHead: true)

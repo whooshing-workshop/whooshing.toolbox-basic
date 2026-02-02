@@ -1,3 +1,5 @@
+import Logging
+
 /**
     #### 错误转换函数
     
@@ -60,8 +62,9 @@ public func required<T, G>(throws to: G, _ performing: () throws -> T) throws(G)
 public func required<G, T>(
     throws to: G,
     _ explain: String? = nil,
+    metadata: Logger.Metadata? = nil,
     category: G.ErrType.Category? = nil,
-    file: String = #file,
+    file: String = #fileID,
     line: Int = #line,
     function: String = #function,
     _ performing: () throws -> T
@@ -70,7 +73,7 @@ public func required<G, T>(
         let res = try performing()
         return res
     } catch let err {
-        throw .init(to, explain, category: category, file: file, line: line, function: function).subErr(err)
+        throw .init(to, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
     }
 }
 
@@ -106,8 +109,9 @@ public func required<T, G>(throws to: G, _ performing: () async throws -> T) asy
 public func required<G, T>(
     throws to: G,
     _ explain: String? = nil,
+    metadata: Logger.Metadata? = nil,
     category: G.ErrType.Category? = nil,
-    file: String = #file,
+    file: String = #fileID,
     line: Int = #line,
     function: String = #function,
     _ performing: () async throws -> T
@@ -116,7 +120,7 @@ public func required<G, T>(
         let res = try await performing()
         return res
     } catch let err {
-        throw .init(to, explain, category: category, file: file, line: line, function: function).subErr(err)
+        throw .init(to, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
     }
 }
 
@@ -127,8 +131,9 @@ public extension Result where Failure: Err {
     init(
         throws error: Failure.ErrorList,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: Failure.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function,
         catching body: () throws -> Success
@@ -137,7 +142,7 @@ public extension Result where Failure: Err {
             do {
                 return try body()
             } catch let err {
-                throw Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+                throw Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
             }
         }
     }
@@ -146,8 +151,9 @@ public extension Result where Failure: Err {
     static func async(
         throws error: Failure.ErrorList,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: Failure.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function,
         catching body: () async throws -> Success
@@ -155,7 +161,7 @@ public extension Result where Failure: Err {
         do {
             return .success(try await body())
         } catch let err {
-            return .failure(Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(err))
+            return .failure(Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata))
         }
     }
     
@@ -163,13 +169,14 @@ public extension Result where Failure: Err {
     static func failure(
         _ error: Failure.ErrorList,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: Failure.Category? = nil,
         subErr: Error? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> Self {
-        .failure(Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(subErr))
+        .failure(Failure.init(error, explain, category: category, file: file, line: line, function: function).subErr(subErr).metadata(metadata))
     }
 }
 
@@ -178,13 +185,14 @@ public extension Result {
     consuming func mapError<T>(
         as error: T,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: T.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> Result<Success, T.ErrType> where T : ErrList {
         self.mapError { err in
-            .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+            .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
         }
     }
     

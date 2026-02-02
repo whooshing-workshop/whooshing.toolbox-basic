@@ -1,3 +1,5 @@
+import Logging
+
 public typealias BscError<ErrorList: ErrList> = ErrorBase<ErrorList, BscErrCategory>
 
 /**
@@ -63,6 +65,8 @@ public struct ErrorBase<ErrorList, ErrorCategory>: Err, AnyBscError, Sendable wh
     public var function: String!
     /// 该错误的子错误
     public var subError: Error?
+    /// 该错误的元数据(可用于 logger)
+    public var metadata: Logger.Metadata?
     
     /// 创建一个错误类型，但请尽量避免使用，尽管这是可行的。
     @inlinable

@@ -1,5 +1,6 @@
 import NIOCore
 import ErrorHandle
+import Logging
 
 #if canImport(Dispatch)
 import Dispatch
@@ -25,13 +26,14 @@ extension EventLoopFuture {
     public func withError<T>(
         _ error: T,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: T.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, T.ErrType> where T: ErrList, Value: Sendable {
         self.flatMapError { err in
-            self.eventLoop.makeFailedFuture(T.ErrType.init(error, explain, category: category, file: file, line: line, function: function).subErr(err))
+            self.eventLoop.makeFailedFuture(T.ErrType.init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata))
         }.withError()
     }
 }
@@ -212,13 +214,14 @@ extension EventLoopResult {
     public func errCast<NewError>(
         _ error: NewError,
         _ explain: String? = nil,
+        metadata: Logger.Metadata? = nil,
         category: NewError.ErrType.Category? = nil,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType> where NewError: ErrList {
         self.flatMapErrorThrowing { err throws(NewError.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
         }
     }
 }
@@ -269,7 +272,7 @@ extension EventLoopResult {
     @preconcurrency
     @inlinable
     public func wait(
-        file: StaticString = #file,
+        file: StaticString = #fileID,
         line: UInt = #line
     ) throws(ErrorType) -> Value where Value: Sendable {
         try flatError(as: ErrorType.self) {
@@ -593,7 +596,7 @@ extension EventLoopResult {
     @preconcurrency
     public func flatMapErrThrowing<NewError>(
         _ callback: @escaping @Sendable (ErrorType) throws(NewError) -> Value,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType> where NewError: ErrList {
@@ -610,7 +613,7 @@ extension EventLoopResult {
     @preconcurrency
     public func flatMapErr<NewError>(
         _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>,
-        file: String = #file,
+        file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType> where Value: Sendable, NewError: ErrList {

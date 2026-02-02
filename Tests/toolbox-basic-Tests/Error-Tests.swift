@@ -1,6 +1,7 @@
 import Testing
-@testable import ErrorHandle
 import Foundation
+import Logging
+@testable import ErrorHandle
 
 // MARK: - 测试内容
 
@@ -25,8 +26,8 @@ struct ErrorTests {
         #expect(error.explain == Self.explain)
         #expect(error.a1 == Self.datas[0])
         #expect(error.a2 == Self.datas[1])
-        #expect(error.file == #file)
-        #expect(error.line == 23)
+        #expect(error.file == #fileID)
+        #expect(error.line == 24)
     }
 
     @Test("测试 ErrListWithIndeedAddition 扩展的参数传递") func testErrListWithIndeedAddition() {
@@ -34,13 +35,13 @@ struct ErrorTests {
         #expect(err2.explain == Self.explain2)
         #expect(err2.a1 == Self.datas2[0])
         #expect(err2.a2 == Self.datas2[1])
-        #expect(err2.file == #file)
-        #expect(err2.line == 20)
+        #expect(err2.file == #fileID)
+        #expect(err2.line == 21)
     }
 
     let explains = [0, 1, 1, 0, 1, 0]
     let marks = [0, 0, 0, 1, 1, 1]
-    let lineStart = 50
+    let lineStart = 51
 
     @Test("测试所有方法的参数传递", arguments: [
         0: Self.err.d(),
@@ -51,7 +52,7 @@ struct ErrorTests {
         #expect(explains[i] == 0 ? e.explain == nil : e.explain == Self.explain)
         #expect(e.a1 == "Unset a1")
         #expect(e.a2 == "Unset a2")
-        #expect(e.file == #file)
+        #expect(e.file == #fileID)
         #expect(e.line == lineStart)
     }
 
@@ -68,11 +69,11 @@ struct ErrorTests {
             }
             #expect(Bool(false))
         } catch let err {
-            #expect(err.line == 65)
+            #expect(err.line == 66)
             #expect(err.error.rawValue == B.error3.rawValue)
-            #expect(err.subError as! A.ErrType != A.error1.d(file: #file, line: #line).adds([1, 2, 3]))
-            #expect(err.subError as! A.ErrType == A.error1.d(file: #file, line: 67).adds([1, 2, 3]))
-            #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(file: "Test", line: 89).adds([0, 0])))
+            #expect(err.subError as! A.ErrType != A.error1.d(file: #fileID, line: #line).adds([1, 2, 3]))
+            #expect(err.subError as! A.ErrType == A.error1.d(file: #fileID, line: 68).adds([1, 2, 3]))
+            #expect((err.subError as! A.ErrType).isSameType(of: A.error1.d(file: "Test", line: 90).adds([0, 0])))
         }
     }
     
@@ -114,6 +115,7 @@ struct CustomError1: Err {
     var line: Int!
     var function: String!
     var subError: Error?
+    var metadata: Logger.Metadata?
 
     var a1: Int!
     var a2: Int!
@@ -141,6 +143,7 @@ struct CustomError2: Err {
     var line: Int!
     var function: String!
     var subError: Error?
+    var metadata: Logger.Metadata?
 
     var a1: String = "Unset a1"
     var a2: String = "Unset a2"

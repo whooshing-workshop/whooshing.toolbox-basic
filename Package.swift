@@ -12,18 +12,24 @@ let package = Package(
         .tvOS(.v13),
     ],
     products: [
-        .library( name: "ErrorHandle", targets: ["ErrorHandle"] ),
-        .library( name: "DataConvertable", targets: ["DataConvertable"] ),
-        .library( name: "Cryptos", targets: ["Cryptos"] ),
-        .library( name: "NIOAdvanced", targets: ["NIOAdvanced"] )
+        .library(name: "ErrorHandle", targets: ["ErrorHandle"]),
+        .library(name: "DataConvertable", targets: ["DataConvertable"]),
+        .library(name: "Cryptos", targets: ["Cryptos"]),
+        .library(name: "NIOAdvanced", targets: ["NIOAdvanced"]),
+        .library(name: "LoggingAdvanced", targets: ["LoggingAdvanced"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "5.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.9.1"),
+        .package(url: "https://github.com/SJJC-Team/Puppy.git", from: "0.9.1")
     ],
     targets: [
         .target( 
-            name: "ErrorHandle"
+            name: "ErrorHandle",
+            dependencies: [
+                .product(name: "Logging", package: "swift-log")
+            ]
         ),
         .target(
             name: "Cryptos",
@@ -48,6 +54,14 @@ let package = Package(
                 .product(name: "NIOFoundationCompat", package: "swift-nio")
             ]
         ),
+        .target(
+            name: "LoggingAdvanced",
+            dependencies: [
+                .target(name: "ErrorHandle"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "Puppy", package: "Puppy")
+            ]
+        ),
         .testTarget(
             name: "toolbox-basic-Tests",
             dependencies: [
@@ -55,6 +69,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
                 .target(name: "NIOAdvanced"),
+                .target(name: "LoggingAdvanced"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOCore", package: "swift-nio")
             ]

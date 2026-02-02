@@ -99,15 +99,15 @@ extension ErrList where RawValue: RawError {
 
 public extension ErrList {
     @inlinable
-    func d(file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
+    func d(file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
     @inlinable
-    func d(category: ErrType.Category, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)) }
+    func d(category: ErrType.Category, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)) }
     @inlinable
-    func d(_ explain: String, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
+    func d(_ explain: String, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
     @inlinable
-    func d(_ explain: String, category: ErrType.Category? = nil, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, category: category, loc: (file, line, function)) }
+    func d(_ explain: String, category: ErrType.Category? = nil, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, category: category, loc: (file, line, function)) }
     @inlinable
-    func subErr(_ error: Error?, file: String = #file, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)).subErr(error) }
+    func subErr(_ error: Error?, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)).subErr(error) }
 }
 
 extension ErrList {
