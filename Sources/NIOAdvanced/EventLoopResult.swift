@@ -29,9 +29,9 @@ extension EventLoopFuture {
         file: String = #file,
         line: Int = #line,
         function: String = #function
-    ) -> EventLoopResult<Value, T.ErrType> where T: ErrList {
-        self.flatMapErrorThrowing { err throws(T.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err)
+    ) -> EventLoopResult<Value, T.ErrType> where T: ErrList, Value: Sendable {
+        self.flatMapError { err in
+            self.eventLoop.makeFailedFuture(T.ErrType.init(error, explain, category: category, file: file, line: line, function: function).subErr(err))
         }.withError()
     }
 }

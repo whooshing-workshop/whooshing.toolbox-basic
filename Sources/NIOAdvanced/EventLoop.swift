@@ -398,7 +398,7 @@ extension EventLoop {
     public func makeResultWithTask<Return: Sendable, NewError>(
         _ body: @Sendable @escaping () async throws(NewError) -> Return
     ) -> EventLoopResult<Return, NewError> {
-        self.makeFutureWithTask {
+        self.makeFutureWithTask { () throws(NewError) in
             try await body()
         }.withError()
     }

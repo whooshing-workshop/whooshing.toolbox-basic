@@ -175,6 +175,8 @@ public extension Err {
         if let subErr = subError {
             if let bscErr = subErr as? (any Err) {
                 res += "\n" + bscErr.descriptionString(withHead: false)
+            } else if let err = subErr as? CustomStringConvertible {
+                res += "\n\t\(err)"
             } else {
                 res += "\n\t\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))"
             }

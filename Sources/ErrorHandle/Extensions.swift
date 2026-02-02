@@ -197,3 +197,15 @@ public extension Result {
         }
     }
 }
+
+public extension Result where Success == Void {
+    static func success() -> Self {
+        .success(())
+    }
+}
+
+public extension DefaultStringInterpolation {
+    mutating func appendInterpolation<T>(log value: T) {
+        appendLiteral("\(String(reflecting: value))")
+    }
+}
