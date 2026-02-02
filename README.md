@@ -15,7 +15,7 @@
 在你的 Package.swift 加入：
 
 ``` swift
-.package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", .upToNextMajor(from: "1.4.7"))
+.package(url: "https://github.com/SJJC-Team/whooshing.toolbox-basic.git", .upToNextMajor(from: "1.4.8"))
 ```
 
 或导入不同的 Target：
@@ -29,7 +29,9 @@ dependencies:[
     // 错误处理
     .product(name: "ErrorHandle", package: "whooshing.toolbox-basic"),
     // NIO 扩展
-    .product(name: "NIOAdvanced", package: "whooshing.toolbox-basic")
+    .product(name: "NIOAdvanced", package: "whooshing.toolbox-basic")，
+    // Logging 扩展
+    .product(name: "LoggingAdvanced", package: "whooshing.toolbox-basic")
 ]
 ```
 
