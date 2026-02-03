@@ -6,6 +6,9 @@ public struct LoggingFactory: Sendable {
     var puppy = Puppy()
     
     @inlinable
+    public init() {}
+    
+    @inlinable
     public func bootstrap() {
         LoggingSystem.bootstrap { label in
             PuppyLogHandler(label: label, puppy: self.puppy)

@@ -4,13 +4,20 @@ import Foundation
 
 public extension Logger {
     @inlinable
-    func derive(subId: String) -> Self {
+    func derive(subId: String? = nil, metadata: Metadata? = nil) -> Self {
         var logger = Logger(
-            label: label + (label == "" ? subId : ("." + subId)),
+            label: label + (subId == nil ? "" : (label == "" ? subId! : ("." + subId!))),
             metadataProvider: metadataProvider ?? .init { .init() }
         )
         
         logger.logLevel = logLevel
+        
+        if let metadata = metadata {
+            for (k, v) in metadata {
+                logger[metadataKey: k] = v
+            }
+        }
+        
         return logger
     }
     

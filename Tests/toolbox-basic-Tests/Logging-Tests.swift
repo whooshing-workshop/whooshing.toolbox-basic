@@ -43,6 +43,12 @@ struct LoggingTests {
             "1": "1"
         ])
         
+        var logger2 = Logger(label: "log.with.metadata")
+        logger2.logLevel = .trace
+        logger2[metadataKey: "meta"] = "data"
+        
+        logger2.trace("HELLO!", metadata: ["any": "any"])
+        
         try await Task.sleep(nanoseconds: 500_000_000)
     }
 }
