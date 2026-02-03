@@ -1,7 +1,7 @@
 import Logging
 import Foundation
 
-public protocol Loggerable: Sendable {
+public protocol Loggerable {
     var logDescription: String { get }
 }
 
