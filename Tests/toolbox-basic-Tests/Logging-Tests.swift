@@ -5,7 +5,6 @@ import Logging
 
 @Suite("日志管理模块-测试", .serialized)
 struct LoggingTests {
-    // 使用 static let 确保在进程生命周期内只执行一次，且在所有测试开始前完成
     static let setupLogging: Void = {
         var factory = LoggingFactory()
         
@@ -32,7 +31,7 @@ struct LoggingTests {
         let logger = Logger(label: "Log.Testing")
         logger.info("Hello World", metadata: ["WEW": "HERE"])
         
-        let _ = logger.errorAndThrow(
+        let _ = logger.errThrow(
             ErrorTypes2.error3.d("测试错误1", category: .internal).subErr(
                 ErrorTypes2.error4.d("SubError", category: .external).subErr(
                     TestingError.Test1
@@ -40,7 +39,7 @@ struct LoggingTests {
             )
         )
         
-        let _ = logger.errorAndThrow(ErrorTypes2.error4.d("SubError", category: .external), metadata: [
+        let _ = logger.errThrow(ErrorTypes2.error4.d("SubError", category: .external), metadata: [
             "1": "1"
         ])
         
