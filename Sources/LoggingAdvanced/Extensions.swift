@@ -15,7 +15,7 @@ public extension Logger {
     }
     
     @inlinable
-    func error(_ error: Error, metadata: Logger.Metadata? = nil) -> Error {
+    func error<T: Error>(_ error: T, metadata: Logger.Metadata? = nil) -> T {
         self.error("\(String(describing: error))", metadata: metadata)
         return error
     }

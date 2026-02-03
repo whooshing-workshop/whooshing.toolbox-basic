@@ -1,6 +1,7 @@
 import NIOCore
 import ErrorHandle
 import Logging
+import LoggingAdvanced
 
 extension EventLoop {
     @inlinable
@@ -52,11 +53,13 @@ extension EventLoop {
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
         category: G.ErrType.Category? = nil,
+        logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<T, G.ErrType> where G: ErrList {
-        self.makeFailedResult(.init(error, explain, category: category, file: file, line: line, function: function).metadata(metadata))
+        let e = G.ErrType(error, explain, category: category, file: file, line: line, function: function).metadata(metadata)
+        return self.makeFailedResult(logger == nil ? e : logger!.errThrow(e))
     }
     
     @preconcurrency
@@ -292,12 +295,14 @@ extension EventLoopResult.Isolated {
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
         category: NewError.ErrType.Category? = nil,
+        logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
         self.flatMapErrorThrowing { err throws(NewError.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
+            let e = NewError.ErrType(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
+            throw logger == nil ? e : logger!.errThrow(e)
         }
     }
 }
@@ -327,12 +332,14 @@ extension EventLoopFuture.Isolated {
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
         category: T.ErrType.Category? = nil,
+        logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function
     ) -> EventLoopResult<Value, T.ErrType>.Isolated where T: ErrList {
         self.flatMapErrorThrowing { err throws(T.ErrType) in
-            throw .init(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
+            let e = T.ErrType(error, explain, category: category, file: file, line: line, function: function).subErr(err).metadata(metadata)
+            throw logger == nil ? e : logger!.errThrow(e)
         }.withError()
     }
 }

@@ -50,6 +50,7 @@ let package = Package(
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "DataConvertable"),
+                .target(name: "LoggingAdvanced"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")
             ]
