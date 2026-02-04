@@ -4,6 +4,7 @@ import Foundation
 
 public extension Logger {
     static let chainKey = "<chain>"
+    static let chainIndexKey = "<Index>"
     
     @inlinable
     func derive(subId: String? = nil, metadata: Metadata? = nil) -> Self {
@@ -31,47 +32,45 @@ public extension Logger {
     
     @inlinable
     func errThrow<T: Err>(_ e: T, metadata: Logger.Metadata? = nil) -> T {
-        var md: Logger.Metadata
-        
+        var m = metadata ?? .init()
+        return __errThrow(e, metadata: &m, index: 1)
+    }
+    
+    @usableFromInline
+    internal func __errThrow<T: Err>(_ e: T, metadata: inout Logger.Metadata, index: Int) -> T {
         if let m = e.metadata {
-            md = m
-        } else {
-            md = [:]
-        }
-        
-        if let metadata = metadata {
-            for (k, v) in metadata {
-                md[k] = v
+            for (k, v) in m {
+                metadata[k] = v
             }
         }
         
         if let category = e.category {
-            md["category"] = .string("\(category)")
+            metadata["category"] = .string("\(category)")
+        } else {
+            metadata["category"] = nil
         }
         
-        let subErrorMetadata: Logger.Metadata?
-        
         if e.subError != nil {
-            let id = metadata?[Self.chainKey] ?? Logger.MetadataValue.stringConvertible(UUID())
-            subErrorMetadata = [Self.chainKey: id]
-            md[Self.chainKey] = id
-        } else {
-            subErrorMetadata = nil
+            metadata[Self.chainIndexKey] = .stringConvertible(index)
+            if metadata[Self.chainKey] == nil {
+                metadata[Self.chainKey] = .stringConvertible(UUID())
+            }
         }
         
         self.error(
             .init(stringLiteral: e.msg),
-            metadata: md == [:] ? nil : md,
+            metadata: metadata,
             file: e.file,
             function: e.function,
-            line: .init(e.line)
+            line: UInt(e.line)
         )
         
         if let subError = e.subError {
             if let er = subError as? any Err {
-                _ = errThrow(er, metadata: subErrorMetadata)
+                _ = __errThrow(er, metadata: &metadata, index: index + 1)
             } else {
-                _ = error(subError, metadata: subErrorMetadata)
+                metadata[Self.chainIndexKey] = .stringConvertible(index + 1)
+                _ = error(subError, metadata: metadata)
             }
         }
         

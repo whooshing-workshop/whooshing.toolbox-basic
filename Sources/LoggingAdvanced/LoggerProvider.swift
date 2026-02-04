@@ -225,18 +225,20 @@ public extension Logger {
 public extension Logger {
     @inlinable
     func chain(_ logs: [LoggerBlock], level: Logger.Level, id: UUID = UUID()) {
-        for (msg, metadata, source) in logs {
+        for (i, (msg, metadata, source)) in logs.enumerated() {
             var m = metadata ?? .init()
             m[Self.chainKey] = .stringConvertible(id)
+            m[Self.chainIndexKey] = .stringConvertible(i + 1)
             self.log(level: level, msg, metadata: m, source: source)
         }
     }
     
     @inlinable
     func chain(_ logs: [LoggerProvider], level: Logger.Level, id: UUID = UUID()) {
-        for log in logs {
+        for (i, log) in logs.enumerated() {
             var metadata = log.metadata ?? .init()
             metadata[Self.chainKey] = .stringConvertible(id)
+            metadata[Self.chainIndexKey] = .stringConvertible(i + 1)
             self.log(level: level, log.logMessage, metadata: metadata, source: log.source)
         }
     }
@@ -248,9 +250,10 @@ public extension Logger {
         level: Logger.Level,
         id: UUID = UUID()
     ) {
-        for (metadata, source) in paras {
+        for (i, (metadata, source)) in paras.enumerated() {
             var m = metadata ?? .init()
             m[Self.chainKey] = .stringConvertible(id)
+            m[Self.chainIndexKey] = .stringConvertible(i + 1)
             self.log(level: level, msg, metadata: m, source: source)
         }
     }
