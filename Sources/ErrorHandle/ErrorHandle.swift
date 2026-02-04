@@ -1,5 +1,7 @@
 import Logging
 
+/// 一个泛型的错误类型别名，结合了错误列表（ErrorList）和错误分类（BscErrCategory）。
+/// 使用此类型可以构建结构化的错误信息。
 public typealias BscError<ErrorList: ErrList> = ErrorBase<ErrorList, BscErrCategory>
 
 /**
@@ -68,27 +70,41 @@ public struct ErrorBase<ErrorList, ErrorCategory>: Err, AnyBscError, Sendable wh
     /// 该错误的元数据(可用于 logger)
     public var metadata: Logger.Metadata?
     
-    /// 创建一个错误类型，但请尽量避免使用，尽管这是可行的。
+    /// 创建一个错误类型实例。
+    ///
+    /// - Warning: 请尽量避免直接使用此初始化方法，建议通过 `ErrList` 枚举来创建错误。
     @inlinable
     public init() {}
 }
 
+/// 任何遵循此协议的类型都被视为 Bsc 错误。
+/// 需要同时遵循 `Error` 和 `Sendable` 协议。
 public protocol AnyBscError: Error, Sendable {}
 
+/// 一个简单的基于字符串的错误类型。
+///
+/// 当你只需要抛出一个简单的错误消息，而不需要复杂的结构化信息时，可以使用此类型。
+/// 它支持直接使用字符串字面量初始化。
 @frozen
 public struct StringError: Error, CustomStringConvertible, ExpressibleByStringLiteral {
+    /// 错误的具体原因。
     public let reason: String
     
+    /// 使用描述错误原因的字符串初始化。
+    /// - Parameter reason: 错误原因。
     @inlinable
     public init(_ reason: String) {
         self.reason = reason
     }
     
+    /// 使用字符串字面量初始化。
+    /// - Parameter value: 字符串字面量。
     @inlinable
     public init(stringLiteral value: StringLiteralType) {
         self.reason = value
     }
     
+    /// 错误的文本描述。
     @inlinable
     public var description: String { self.reason }
 }

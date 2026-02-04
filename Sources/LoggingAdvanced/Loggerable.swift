@@ -1,21 +1,28 @@
 import Logging
 import Foundation
 
+/// 可记录日志的协议。
+///
+/// 遵循此协议的类型可以提供一个自定义的日志描述字符串。
 public protocol Loggerable {
+    /// 用于日志记录的描述信息。
     var logDescription: String { get }
 }
 
 public extension Loggerable where Self: CustomStringConvertible {
+    /// 默认实现：如果类型遵循 `CustomStringConvertible`，直接使用 description 作为日志描述。
     @inlinable
     var logDescription: String { description }
 }
 
 public extension Logger.MetadataValue {
+    /// 从 Loggerable 对象创建 MetadataValue。
     @inlinable
     static func data<T>(_ loggerable: T) -> Self where T: Loggerable {
         .string(loggerable.logDescription)
     }
     
+    /// 从对象的 ID 创建 MetadataValue。
     @inlinable
     static func id<T>(_ obj: T) -> Self where T: AnyObject {
         .data(ObjectIdentifier(obj))
@@ -50,6 +57,7 @@ extension Decimal: Loggerable {}
 extension Bool: Loggerable {}
 extension UUID: Loggerable {}
 extension Data: Loggerable {
+    /// Data 的日志描述：显示字节数。
     @inlinable
     public var logDescription: String { "count: \(self.count)" }
 }
@@ -61,6 +69,7 @@ extension Array: Loggerable {}
 extension Dictionary: Loggerable {}
 
 extension ObjectIdentifier: Loggerable {
+    /// ObjectIdentifier 的日志描述：尝试提取内存地址。
     @inlinable
     public var logDescription: String {
         let rawDescription = String(describing: self)
@@ -72,6 +81,7 @@ extension ObjectIdentifier: Loggerable {
 }
 
 public extension Optional where Wrapped: Loggerable {
+    /// Optional 的日志描述：如果是 some，递归调用 wrapped.logDescription；如果是 nil，返回 "nil"。
     var logDescription: String {
         switch self {
         case .some(let wrapped):
@@ -83,6 +93,7 @@ public extension Optional where Wrapped: Loggerable {
 }
 
 extension Optional: Loggerable {
+    /// Optional 的日志描述：如果是 some，返回 wrapped 的描述；如果是 nil，返回 "nil"。
     public var logDescription: String {
         switch self {
         case .some(let wrapped):
