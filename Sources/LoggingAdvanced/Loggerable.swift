@@ -47,6 +47,7 @@ extension Float: Loggerable {}
 extension Double: Loggerable {}
 extension Decimal: Loggerable {}
 
+extension Bool: Loggerable {}
 extension UUID: Loggerable {}
 extension Data: Loggerable {
     @inlinable
@@ -67,5 +68,27 @@ extension ObjectIdentifier: Loggerable {
             return String(rawDescription[range.lowerBound..<rawDescription.index(before: rawDescription.endIndex)])
         }
         return rawDescription
+    }
+}
+
+public extension Optional where Wrapped: Loggerable {
+    var logDescription: String {
+        switch self {
+        case .some(let wrapped):
+            return "\(wrapped.logDescription)?"
+        case .none:
+            return "nil"
+        }
+    }
+}
+
+extension Optional: Loggerable {
+    public var logDescription: String {
+        switch self {
+        case .some(let wrapped):
+            return "\(wrapped)?"
+        case .none:
+            return "nil"
+        }
     }
 }

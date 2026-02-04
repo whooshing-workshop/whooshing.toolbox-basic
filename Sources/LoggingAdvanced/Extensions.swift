@@ -3,6 +3,8 @@ import ErrorHandle
 import Foundation
 
 public extension Logger {
+    static let chainKey = "<chain>"
+    
     @inlinable
     func derive(subId: String? = nil, metadata: Metadata? = nil) -> Self {
         var logger = Logger(
@@ -50,9 +52,9 @@ public extension Logger {
         let subErrorMetadata: Logger.Metadata?
         
         if e.subError != nil {
-            let id = metadata?["<chain>"] ?? Logger.MetadataValue.stringConvertible(UUID())
-            subErrorMetadata = ["<chain>": id]
-            md["<chain>"] = id
+            let id = metadata?[Self.chainKey] ?? Logger.MetadataValue.stringConvertible(UUID())
+            subErrorMetadata = [Self.chainKey: id]
+            md[Self.chainKey] = id
         } else {
             subErrorMetadata = nil
         }
@@ -75,7 +77,9 @@ public extension Logger {
         
         return e
     }
-    
+}
+
+public extension Logger {
     @inlinable
     func required<G, T>(
         throws to: G,
@@ -115,7 +119,9 @@ public extension Logger {
             throw self.errThrow(e)
         }
     }
-    
+}
+
+public extension Logger {
     @inlinable
     func result<T, V>(
         throws error: T.ErrorList,
