@@ -1,6 +1,6 @@
 # Whooshing 基本工具库
 
-为 Whooshing 系统提供最底层加解密，错误处理以及数据转换的基本能功能：
+为 Whooshing 系统提供最底层加解密，错误处理，日志系统以及数据转换的基本能功能：
 
 - **基本的加密算法**：由 [swift-crypto](https://github.com/apple/swift-crypto) 提供加密功能
   - **对称加密(AES)**
@@ -9,6 +9,9 @@
   - **Curve25529 电子签名**
 - **错误处理**
 - **数据转换**
+- **日志系统**
+  - 采用 [Puppy](https://github.com/sushichop/Puppy) 实现轮转文件日志记录系统
+
 
 ## **部署说明**
 
