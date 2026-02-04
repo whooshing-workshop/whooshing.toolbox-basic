@@ -3,48 +3,77 @@ import Foundation
 
 public protocol LoggerProvider {
     var logMessage: Logger.Message { get }
-    var metadata: Logger.Metadata { get }
+    var metadata: Logger.Metadata? { get }
+    var source: String? { get }
 }
 
 public extension Logger {
     @inlinable
-    func traces(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .trace, id: id)
+    func traces(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .trace, id: id)
     }
     
     @inlinable
-    func debugs(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .debug, id: id)
+    func debugs(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .debug, id: id)
     }
     
     @inlinable
-    func infos(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .info, id: id)
+    func infos(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .info, id: id)
     }
     
     @inlinable
-    func notices(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .notice, id: id)
+    func notices(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .notice, id: id)
     }
     
     @inlinable
-    func warnings(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .warning, id: id)
+    func warnings(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .warning, id: id)
     }
     
     @inlinable
-    func errors(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .error, id: id)
+    func errors(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .error, id: id)
     }
     
     @inlinable
-    func criticals(_ msg: Logger.Message, metadatas: [Logger.Metadata], id: UUID = UUID()) {
-        chain(msg, metadatas: metadatas, level: .critical, id: id)
+    func criticals(
+        _ msg: Logger.Message,
+        paras: [(metadata: Logger.Metadata, source: String?)],
+        id: UUID = UUID()
+    ) {
+        chain(msg, paras: paras, level: .critical, id: id)
     }
 }
 
 public extension Logger {
-    typealias LoggerBlock = (msg: Logger.Message, metadata: Metadata)
+    typealias LoggerBlock = (msg: Logger.Message, metadata: Metadata?, source: String?)
     
     @inlinable
     func traces(_ logs: LoggerBlock..., id: UUID = UUID()) {
@@ -196,26 +225,33 @@ public extension Logger {
 public extension Logger {
     @inlinable
     func chain(_ logs: [LoggerBlock], level: Logger.Level, id: UUID = UUID()) {
-        for (msg, var metadata) in logs {
-            metadata[Self.chainKey] = .stringConvertible(id)
-            self.log(level: level, msg, metadata: metadata)
+        for (msg, metadata, source) in logs {
+            var m = metadata ?? .init()
+            m[Self.chainKey] = .stringConvertible(id)
+            self.log(level: level, msg, metadata: m, source: source)
         }
     }
     
     @inlinable
     func chain(_ logs: [LoggerProvider], level: Logger.Level, id: UUID = UUID()) {
         for log in logs {
-            var metadata = log.metadata
+            var metadata = log.metadata ?? .init()
             metadata[Self.chainKey] = .stringConvertible(id)
-            self.log(level: level, log.logMessage, metadata: metadata)
+            self.log(level: level, log.logMessage, metadata: metadata, source: log.source)
         }
     }
     
     @inlinable
-    func chain(_ msg: Logger.Message, metadatas: [Metadata], level: Logger.Level, id: UUID = UUID()) {
-        for var metadata in metadatas {
-            metadata[Self.chainKey] = .stringConvertible(id)
-            self.log(level: level, msg, metadata: metadata)
+    func chain(
+        _ msg: Logger.Message,
+        paras: [(metadata: Metadata?, source: String?)],
+        level: Logger.Level,
+        id: UUID = UUID()
+    ) {
+        for (metadata, source) in paras {
+            var m = metadata ?? .init()
+            m[Self.chainKey] = .stringConvertible(id)
+            self.log(level: level, msg, metadata: m, source: source)
         }
     }
 }

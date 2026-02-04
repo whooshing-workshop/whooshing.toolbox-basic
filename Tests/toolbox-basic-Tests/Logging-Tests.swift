@@ -51,6 +51,30 @@ struct LoggingTests {
         
         try await Task.sleep(nanoseconds: 500_000_000)
     }
+    
+    @Test("Log Chain 测试")
+    func logChainGenerate() async throws {
+        _ = Self.setupLogging
+        
+        let logger = Logger(label: "Log.Chain.Testing")
+        
+        logger.warnings("warning", paras: [
+            (["id": "one"], nil),
+            (["id": "two"], nil),
+            (["id": "three"], "file|1:2"),
+            (["id": "four"], nil),
+            (["id": "five"], "file.txt|10:21")
+        ])
+        
+        logger.infos(
+            ("info1", ["meta": "H"], nil),
+            ("info2", ["meta": "E"], nil),
+            ("info3", ["meta": "L"], nil),
+            ("info4", ["meta": "L"], nil),
+            ("info4", ["meta": "O"], nil),
+            id: .init(uuidString: "F441E87E-3B5F-4E0E-BABA-45101BB6456B")!
+        )
+    }
 }
 
 enum TestingError: String, Error {
