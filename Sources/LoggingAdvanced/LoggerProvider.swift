@@ -22,9 +22,12 @@ public extension Logger {
     func traces(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .trace, id: id)
+        chain(msg, paras: paras, level: .trace, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Debug 级别的日志，并将它们链接在一起。
@@ -37,9 +40,12 @@ public extension Logger {
     func debugs(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .debug, id: id)
+        chain(msg, paras: paras, level: .debug, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Info 级别的日志，并将它们链接在一起。
@@ -52,9 +58,12 @@ public extension Logger {
     func infos(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .info, id: id)
+        chain(msg, paras: paras, level: .info, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Notice 级别的日志，并将它们链接在一起。
@@ -67,9 +76,12 @@ public extension Logger {
     func notices(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .notice, id: id)
+        chain(msg, paras: paras, level: .notice, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Warning 级别的日志，并将它们链接在一起。
@@ -82,9 +94,12 @@ public extension Logger {
     func warnings(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .warning, id: id)
+        chain(msg, paras: paras, level: .warning, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Error 级别的日志，并将它们链接在一起。
@@ -97,9 +112,12 @@ public extension Logger {
     func errors(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .error, id: id)
+        chain(msg, paras: paras, level: .error, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Critical 级别的日志，并将它们链接在一起。
@@ -112,9 +130,12 @@ public extension Logger {
     func criticals(
         _ msg: Logger.Message,
         paras: [(metadata: Logger.Metadata, source: String?)],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
-        chain(msg, paras: paras, level: .critical, id: id)
+        chain(msg, paras: paras, level: .critical, id: id, file: file, function: function, line: line)
     }
 }
 
@@ -124,176 +145,344 @@ public extension Logger {
     
     /// 批量记录 Trace 级别的日志（可变参数版本）。
     @inlinable
-    func traces(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .trace, id: id)
+    func traces(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .trace, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Debug 级别的日志（可变参数版本）。
     @inlinable
-    func debugs(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .debug, id: id)
+    func debugs(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .debug, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Info 级别的日志（可变参数版本）。
     @inlinable
-    func infos(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .info, id: id)
+    func infos(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .info, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Notice 级别的日志（可变参数版本）。
     @inlinable
-    func notices(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .notice, id: id)
+    func notices(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .notice, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Warning 级别的日志（可变参数版本）。
     @inlinable
-    func warnings(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .warning, id: id)
+    func warnings(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .warning, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Error 级别的日志（可变参数版本）。
     @inlinable
-    func errors(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .error, id: id)
+    func errors(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .error, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Critical 级别的日志（可变参数版本）。
     @inlinable
-    func criticals(_ logs: LoggerBlock..., id: UUID = UUID()) {
-        chain(logs, level: .critical, id: id)
+    func criticals(
+        _ logs: LoggerBlock...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .critical, id: id, file: file, function: function, line: line)
     }
 }
 
 public extension Logger {
     /// 批量记录 Trace 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func traces(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .trace, id: id)
+    func traces(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .trace, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Debug 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func debugs(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .debug, id: id)
+    func debugs(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .debug, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Info 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func infos(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .info, id: id)
+    func infos(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .info, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Notice 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func notices(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .notice, id: id)
+    func notices(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .notice, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Warning 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func warnings(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .warning, id: id)
+    func warnings(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .warning, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Error 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func errors(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .error, id: id)
+    func errors(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .error, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Critical 级别的日志（LoggerProvider 可变参数版本）。
     @inlinable
-    func criticals(_ logs: LoggerProvider..., id: UUID = UUID()) {
-        chain(logs, level: .critical, id: id)
+    func criticals(
+        _ logs: LoggerProvider...,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .critical, id: id, file: file, function: function, line: line)
     }
 }
 
 public extension Logger {
     /// 批量记录 Trace 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func traces(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .trace, id: id)
+    func traces(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .trace, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Debug 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func debugs(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .debug, id: id)
+    func debugs(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .debug, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Info 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func infos(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .info, id: id)
+    func infos(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .info, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Notice 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func notices(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .notice, id: id)
+    func notices(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .notice, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Warning 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func warnings(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .warning, id: id)
+    func warnings(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .warning, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Error 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func errors(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .error, id: id)
+    func errors(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .error, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Critical 级别的日志（LoggerProvider 数组版本）。
     @inlinable
-    func criticals(_ logs: [LoggerProvider], id: UUID = UUID()) {
-        chain(logs, level: .critical, id: id)
+    func criticals(
+        _ logs: [LoggerProvider],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .critical, id: id, file: file, function: function, line: line)
     }
 }
 
 public extension Logger {
     /// 批量记录 Trace 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func traces(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .trace, id: id)
+    func traces(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .trace, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Debug 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func debugs(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .debug, id: id)
+    func debugs(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .debug, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Info 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func infos(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .info, id: id)
+    func infos(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .info, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Notice 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func notices(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .notice, id: id)
+    func notices(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .notice, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Warning 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func warnings(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .warning, id: id)
+    func warnings(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .warning, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Error 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func errors(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .error, id: id)
+    func errors(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .error, id: id, file: file, function: function, line: line)
     }
     
     /// 批量记录 Critical 级别的日志（LoggerBlock 数组版本）。
     @inlinable
-    func criticals(_ logs: [LoggerBlock], id: UUID = UUID()) {
-        chain(logs, level: .critical, id: id)
+    func criticals(
+        _ logs: [LoggerBlock],
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
+        chain(logs, level: .critical, id: id, file: file, function: function, line: line)
     }
 }
 
@@ -301,23 +490,53 @@ public extension Logger {
     /// 内部方法：将一批 LoggerBlock 链接起来并记录日志。
     /// 可以自动为每条日志添加链 ID 和序号。
     @inlinable
-    func chain(_ logs: [LoggerBlock], level: Logger.Level, id: UUID = UUID()) {
+    func chain(
+        _ logs: [LoggerBlock],
+        level: Logger.Level,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
         for (i, (msg, metadata, source)) in logs.enumerated() {
             var m = metadata ?? .init()
             m[Self.chainKey] = .stringConvertible(id)
             m[Self.chainIndexKey] = .stringConvertible(i + 1)
-            self.log(level: level, msg, metadata: m, source: source)
+            self.log(
+                level: level,
+                msg,
+                metadata: m,
+                source: source,
+                file: file,
+                function: function,
+                line: line
+            )
         }
     }
     
     /// 内部方法：将一批 LoggerProvider 链接起来并记录日志。
     @inlinable
-    func chain(_ logs: [LoggerProvider], level: Logger.Level, id: UUID = UUID()) {
+    func chain(
+        _ logs: [LoggerProvider],
+        level: Logger.Level,
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) {
         for (i, log) in logs.enumerated() {
             var metadata = log.metadata ?? .init()
             metadata[Self.chainKey] = .stringConvertible(id)
             metadata[Self.chainIndexKey] = .stringConvertible(i + 1)
-            self.log(level: level, log.logMessage, metadata: metadata, source: log.source)
+            self.log(
+                level: level,
+                log.logMessage,
+                metadata: metadata,
+                source: log.source,
+                file: file,
+                function: function,
+                line: line
+            )
         }
     }
     
@@ -327,13 +546,24 @@ public extension Logger {
         _ msg: Logger.Message,
         paras: [(metadata: Metadata?, source: String?)],
         level: Logger.Level,
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
     ) {
         for (i, (metadata, source)) in paras.enumerated() {
             var m = metadata ?? .init()
             m[Self.chainKey] = .stringConvertible(id)
             m[Self.chainIndexKey] = .stringConvertible(i + 1)
-            self.log(level: level, msg, metadata: m, source: source)
+            self.log(
+                level: level,
+                msg,
+                metadata: m,
+                source: source,
+                file: file,
+                function: function,
+                line: line
+            )
         }
     }
 }
