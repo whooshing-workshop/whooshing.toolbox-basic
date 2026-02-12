@@ -1,10 +1,10 @@
 {
-  "originHash" : "5e2bb0a773676ca259e0ee4beeac0a9246fb748c5d834cc81726e914bd64e7c7",
+  "originHash" : "19d20bd2f2831c10eddee9e04008388c5b39e62542baf49c8019f67eecefb090",
   "pins" : [
     {
       "identity" : "puppy",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SJJC-Team/Puppy.git",
+      "location" : "https://github.com/whooshing-workshop/Puppy.git",
       "state" : {
         "revision" : "b9c0edb07d9318106096f16ebb110d5314d05b42",
         "version" : "0.9.1"

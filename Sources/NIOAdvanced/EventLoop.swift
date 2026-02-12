@@ -36,6 +36,7 @@ extension EventLoop {
     @inlinable
     public func makeTarget<T, G>(
         of type: T.Type = T.self,
+        throws errorType: G.Type = G.self,
         file: StaticString = #fileID,
         line: UInt = #line
     ) -> EventLoopTarget<T, G> {
