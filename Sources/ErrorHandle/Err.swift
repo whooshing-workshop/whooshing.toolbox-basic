@@ -1,4 +1,5 @@
 import Logging
+import Foundation
 
 /**
     #### 错误类型的协议声明
@@ -200,7 +201,7 @@ public extension Err {
             if let bscErr = subErr as? (any Err) {
                 res += "\n" + bscErr.descriptionString(withHead: false)
             } else if let err = subErr as? CustomStringConvertible {
-                res += "\n\t\(err)"
+                res += "\n\t\(err) {\n" + ("\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))".indented(by: 4) + "\n}").indented(by: 4)
             } else {
                 res += "\n\t\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))"
             }
@@ -217,4 +218,20 @@ public extension Err {
 public extension Err where AdditionType == Never {
     @inlinable
     mutating func initAdds(_ addtion: AdditionType) { }
+}
+
+extension String {
+    /// 为字符串的每一行添加缩进
+    /// - Parameter spaces: 缩进的空格数
+    /// - Returns: 缩进后的字符串
+    @usableFromInline
+    func indented(by spaces: Int) -> String {
+        let indentation = String(repeating: " ", count: spaces)
+        return self.components(separatedBy: .newlines)
+            .map { line in
+                // 如果是空行，通常不添加缩进空格以保持简洁
+                line.isEmpty ? "" : "\(indentation)\(line)"
+            }
+            .joined(separator: "\n")
+    }
 }

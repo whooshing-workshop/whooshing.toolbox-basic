@@ -7,6 +7,8 @@ import Foundation
 public protocol Loggerable {
     /// 用于日志记录的描述信息。
     var logDescription: String { get }
+    /// 用于日志记录的简短描述信息。
+    var summaryDescription: String { get }
 }
 
 public extension Loggerable where Self: CustomStringConvertible {
@@ -15,11 +17,22 @@ public extension Loggerable where Self: CustomStringConvertible {
     var logDescription: String { description }
 }
 
+public extension Loggerable {
+    @inlinable
+    var summaryDescription: String { logDescription }
+}
+
 public extension Logger.MetadataValue {
     /// 从 Loggerable 对象创建 MetadataValue。
     @inlinable
     static func data<T>(_ loggerable: T) -> Self where T: Loggerable {
         .string(loggerable.logDescription)
+    }
+    
+    /// 从 Loggerable 对象创建 MetadataValue。
+    @inlinable
+    static func summaryData<T>(_ loggerable: T) -> Self where T: Loggerable {
+        .string(loggerable.summaryDescription)
     }
     
     /// 从对象的 ID 创建 MetadataValue。
@@ -65,8 +78,39 @@ extension Data: Loggerable {
 extension Range: Loggerable {}
 extension ClosedRange: Loggerable {}
 
-extension Array: Loggerable {}
-extension Dictionary: Loggerable {}
+extension Array: Loggerable where Element: Loggerable {
+    @inlinable
+    public var logDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { i, r in "\(i): \(r.logDescription)" }
+            .joined(separator: "\n")
+    }
+    
+    @inlinable
+    public var summaryDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { i, r in "\(i): \(r.summaryDescription)" }
+            .joined(separator: " | ")
+    }
+}
+
+extension Dictionary: Loggerable where Key: Loggerable, Value: Loggerable {
+    @inlinable
+    public var logDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return map { k, v in "  Key: \(k.logDescription) => Value: \(v.logDescription)" }
+            .joined(separator: "\n")
+    }
+    
+    @inlinable
+    public var summaryDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return map { k, v in "{\(k.summaryDescription): \(v.summaryDescription)}" }
+            .joined(separator: " | ")
+    }
+}
 
 extension ObjectIdentifier: Loggerable {
     /// ObjectIdentifier 的日志描述：尝试提取内存地址。
@@ -78,6 +122,7 @@ extension ObjectIdentifier: Loggerable {
         }
         return rawDescription
     }
+    public var summaryDescription: String { logDescription }
 }
 
 public extension Optional where Wrapped: Loggerable {
