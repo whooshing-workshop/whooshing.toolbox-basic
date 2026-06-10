@@ -1,6 +1,7 @@
 import Logging
 import ErrorHandle
 import Foundation
+@preconcurrency import AnyCodable
 
 public extension Logger {
     /// 用于标记日志链的 Key
@@ -233,5 +234,17 @@ public extension Logger {
             let e = T.init(error, explain, category: category, file: file, line: line, function: function).subErr(originErr).metadata(metadata)
             return .failure(self.errThrow(e))
         }
+    }
+}
+
+public func formatJson(_ json: [String: AnyCodable]) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    
+    do {
+        let data = try encoder.encode(json)
+        return String(data: data, encoding: .utf8) ?? "\(json)"
+    } catch {
+        return "\(json)"
     }
 }
