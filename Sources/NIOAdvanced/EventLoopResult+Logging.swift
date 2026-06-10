@@ -9,6 +9,11 @@ public extension EventLoopResult {
             throw logger.error(error, metadata: metadata)
         }
     }
+    
+    @inlinable
+    func logIfFailAndExist(logger: Logger?, metadata: Logger.Metadata? = nil) -> EventLoopResult<Value, ErrorType> {
+        logger != nil ? logIfFail(logger: logger!) : self
+    }
 }
 
 public extension EventLoopResult where ErrorType: Err {
@@ -17,5 +22,10 @@ public extension EventLoopResult where ErrorType: Err {
         self.flatMapErrorThrowing { error throws(ErrorType) in
             throw logger.errThrow(error, metadata: metadata)
         }
+    }
+    
+    @inlinable
+    func logIfFailAndExist(logger: Logger?, metadata: Logger.Metadata? = nil) -> EventLoopResult<Value, ErrorType> {
+        logger != nil ? logIfFail(logger: logger!) : self
     }
 }
