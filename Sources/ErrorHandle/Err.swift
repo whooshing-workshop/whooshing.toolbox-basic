@@ -200,10 +200,8 @@ public extension Err {
         if let subErr = subError {
             if let bscErr = subErr as? (any Err) {
                 res += "\n" + bscErr.descriptionString(withHead: false)
-            } else if let err = subErr as? CustomStringConvertible {
-                res += "\n\t\(err) {\n" + ("\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))".indented(by: 4) + "\n}").indented(by: 4)
             } else {
-                res += "\n\t\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))"
+                res += "\n\t\(subErr) {\n" + ("\(String(describing: type(of: subErr))).\(String(describing: subErr)): \(String(reflecting: subErr))".indented(by: 4) + "\n}").indented(by: 4)
             }
             
             if withHead {

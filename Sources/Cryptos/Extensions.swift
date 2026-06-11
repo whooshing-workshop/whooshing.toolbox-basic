@@ -112,3 +112,96 @@ extension Crypto.Asym.SPublicKey: EncodingThrowableDataConvertable, DecodingSafe
         self.rawRepresentation
     }
 }
+
+public struct SendableSymmKey: Sendable, SafeDataConvertable {
+    public let key: Crypto.Symm.Key
+    
+    @inlinable
+    public init(key: Crypto.Symm.Key) {
+        self.key = key
+    }
+    
+    @inlinable
+    public static func new(data: Data) -> SendableSymmKey {
+        .init(key: .init(data: data))
+    }
+    
+    @inlinable
+    public var data: Data { key.data }
+}
+
+public struct SendableAsymCPrivateKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    public let key: Crypto.Asym.CPrivateKey
+    
+    @inlinable
+    public init(key: Crypto.Asym.CPrivateKey) {
+        self.key = key
+    }
+    
+    @inlinable
+    public static func make(data: Data) -> Result<Self, Crypto.Asym.CPrivateKey.EncodeErrcase.ErrType> {
+        .init { () throws(Crypto.Asym.CPrivateKey.EncodeErrcase.ErrType) in
+            try Self.init(key: .make(data: data).get())
+        }
+    }
+    
+    @inlinable
+    public var data: Data { key.data }
+}
+
+public struct SendableAsymCPublicKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    public let key: Crypto.Asym.CPublicKey
+    
+    @inlinable
+    public init(key: Crypto.Asym.CPublicKey) {
+        self.key = key
+    }
+    
+    @inlinable
+    public static func make(data: Data) -> Result<Self, Crypto.Asym.CPublicKey.EncodeErrcase.ErrType> {
+        .init { () throws(Crypto.Asym.CPublicKey.EncodeErrcase.ErrType) in
+            try Self.init(key: .make(data: data).get())
+        }
+    }
+    
+    @inlinable
+    public var data: Data { key.data }
+}
+
+public struct SendableAsymSPrivateKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    public let key: Crypto.Asym.SPrivateKey
+    
+    @inlinable
+    public init(key: Crypto.Asym.SPrivateKey) {
+        self.key = key
+    }
+    
+    @inlinable
+    public static func make(data: Data) -> Result<Self, Crypto.Asym.SPrivateKey.EncodeErrcase.ErrType> {
+        .init { () throws(Crypto.Asym.SPrivateKey.EncodeErrcase.ErrType) in
+            try Self.init(key: .make(data: data).get())
+        }
+    }
+    
+    @inlinable
+    public var data: Data { key.data }
+}
+
+public struct SendableAsymSPublicKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+    public let key: Crypto.Asym.SPublicKey
+    
+    @inlinable
+    public init(key: Crypto.Asym.SPublicKey) {
+        self.key = key
+    }
+    
+    @inlinable
+    public static func make(data: Data) -> Result<Self, Crypto.Asym.SPublicKey.EncodeErrcase.ErrType> {
+        .init { () throws(Crypto.Asym.SPublicKey.EncodeErrcase.ErrType) in
+            try Self.init(key: .make(data: data).get())
+        }
+    }
+    
+    @inlinable
+    public var data: Data { key.data }
+}

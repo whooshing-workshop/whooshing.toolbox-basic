@@ -3,6 +3,7 @@ import NIOCore
 public extension EventLoop {
     // 使用原生的 makeResultWithTask 或 makeFutureWithTask 可能会出现非预期的 bug
     // 可使用 bridge 替换
+    @inlinable
     func bridge<R: Sendable, E>(
         throws: E.Type = E.self,
         _ action: @escaping @Sendable () async throws(E) -> R
@@ -21,6 +22,7 @@ public extension EventLoop {
         return target.futureResult
     }
 
+    @inlinable
     func bridge<R: Sendable>(
         _ action: @escaping @Sendable () async throws -> R
     ) -> EventLoopFuture<R> {
