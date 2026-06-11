@@ -113,7 +113,7 @@ extension Crypto.Asym.SPublicKey: EncodingThrowableDataConvertable, DecodingSafe
     }
 }
 
-public struct SendableSymmKey: Sendable, SafeDataConvertable {
+public struct SendableSymmKey: @unchecked Sendable, SafeDataConvertable {
     public let key: Crypto.Symm.Key
     
     @inlinable
@@ -130,7 +130,7 @@ public struct SendableSymmKey: Sendable, SafeDataConvertable {
     public var data: Data { key.data }
 }
 
-public struct SendableAsymCPrivateKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+public struct SendableAsymCPrivateKey: @unchecked Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     public let key: Crypto.Asym.CPrivateKey
     
     @inlinable
@@ -149,7 +149,7 @@ public struct SendableAsymCPrivateKey: Sendable, EncodingThrowableDataConvertabl
     public var data: Data { key.data }
 }
 
-public struct SendableAsymCPublicKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+public struct SendableAsymCPublicKey: @unchecked Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     public let key: Crypto.Asym.CPublicKey
     
     @inlinable
@@ -168,7 +168,7 @@ public struct SendableAsymCPublicKey: Sendable, EncodingThrowableDataConvertable
     public var data: Data { key.data }
 }
 
-public struct SendableAsymSPrivateKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+public struct SendableAsymSPrivateKey: @unchecked Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     public let key: Crypto.Asym.SPrivateKey
     
     @inlinable
@@ -187,7 +187,7 @@ public struct SendableAsymSPrivateKey: Sendable, EncodingThrowableDataConvertabl
     public var data: Data { key.data }
 }
 
-public struct SendableAsymSPublicKey: Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
+public struct SendableAsymSPublicKey: @unchecked Sendable, EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     public let key: Crypto.Asym.SPublicKey
     
     @inlinable
