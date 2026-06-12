@@ -12,11 +12,6 @@ struct LoggingTests {
         let homeDir = fileManager.homeDirectoryForCurrentUser
         let logDir = homeDir.appendingPathComponent(".opa_logs")
         let logFile = logDir.appendingPathComponent("opa.log")
-        if !fileManager.fileExists(atPath: logDir.path) {
-            try? fileManager.createDirectory(at: logDir, withIntermediateDirectories: true, attributes: [
-                .posixPermissions: 0o700
-            ])
-        }
         
         factory.add("Console.Testing")
         try? factory.add("File.Testing", fileURL: logFile)

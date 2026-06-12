@@ -35,6 +35,7 @@ public struct LoggingFactory: Sendable {
     }
     
     /// 添加一个文件日志记录器，支持日志轮转。
+    /// 若提供的文件不存在，则会自动创建，包括缺失的文件夹。
     ///
     /// - Parameters:
     ///   - label: 日志记录器的标签。
@@ -51,7 +52,7 @@ public struct LoggingFactory: Sendable {
     ) throws {
         try puppy.add(FileRotationLogger(
             label,
-            logLevel: .trace,
+            logLevel: .trace,       // 记录所有高于 trace 等级的 log，实际记录的日志取决于具体 Logger 所提供的日志
             logFormat: LoggingFormatter(),
             fileURL: fileURL,
             filePermission: filePermission,
