@@ -18,7 +18,7 @@
 在你的 Package.swift 加入：
 
 ``` swift
-.package(url: "https://github.com/whooshing-workshop/whooshing.toolbox-basic.git", from: "1.5.7")
+.package(url: "https://github.com/whooshing-workshop/whooshing.toolbox-basic.git", from: "1.5.8")
 ```
 
 或导入不同的 Target：

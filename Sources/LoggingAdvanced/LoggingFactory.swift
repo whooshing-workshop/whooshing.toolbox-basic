@@ -2,7 +2,7 @@ import Puppy
 import Foundation
 
 /// 日志工厂，用于配置和初始化日志系统。
-public class LoggingFactory {
+public struct LoggingFactory {
     @usableFromInline
     let strategies: [LoggerStrategy]
     
@@ -10,6 +10,12 @@ public class LoggingFactory {
     @inlinable
     public init(strategies: [LoggerStrategy]) {
         self.strategies = strategies
+    }
+    
+    /// 初始化一个新的日志工厂。
+    @inlinable
+    public init(factories: [Self]) {
+        self.strategies = factories.flatMap { $0.strategies }
     }
     
     /// 启动日志系统。
@@ -26,5 +32,17 @@ public class LoggingFactory {
             }
             return LoggerHandler(label: label, strategies: logStrategies)
         }
+    }
+    
+    /// 创建新工厂，增加日志策略
+    @inlinable
+    public func append(strategies: [LoggerStrategy]) -> Self {
+        .init(strategies: self.strategies + strategies)
+    }
+    
+    /// 合并日志工厂，增加日志策略
+    @inlinable
+    public func combine(factories: [Self]) -> Self {
+        .init(factories: factories)
     }
 }

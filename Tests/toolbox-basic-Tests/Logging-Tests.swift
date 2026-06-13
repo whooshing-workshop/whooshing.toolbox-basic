@@ -37,22 +37,22 @@ struct LoggingTests {
     }
     
     static let setupLogging: Void = {
-        let logFile = logDir.appendingPathComponent("opa.log")
-        let logFile3 = logDir.appendingPathComponent("errors.log")
-        
         let factory = try! LoggingFactory(strategies: [
             .init(label: "console", level: .info, config: .console),
             .init(label: "file", level: .info, config: .file(
                 logPrefix: "com.test.module",
-                url: logFile
+                directory: logDir,
+                name: "opa.log"
             )),
             .init(label: "file2", level: .trace, config: .file(
                 logPrefix: "com.test.module2",
-                url: logFile
+                directory: logDir,
+                name: "opa.log"
             )),
             .init(label: "errors", level: .error, config: .file(
                 logPrefix: "",
-                url: logFile3
+                directory: logDir,
+                name: "errors.log"
             ))
         ])
         
