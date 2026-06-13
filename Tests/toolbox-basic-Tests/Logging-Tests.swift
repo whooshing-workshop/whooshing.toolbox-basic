@@ -180,7 +180,7 @@ struct LoggingTests {
         var logger = Logger(label: "com.test.module2")
         logger.logLevel = .trace
         
-        logger.traces("不应出现在 Console 中，因为 Console 闸门高于 trace 等级", paras: [
+        logger.traces("不应出现在 Console 中，但应当出现在 File 中", paras: [
             (["ERROR": "!"], nil),
             (["ERROR": "!!"], nil),
             (["ERROR": "!!!"], "file|1:2"),
