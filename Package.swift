@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "DataConvertable", targets: ["DataConvertable"]),
         .library(name: "Cryptos", targets: ["Cryptos"]),
         .library(name: "NIOAdvanced", targets: ["NIOAdvanced"]),
+        .library(name: "PuppyLoggerable", targets: ["PuppyLoggerable"]),
         .library(name: "LoggingAdvanced", targets: ["LoggingAdvanced"])
     ],
     dependencies: [
@@ -57,9 +58,16 @@ let package = Package(
             ]
         ),
         .target(
+            name: "PuppyLoggerable",
+            dependencies: [
+                .product(name: "Puppy", package: "Puppy")
+            ]
+        ),
+        .target(
             name: "LoggingAdvanced",
             dependencies: [
                 .target(name: "ErrorHandle"),
+                .target(name: "PuppyLoggerable"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Puppy", package: "Puppy"),
                 .product(name: "AnyCodable", package: "AnyCodable")
@@ -72,6 +80,7 @@ let package = Package(
                 .target(name: "DataConvertable"),
                 .target(name: "Cryptos"),
                 .target(name: "NIOAdvanced"),
+                .target(name: "PuppyLoggerable"),
                 .target(name: "LoggingAdvanced"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOCore", package: "swift-nio")
