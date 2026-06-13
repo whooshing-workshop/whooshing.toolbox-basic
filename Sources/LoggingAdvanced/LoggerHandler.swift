@@ -10,6 +10,9 @@ public struct LoggerHandler: LogHandler {
     public var logLevel: Logger.Level = .info
     /// 业务层 Metadata 存储器，用于业务层直接修改 metadata
     public var metadata: Logger.Metadata = [:]
+    // 官方要求的 metadataProvider 属性
+    // 它是系统自动抓取上下文指纹（如 TaskLocal 的 TraceID）的超级后门
+    public var metadataProvider: Logger.MetadataProvider?
     
     public let label: String
     public let strategies: [LoggerStrategy]
@@ -17,20 +20,18 @@ public struct LoggerHandler: LogHandler {
     @inlinable
     public init(
         label: String,
-        strategies: [LoggerStrategy]
+        strategies: [LoggerStrategy],
+        metadataProvider: Logger.MetadataProvider? = nil // 默认为 nil 保证向前兼容
     ) {
         self.label = label
         self.strategies = strategies
+        self.metadataProvider = metadataProvider
     }
     
     @inlinable
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-        get {
-            return metadata[key]
-        }
-        set(newValue) {
-            metadata[key] = newValue
-        }
+        get { metadata[key] }
+        set { metadata[key] = newValue }
     }
     
     @inlinable
@@ -57,14 +58,21 @@ public struct LoggerHandler: LogHandler {
     }
     
     @usableFromInline
-    func mergedMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
-        var mergedMetadata: Logger.Metadata
-        if let metadata = metadata {
-            mergedMetadata = self.metadata.merging(metadata, uniquingKeysWith: { _, new in new })
-        } else {
-            mergedMetadata = self.metadata
+    func mergedMetadata(_ eventMetadata: Logger.Metadata?) -> Logger.Metadata {
+        // Provider 自动从上下文自动榨取出来的最新 TraceID 等元数据
+        var baseMetadata = self.metadataProvider?.get() ?? [:]
+        
+        // Handler 实例长期持有的元数据
+        if !self.metadata.isEmpty {
+            baseMetadata.merge(self.metadata, uniquingKeysWith: { _, new in new })
         }
-        return mergedMetadata
+        
+        // 单条日志临时附加的局部元数据
+        if let eventMeta = eventMetadata, !eventMeta.isEmpty {
+            baseMetadata.merge(eventMeta, uniquingKeysWith: { _, new in new })
+        }
+        
+        return baseMetadata
     }
 }
 
