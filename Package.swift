@@ -24,7 +24,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.9.1"),
         .package(url: "https://github.com/whooshing-workshop/Puppy.git", from: "0.9.1"),
-        .package(url: "https://github.com/Flight-School/AnyCodable", from: "0.6.0")
+        .package(url: "https://github.com/Flight-School/AnyCodable", from: "0.6.0"),
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.6.0")
     ],
     targets: [
         .target( 
@@ -68,6 +69,8 @@ let package = Package(
             dependencies: [
                 .target(name: "ErrorHandle"),
                 .target(name: "PuppyLoggerable"),
+                .target(name: "DataConvertable"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Puppy", package: "Puppy"),
                 .product(name: "AnyCodable", package: "AnyCodable")

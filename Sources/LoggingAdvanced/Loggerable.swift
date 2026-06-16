@@ -1,5 +1,7 @@
 import Logging
 import Foundation
+import DataConvertable
+import OrderedCollections
 
 /// 可记录日志的协议。
 ///
@@ -68,7 +70,12 @@ extension Double: Loggerable {}
 extension Decimal: Loggerable {}
 
 extension Bool: Loggerable {}
-extension UUID: Loggerable {}
+extension UUID: Loggerable {
+    public var summaryDescription: String {
+        self.shortString
+    }
+}
+
 extension Data: Loggerable {
     /// Data 的日志描述：显示字节数。
     @inlinable
@@ -78,12 +85,30 @@ extension Data: Loggerable {
 extension Range: Loggerable {}
 extension ClosedRange: Loggerable {}
 
-extension Array: Loggerable where Element: Loggerable {
+extension Set: Loggerable where Element: Loggerable {
+    @inlinable
+    public var logDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return self
+            .map { r in "{~} \(r.logDescription)" }
+            .joined(separator: "\n")
+    }
+    
+    @inlinable
+    public var summaryDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return self
+            .map { r in "{~} \(r.summaryDescription)" }
+            .joined(separator: " | ")
+    }
+}
+
+extension OrderedSet: Loggerable where Element: Loggerable {
     @inlinable
     public var logDescription: String {
         guard !isEmpty else { return "(空)" }
         return enumerated()
-            .map { i, r in "\(i): \(r.logDescription)" }
+            .map { i, r in "{\(i)} \(r.logDescription)" }
             .joined(separator: "\n")
     }
     
@@ -91,7 +116,43 @@ extension Array: Loggerable where Element: Loggerable {
     public var summaryDescription: String {
         guard !isEmpty else { return "(空)" }
         return enumerated()
-            .map { i, r in "\(i): \(r.summaryDescription)" }
+            .map { i, r in "{\(i)} \(r.summaryDescription)" }
+            .joined(separator: " | ")
+    }
+}
+
+extension Array: Loggerable where Element: Loggerable {
+    @inlinable
+    public var logDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { i, r in "[\(i)] \(r.logDescription)" }
+            .joined(separator: "\n")
+    }
+    
+    @inlinable
+    public var summaryDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { i, r in "[\(i)] \(r.summaryDescription)" }
+            .joined(separator: " | ")
+    }
+}
+
+extension OrderedDictionary: Loggerable where Key: Loggerable, Value: Loggerable {
+    @inlinable
+    public var logDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { (i, kv) in "[\(i)]  Key: \(kv.key.logDescription) => Value: \(kv.value.logDescription)" }
+            .joined(separator: "\n")
+    }
+    
+    @inlinable
+    public var summaryDescription: String {
+        guard !isEmpty else { return "(空)" }
+        return enumerated()
+            .map { (i, kv) in "[\(i)] {\(kv.key.summaryDescription): \(kv.value.summaryDescription)}" }
             .joined(separator: " | ")
     }
 }
