@@ -1,8 +1,6 @@
 import Testing
-@testable import Cryptos
 import Foundation
-import Crypto
-import DataConvertable
+@testable import Cryptos
 
 @Suite("加密模块-测试")
 struct CryptoTest {

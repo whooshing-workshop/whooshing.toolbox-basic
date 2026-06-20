@@ -16,7 +16,6 @@ let package = Package(
         .library(name: "DataConvertable", targets: ["DataConvertable"]),
         .library(name: "Cryptos", targets: ["Cryptos"]),
         .library(name: "NIOAdvanced", targets: ["NIOAdvanced"]),
-        .library(name: "PuppyLoggerable", targets: ["PuppyLoggerable"]),
         .library(name: "LoggingAdvanced", targets: ["LoggingAdvanced"])
     ],
     dependencies: [

@@ -1,8 +1,5 @@
 import Testing
 import Foundation
-import Logging
-import Puppy
-import Logging
 @testable import LoggingAdvanced
 
 nonisolated(unsafe) let fileManager = FileManager.default

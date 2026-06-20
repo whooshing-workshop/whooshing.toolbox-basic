@@ -1,6 +1,6 @@
 import Testing
-@testable import DataConvertable
 import Foundation
+@testable import DataConvertable
 
 @Suite("数据转换模块-测试")
 struct DataConvertableTest {
