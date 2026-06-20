@@ -1,11 +1,7 @@
 import Logging
 import Foundation
 import OrderedCollections
-
-@_exported import Puppy
-@_exported import PuppyLoggerable
-@_exported import DataConvertable
-
+import DataConvertable
 
 /// 可记录日志的协议。
 ///
