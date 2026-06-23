@@ -71,14 +71,14 @@ func newRange<T>(from data: Data) -> Res<Range<T>, RangeEncodeErrcase> where T: 
     do {
         lowerBound = try T.make(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize))).get()
     } catch {
-        return .failure(.lowerBoundFailed)
+        return .failure(.lowerBoundFailed, category: .inherit, subErr: error)
     }
     
     let upperBound: T
     do {
         upperBound = try T.make(data: data.suffix(upperBoundSize)).get()
     } catch {
-        return .failure(.upperBoundFailed)
+        return .failure(.upperBoundFailed, category: .inherit, subErr: error)
     }
     
     return .success(Range<T>(uncheckedBounds: (lower: lowerBound, upper: upperBound)))
@@ -90,14 +90,14 @@ func getData<T>(from range: Range<T>) -> Res<Data, RangeDecodeErrcase> where T: 
     do {
         lowerData = try range.lowerBound.dataRes.get()
     } catch {
-        return .failure(.lowerBoundFailed)
+        return .failure(.lowerBoundFailed, category: .inherit, subErr: error)
     }
     
     let upperData: Data
     do {
         upperData = try range.upperBound.dataRes.get()
     } catch {
-        return .failure(.upperBoundFailed)
+        return .failure(.upperBoundFailed, category: .inherit, subErr: error)
     }
 
     return .success(lowerData.count.data + upperData.count.data + lowerData + upperData)
@@ -125,14 +125,14 @@ func newClosedRange<T>(from data: Data) -> Res<ClosedRange<T>, ClosedRangeEncode
     do {
         lowerBound = try T.make(data: data.subdata(in: (size * 2)..<(size * 2 + lowerBoundSize))).get()
     } catch {
-        return .failure(.lowerBoundFailed)
+        return .failure(.lowerBoundFailed, category: .inherit, subErr: error)
     }
     
     let upperBound: T
     do {
         upperBound = try T.make(data: data.suffix(upperBoundSize)).get()
     } catch {
-        return .failure(.upperBoundFailed)
+        return .failure(.upperBoundFailed, category: .inherit, subErr: error)
     }
     
     return .success(ClosedRange<T>(uncheckedBounds: (lower: lowerBound, upper: upperBound)))
@@ -144,14 +144,14 @@ func getData<T>(from closedRange: ClosedRange<T>) -> Res<Data, ClosedRangeDecode
     do {
         lowerData = try closedRange.lowerBound.dataRes.get()
     } catch {
-        return .failure(.lowerBoundFailed)
+        return .failure(.lowerBoundFailed, category: .inherit, subErr: error)
     }
     
     let upperData: Data
     do {
         upperData = try closedRange.upperBound.dataRes.get()
     } catch {
-        return .failure(.upperBoundFailed)
+        return .failure(.upperBoundFailed, category: .inherit, subErr: error)
     }
 
     return .success(lowerData.count.data + upperData.count.data + lowerData + upperData)

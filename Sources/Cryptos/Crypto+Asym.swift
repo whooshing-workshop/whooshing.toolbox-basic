@@ -109,7 +109,7 @@ public extension Crypto {
             salt: T,
             info: G
         ) -> Res<Symm.Key, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
-            Result (throws: .keyEncapsulateFailed, "密钥协商失败") {
+            Result (throws: .keyEncapsulateFailed, "密钥协商失败", category: .inherit) {
                 try key.sharedSecretFromKeyAgreement(with: partyPublic)
             }.flatMap { sharedKey in
                 do {
@@ -122,7 +122,7 @@ public extension Crypto {
                         )
                     )
                 } catch {
-                    return .failure(.keyEncapsulateFailed, "密钥派生失败", subErr: error)
+                    return .failure(.keyEncapsulateFailed, "密钥派生失败", category: .inherit, subErr: error)
                 }
             }
         }
@@ -143,7 +143,7 @@ public extension Crypto {
             /// - Returns: 该数据的签名
             @inlinable
             public static func make<T>(_ data: T, key: SPrivateKey) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
-                .init(throws: .signMakeFailed) {
+                .init(throws: .signMakeFailed, category: .inherit) {
                     try key.signature(for: data.dataRes.get())
                 }
             }
@@ -166,7 +166,7 @@ public extension Crypto {
             
             @inlinable
             static func __validate<T>(_ data: T, sign: Data, key: SPublicKey) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
-                .init(throws: .unknown, "验证未成功") {
+                .init(throws: .unknown, "验证未成功", category: .inherit) {
                     try key.isValidSignature(sign, for: data.dataRes.get())
                 }
             }

@@ -31,7 +31,7 @@
     当然，你也可以在自定义错误类型和错误列表中定义和实现任何方法等等，但这通常是不必要的。
 */
 public protocol ErrList: Sendable, RawRepresentable, CaseIterable where Self.ErrType: Err, Self.ErrType.ErrorList == Self {
-    associatedtype ErrType = BscError<Self>
+    associatedtype ErrType = BasicError<Self>
     /**
         为一个错误设置细节信息
 
@@ -79,8 +79,8 @@ public protocol ErrList: Sendable, RawRepresentable, CaseIterable where Self.Err
         }
         ```
     */
-    func d(file: String, line: Int, function: String) -> ErrType
-    func d(_ explain: String, file: String, line: Int, function: String) -> ErrType
+    func d(category: ErrCategory, file: String, line: Int, function: String) -> ErrType
+    func d(_ explain: String, category: ErrCategory, file: String, line: Int, function: String) -> ErrType
     
     /// 用于设置 subError 参数
     ///
@@ -88,29 +88,23 @@ public protocol ErrList: Sendable, RawRepresentable, CaseIterable where Self.Err
     /// ``` swift
     /// ErrorTypes.aError.subErr(yourSubErr)
     /// ```
-    func subErr(_ error: Error?, file: String, line: Int, function: String) -> ErrType
-}
-
-extension ErrList where RawValue: RawError {
-    public init?(rawValue: RawValue) { nil }
+    func subErr(_ error: Error?, category: ErrCategory, file: String, line: Int, function: String) -> ErrType
 }
 
 // MARK: - 内部实现
 
 public extension ErrList {
     @inlinable
-    func d(file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)) }
+    func d(category: ErrCategory, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)) }
     @inlinable
-    func d(category: ErrType.Category, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)) }
+    func d(_ explain: String, category: ErrCategory, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, category: category, loc: (file, line, function)) }
     @inlinable
-    func d(_ explain: String, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, loc: (file, line, function)) }
+    func subErr(_ error: Error?, category: ErrCategory, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(category: category, loc: (file, line, function)).subErr(error) }
     @inlinable
-    func d(_ explain: String, category: ErrType.Category? = nil, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(explain: explain, category: category, loc: (file, line, function)) }
-    @inlinable
-    func subErr(_ error: Error?, file: String = #fileID, line: Int = #line, function: String = #function) -> ErrType { detail(loc: (file, line, function)).subErr(error) }
+    var identifier: String { String(describing: Self.self) + "." + String(describing: self.rawValue) }
 }
 
 extension ErrList {
     @inlinable
-    func detail(explain: String? = nil, category: ErrType.Category? = nil, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(self, explain, category: category, file: loc.file, line: loc.line, function: loc.function) }
+    func detail(explain: String? = nil, category: ErrCategory, loc: (file: String, line: Int, function: String)) -> ErrType { ErrType(self, explain, category: category, file: loc.file, line: loc.line, function: loc.function) }
 }

@@ -60,7 +60,7 @@ public enum Crypto {
     
     @inlinable
     static func __hash<T>(_ data: T) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
-        Result(throws: .hashFailed) {
+        Result(throws: .hashFailed, category: .inherit) {
             Data(try HashFunction.hash(data: data.dataRes.get()))
         }
     }
@@ -80,7 +80,7 @@ public enum Crypto {
         if salt == nil {
             salt = randomDataGenerate(length: 32)
         }
-        return Result(throws: .hashFailed) {
+        return Result(throws: .hashFailed, category: .inherit) {
             Data(try HashFunction.hash(data: HashFunction.hash(data: data.dataRes.get()) + salt!))
         }
     }

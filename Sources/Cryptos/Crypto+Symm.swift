@@ -178,7 +178,7 @@ public extension Crypto {
             
             @inlinable
             static func __make<T>(_ data: T, key: Key) -> Res<Data, Errcase> where T: DecodingThrowableDataConvertable {
-                .init(throws: .makeSignFailed) {
+                .init(throws: .makeSignFailed, category: .inherit) {
                     .init(try HMAC<HashFunction>.authenticationCode(for: data.dataRes.get(), using: key))
                 }
             }
@@ -202,7 +202,7 @@ public extension Crypto {
             
             @inlinable
             static func __validate<T>(_ data: T, authCode: Data, key: Key) -> Res<Bool, Errcase> where T: DecodingThrowableDataConvertable {
-                .init(throws: .validationFailed) {
+                .init(throws: .validationFailed, category: .inherit) {
                     try HMAC<HashFunction>.isValidAuthenticationCode(authCode, authenticating: data.dataRes.get(), using: key)
                 }
             }
@@ -283,21 +283,21 @@ extension Crypto.Symm.Key {
     
     @inlinable
     func __derive<T>(info: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
-        .init(throws: .keyDeriveFailed) {
+        .init(throws: .keyDeriveFailed, category: .inherit) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
     
     @inlinable
     func __derive<T>(salt: T) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable {
-        .init(throws: .keyDeriveFailed) {
+        .init(throws: .keyDeriveFailed, category: .inherit) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
     
     @inlinable
     func __derive<T, G>(salt: T, info: G) -> Res<Self, Errcase> where T: DecodingThrowableDataConvertable, G: DecodingThrowableDataConvertable {
-        .init(throws: .keyDeriveFailed) {
+        .init(throws: .keyDeriveFailed, category: .inherit) {
             try HKDF<Crypto.HashFunction>.deriveKey(inputKeyMaterial: self, salt: salt.dataRes.get(), info: info.dataRes.get(), outputByteCount: Crypto.symmetricKeySize.bitCount / 8)
         }
     }
@@ -309,11 +309,11 @@ extension Crypto.Symm {
         // print("正在进行加密: \(try data.data().count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         
-        return Result(throws: .aesEncryptFailed, "AES 加密未能成功封印明文数据") {
+        return Result(throws: .aesEncryptFailed, "AES 加密未能成功封印明文数据", category: .inherit) {
             try AES.GCM.seal(data.dataRes.get(), using: key, nonce: .init())
         }.flatMap { sealedBox in
             guard let cipher = sealedBox.combined else {
-                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在")
+                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在", category: .inherit)
             }
             // print("加密得到: \(cipher.count)")
             return .success(cipher)
@@ -325,13 +325,13 @@ extension Crypto.Symm {
         // print("正在进行解密: \(cipher.count), key: \(key.data().base64String()))")
         precondition(key.bitCount == Crypto.symmetricKeySize.bitCount, "密钥长度不正确，应当为 \(Crypto.symmetricKeySize.bitCount) 位，却得到 \(key.bitCount) 位")
         
-        return Result(throws: .aesDecryptFailed) {
+        return Result(throws: .aesDecryptFailed, category: .inherit) {
             let sealedBox = try AES.GCM.SealedBox(combined: cipher)
             let decryptedData = try AES.GCM.open(sealedBox, using: key)
             return decryptedData
         }.flatMap { decryptedData in
             // print("解密得到: \(decryptedData.count)")
-            return D.make(data: decryptedData).mapError(as: Errcase.aesDecryptFailed)
+            return D.make(data: decryptedData).mapError(as: Errcase.aesDecryptFailed, category: .inherit)
         }
     }
 
@@ -348,7 +348,7 @@ extension Crypto.Symm.Stream {
         
         let chunkTagData = chunkTagToData(chunkTag)
         
-        return Result(throws: .aesEncryptFailed) {
+        return Result(throws: .aesEncryptFailed, category: .inherit) {
             try AES.GCM.seal(
                 data.dataRes.get(),
                 using: key,
@@ -357,7 +357,7 @@ extension Crypto.Symm.Stream {
             )
         }.flatMap { sealedBox in
             guard let cipher = sealedBox.combined else {
-                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在")
+                return .failure(.aesEncryptFailed, "AES 加密-未知错误，密文不存在", category: .inherit)
             }
             
             // 密文总长度为 plain.count + 16 + 12 bytes
@@ -373,11 +373,11 @@ extension Crypto.Symm.Stream {
         /// authentication tag.
         let chunkTagData = chunkTagToData(chunkTag)
         
-        return Result(throws: .aesDecryptFailed) {
+        return Result(throws: .aesDecryptFailed, category: .inherit) {
             let sealedBox = try AES.GCM.SealedBox(combined: cipher)
             return try AES.GCM.open(sealedBox, using: key, authenticating: chunkTagData)
         }.flatMap { plain in
-            return T.make(data: plain).mapError(as: Crypto.Symm.Errcase.aesDecryptFailed)
+            return T.make(data: plain).mapError(as: Crypto.Symm.Errcase.aesDecryptFailed, category: .inherit)
         }
     }
     

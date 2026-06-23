@@ -53,7 +53,7 @@ extension EventLoop {
         _ error: G,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: G.ErrType.Category? = nil,
+        category: ErrCategory,
         logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,
@@ -217,40 +217,6 @@ extension EventLoopResult {
 extension EventLoopResult.Isolated {
     @inlinable
     @preconcurrency
-    public func flatMapErrThrowing<NewError>(
-        _ callback: @escaping @Sendable (ErrorType) throws(NewError) -> Value,
-        file: String = #fileID,
-        line: Int = #line,
-        function: String = #function
-    ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where NewError: ErrList {
-        self.flatMapErrorThrowing { error throws(NewError.ErrType) in
-            do {
-                return try callback(error)
-            } catch let err {
-                throw .init(err as! NewError, file: file, line: line, function: function).subErr(err)
-            }
-        }
-    }
-    
-    @inlinable
-    @preconcurrency
-    public func flatMapErr<NewError>(
-        _ callback: @escaping @Sendable (ErrorType) -> EventLoopResult<Value, NewError>,
-        file: String = #fileID,
-        line: Int = #line,
-        function: String = #function
-    ) -> EventLoopResult<Value, NewError.ErrType>.Isolated where Value: Sendable, NewError: ErrList {
-        self.flatMapError { error in
-            callback(error).flatMapErrorThrowing { err throws(NewError.ErrType) in
-                throw .init(err, file: file, line: line, function: function).subErr(err)
-            }
-        }
-    }
-}
-
-extension EventLoopResult.Isolated {
-    @inlinable
-    @preconcurrency
     public func flatCast<NewValue: Sendable, NewError>(
         throws: NewError.Type = NewError.self,
         _ callback: @escaping @Sendable (Value) -> EventLoopResult<NewValue, NewError>
@@ -295,7 +261,7 @@ extension EventLoopResult.Isolated {
         _ error: NewError,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: NewError.ErrType.Category? = nil,
+        category: ErrCategory,
         logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,
@@ -332,7 +298,7 @@ extension EventLoopFuture.Isolated {
         _ error: T,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: T.ErrType.Category? = nil,
+        category: ErrCategory,
         logger: Logger? = nil,
         file: String = #fileID,
         line: Int = #line,

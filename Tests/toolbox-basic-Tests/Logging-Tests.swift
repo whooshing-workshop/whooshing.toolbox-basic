@@ -74,13 +74,13 @@ struct LoggingTests {
         
         let _ = logger.errThrow(
             ErrorTypes2.error3.d("测试错误1", category: .internal).subErr(
-                ErrorTypes2.error4.d("SubError", category: .external).subErr(
+                ErrorTypes2.error4.d("SubError", category: .external()).subErr(
                     TestingError.Test1
                 )
             )
         )
         
-        let _ = logger.errThrow(ErrorTypes2.error4.d("SubError", category: .external), metadata: [
+        let _ = logger.errThrow(ErrorTypes2.error4.d("SubError", category: .external()), metadata: [
             "1": "1"
         ])
         
@@ -150,13 +150,13 @@ struct LoggingTests {
         
         let _ = logger.errThrow(
             ErrorTypes2.error3.d("测试错误1", category: .internal).subErr(
-                ErrorTypes2.error4.d("SubError", category: .external).subErr(
+                ErrorTypes2.error4.d("SubError", category: .external()).subErr(
                     TestingError.Test1
                 )
             )
         )
         
-        let _ = logger.errThrow(ErrorTypes2.error4.d("SubError", category: .external), metadata: [
+        let _ = logger.errThrow(ErrorTypes2.error4.d("SubError", category: .external()), metadata: [
             "1": "1"
         ])
         

@@ -14,13 +14,13 @@ extension String: ThrowableDataConvertable {
     
     @inlinable
     public static func make(data: Data) -> Res<String, EncodeErrcase> {
-        guard let s = String(data: data, encoding: .utf8) else { return .failure(.dataToStringFailed) }
+        guard let s = String(data: data, encoding: .utf8) else { return .failure(.dataToStringFailed, category: .external()) }
         return .success(s)
     }
 
     @inlinable
     public var dataRes: Res<Data, DecodeErrcase> {
-        guard let d = self.data(using: .utf8) else { return .failure(.stringToDataFailed) }
+        guard let d = self.data(using: .utf8) else { return .failure(.stringToDataFailed, category: .external()) }
         return .success(d)
     }
 }
@@ -60,7 +60,7 @@ extension Base64String: DecodingThrowableDataConvertable {
     
     @inlinable
     public var dataRes: Res<Data, Errcase> {
-        guard let d = Data(base64Encoded: string) else { return .failure(.stringToDataBase64Failed) }
+        guard let d = Data(base64Encoded: string) else { return .failure(.stringToDataBase64Failed, category: .external()) }
         return .success(d)
     }
 }

@@ -35,7 +35,7 @@ extension Crypto.Asym.CPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
     
     @inlinable
     public static func make(data: Data) -> Res<Self, EncodeErrcase> {
-        .init(throws: .initFromDataFailed) {
+        .init(throws: .initFromDataFailed, category: .inherit) {
             try Self.init(rawRepresentation: data)
         }
     }
@@ -58,7 +58,7 @@ extension Crypto.Asym.CPublicKey: EncodingThrowableDataConvertable, DecodingSafe
     
     @inlinable
     public static func make(data: Data) -> Res<Self, EncodeErrcase> {
-        .init(throws: .initFromDataFailed) {
+        .init(throws: .initFromDataFailed, category: .inherit) {
             try Self.init(rawRepresentation: data)
         }
     }
@@ -81,7 +81,7 @@ extension Crypto.Asym.SPrivateKey: EncodingThrowableDataConvertable, DecodingSaf
     
     @inlinable
     public static func make(data: Data) -> Res<Self, EncodeErrcase> {
-        .init(throws: .initFromDataFailed) {
+        .init(throws: .initFromDataFailed, category: .inherit) {
             try Self.init(rawRepresentation: data)
         }
     }
@@ -102,7 +102,7 @@ extension Crypto.Asym.SPublicKey: EncodingThrowableDataConvertable, DecodingSafe
     
     @inlinable
     public static func make(data: Data) -> Res<Self, EncodeErrcase> {
-        .init(throws: .initFromDataFailed) {
+        .init(throws: .initFromDataFailed, category: .inherit) {
             try Self.init(rawRepresentation: data)
         }
     }

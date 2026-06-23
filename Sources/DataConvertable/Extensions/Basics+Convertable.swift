@@ -19,10 +19,10 @@ extension UUID: EncodingThrowableDataConvertable, DecodingSafeDataConvertable {
     @inlinable
     public static func make(data: Data) -> Res<Self, Errcase> {
         String.make(data: data).mapError { error in
-            .init(.uuidFailed, "Data 格式不正确")
+            .init(.uuidFailed, "Data 格式不正确", category: .external())
         }.flatMap { uuidString in
             guard let v = UUID(uuidString: uuidString) else {
-                return .failure(.uuidFailed, "Data 编码后得到空字符串")
+                return .failure(.uuidFailed, "Data 编码后得到空字符串", category: .external())
             }
             return .success(v)
         }

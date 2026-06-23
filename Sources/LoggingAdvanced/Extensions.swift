@@ -67,11 +67,7 @@ public extension Logger {
             }
         }
         
-        if let category = e.category {
-            metadata["category"] = .string("\(category)")
-        } else {
-            metadata["category"] = nil
-        }
+        metadata["category"] = .string("\(e.category.description)")
         
         if e.subError != nil {
             metadata[Self.chainIndexKey] = .stringConvertible(index)
@@ -120,7 +116,7 @@ public extension Logger {
         throws to: G,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: G.ErrType.Category? = nil,
+        category: ErrCategory,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function,
@@ -153,7 +149,7 @@ public extension Logger {
         throws to: G,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: G.ErrType.Category? = nil,
+        category: ErrCategory,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function,
@@ -189,7 +185,7 @@ public extension Logger {
         throws error: T.ErrorList,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: T.Category? = nil,
+        category: ErrCategory,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function,
@@ -222,7 +218,7 @@ public extension Logger {
         throws error: T.ErrorList,
         _ explain: String? = nil,
         metadata: Logger.Metadata? = nil,
-        category: T.Category? = nil,
+        category: ErrCategory,
         file: String = #fileID,
         line: Int = #line,
         function: String = #function,

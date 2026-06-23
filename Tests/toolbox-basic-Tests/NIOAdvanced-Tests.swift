@@ -149,10 +149,10 @@ struct NIOAdvancedTests {
     func varyResult<NewError>(
         _ callback1: @escaping @Sendable () throws(Error2) -> Int,
         _ callback2: @escaping @Sendable (String) -> EventLoopResult<String, NewError>
-    ) -> EventLoopResult<String, BscError<Error1>> {
+    ) -> EventLoopRes<String, Error1> {
         subAction(callback1)
-            .errCast(Error1.exampleError11)
-            .flatCast { _ in callback2(string2).errCast(Error1.exampleError12) }
+            .errCast(Error1.exampleError11, category: .internal)
+            .flatCast { _ in callback2(string2).errCast(Error1.exampleError12, category: .internal) }
     }
     
     func subAction(

@@ -53,7 +53,7 @@ func newDictionary<K, V>(data: Data) -> Res<[K: V], DictionaryEncodeErrcase> whe
         do {
             k = try K.make(data: data.subdata(in: curLength..<(curLength + kLength))).get()
         } catch {
-            return .failure(.keyFailed, subErr: error)
+            return .failure(.keyFailed, category: .inherit, subErr: error)
         }
         curLength += kLength
         
@@ -61,7 +61,7 @@ func newDictionary<K, V>(data: Data) -> Res<[K: V], DictionaryEncodeErrcase> whe
         do {
             v = try V.make(data: data.subdata(in: curLength..<(curLength + vLength))).get()
         } catch {
-            return .failure(.valueFailed, subErr: error)
+            return .failure(.valueFailed, category: .inherit, subErr: error)
         }
         
         curLength += vLength
@@ -78,14 +78,14 @@ func getData<K, V>(from dictionary: [K: V]) -> Res<Data, DictionaryDecodeErrcase
         do {
             kData = try key.dataRes.get()
         } catch {
-            return .failure(.keyFailed, subErr: error)
+            return .failure(.keyFailed, category: .inherit, subErr: error)
         }
         
         let vData: Data
         do {
             vData = try value.dataRes.get()
         } catch {
-            return .failure(.valueFailed, subErr: error)
+            return .failure(.valueFailed, category: .inherit, subErr: error)
         }
         res += kData.count.data + vData.count.data + kData + vData
     }

@@ -38,12 +38,11 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     /// 扩展类型，默认为 Never，即无类型。配合 `initAdditions(_)` 方法实现和扩展你的错误类型。
     associatedtype AdditionType = Never
     associatedtype ErrorList: ErrList
-    associatedtype Category: ErrCategory
     
     /// 该错误的错误枚举值
     var error: ErrorList! { get set }
     /// 该错误的类别
-    var category: Category? { get set }
+    var category: ErrCategory! { get set }
     /// 该错误的附加解释
     var explain: String? { get set }
     /// 错误发生所在的文件位置
@@ -58,10 +57,10 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
     var metadata: Logger.Metadata? { get set }
     
     /// 初始化方法，你需要在你的自定义错误类型中实现该构建函数。
-    init()
+    init(category: ErrCategory)
 
     /// 错误的初始化方法，默认实现会自动为 ```summary, explain, category, file, line, function``` 赋值。
-    init(_ error: ErrorList, _ explain: String?, category: Category?, file: String, line: Int, function: String)
+    init(_ error: ErrorList, _ explain: String?, category: ErrCategory, file: String, line: Int, function: String)
 
     /// 判断该错误是否与其他错误同类型。
     ///
@@ -111,11 +110,10 @@ public protocol Err: Error, Sendable, Equatable, CustomStringConvertible{
 
 public extension Err {
     @inlinable
-    init(_ error: ErrorList, _ explain: String? = nil, category: Category? = nil, file: String = #fileID, line: Int = #line, function: String = #function) {
-        self.init()
+    init(_ error: ErrorList, _ explain: String? = nil, category: ErrCategory, file: String = #fileID, line: Int = #line, function: String = #function) {
+        self.init(category: category)
         self.error = error
         self.explain = explain
-        self.category = category
         self.file = file
         self.line = line
         self.function = function
@@ -182,7 +180,7 @@ public extension Err {
             res += "\t"
         }
         
-        let prefix = category != nil ? "[\(category!.rawValue)]\(error!.rawValue)" : "\(error!.rawValue)"
+        let prefix = "\(error!.rawValue)-\(category.description)"
         
         res += "\(String(describing: type(of: error!))).\(error!.self)("
         let preds = ["\"", "\"", "At \""]
