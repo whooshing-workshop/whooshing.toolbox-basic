@@ -28,7 +28,7 @@
 在你的 Package.swift 加入：
 
 ``` swift
-.package(url: "https://github.com/whooshing-workshop/whooshing.toolbox-basic.git", from: "1.6.0")
+.package(url: "https://github.com/whooshing-workshop/whooshing.toolbox-basic.git", from: "1.6.2")
 ```
 
 根据需要导入不同的目标产品：
